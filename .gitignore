@@ -7,3 +7,6 @@ data/
 public/uploads/
 *.tsbuildinfo
 test-results/
+
+.pages-build-*/
+pages-out/

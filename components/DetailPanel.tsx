@@ -1,4 +1,5 @@
 "use client";
+import { assetUrl, basePath } from "@/lib/runtime";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Cpu,
@@ -71,7 +72,7 @@ export default function DetailPanel({
               <>
                 <div className="product-overview">
                   <img
-                    src={product.media.main}
+                    src={assetUrl(product.media.main)}
                     alt={product.name}
                     width={92}
                     height={122}

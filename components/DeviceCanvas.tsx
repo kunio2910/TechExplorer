@@ -1,4 +1,5 @@
 "use client";
+import { assetUrl, basePath } from "@/lib/runtime";
 import { useState } from "react";
 import { Plus, Minus, RotateCcw, Maximize, Move } from "lucide-react";
 import { Product, Hotspot } from "@/lib/types";
@@ -46,7 +47,7 @@ export default function DeviceCanvas({
         {source && !failed ? (
           <img
             className="board-image"
-            src={source}
+            src={assetUrl(source)}
             alt={`${product.name} ${view} view`}
             width={720}
             height={950}

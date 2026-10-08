@@ -67,3 +67,9 @@ Specifications checked against ASUS on 2026-10-08:
 https://rog.asus.com/us/motherboards/rog-strix/rog-strix-b850-f-gaming-wifi/spec/
 
 The current manufacturer lists 256 GB RAM, 4 M.2 slots and 2 SATA ports, differing from the illustrative values in the concept. Brand names and product imagery belong to their respective owners. The demo includes one verified mainboard, without fictional model specifications. CPU socket/memory checks do not guarantee complete PC compatibility.
+
+## GitHub Pages deployment
+
+The Pages workflow builds and deploys a static Explorer to https://kunio2910.github.io/TechExplorer/. Repository Settings → Pages → Source must be **GitHub Actions**. It uses `/TechExplorer` as the base path for routes, JavaScript, fonts and images. `npm run build:pages` writes the deployable files to `pages-out` without modifying the server application.
+
+GitHub Pages cannot run the Node.js API or PostgreSQL. The static version includes the seeded products, hotspots, search, comparison and compatibility checks. Content Studio displays a clear server requirement; editing/upload and shared data remain available with the regular Next.js server deployment. Change seed data and push to update the static catalog.

@@ -1,4 +1,5 @@
 "use client";
+import { assetUrl, basePath } from "@/lib/runtime";
 import { useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import {
@@ -109,7 +110,7 @@ export default function Explorer({
     setActive(null);
     setView("top");
     setTab("Overview");
-    history.replaceState(null, "", `/explore/mainboard/${p.slug}`);
+    history.replaceState(null, "", `${basePath}/explore/mainboard/${p.slug}/`);
     setMobileMenu(false);
   }
   return (
@@ -270,7 +271,7 @@ export default function Explorer({
                 onClick={() => choose(p)}
               >
                 <img
-                  src={p.media.main}
+                  src={assetUrl(p.media.main)}
                   alt=""
                   width={34}
                   height={46}
