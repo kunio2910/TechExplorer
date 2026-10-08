@@ -1,0 +1,54 @@
+{
+  "name": "techexplorer",
+  "version": "1.0.0",
+  "description": "Interactive motherboard explorer with a visual content studio",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/core.test.ts",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "postinstall": "prisma generate",
+    "format": "prettier --write app components lib tests prisma/seed.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kunio2910/TechExplorer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/kunio2910/TechExplorer/issues"
+  },
+  "homepage": "https://github.com/kunio2910/TechExplorer#readme",
+  "private": true,
+  "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@prisma/client": "^6.19.3",
+    "@tailwindcss/postcss": "^4.3.3",
+    "framer-motion": "^14.0.0",
+    "lucide-react": "^1.53.0",
+    "next": "^16.4.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "prettier": "^3.9.9",
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.0"
+  }
+}

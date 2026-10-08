@@ -1,0 +1,89 @@
+import { Product } from "./types";
+export const seedProducts: Product[] = [
+  {
+    id: "mb_asus_b850f",
+    slug: "asus-rog-strix-b850-f-gaming-wifi",
+    name: "ASUS ROG STRIX B850-F GAMING WIFI",
+    brand: "ASUS",
+    sourceUrl:
+      "https://rog.asus.com/us/motherboards/rog-strix/rog-strix-b850-f-gaming-wifi/spec/",
+    category: "Mainboard",
+    status: "published",
+    description:
+      "A powerful foundation for your next build. Discover the connections, components, and engineering behind the ROG Strix B850-F.",
+    spec: {
+      Chipset: "AMD B850",
+      Socket: "AM5",
+      "Form factor": "ATX",
+      "Memory type": "DDR5",
+      "Memory slots": "4 DIMM",
+      "Max memory": "256 GB",
+      "Memory speed": "8000+ MT/s (OC)",
+      PCIe: "PCIe 5.0 x16",
+      "M.2 slots": "4",
+      SATA: "2 × 6 Gb/s",
+      LAN: "2.5Gb Ethernet",
+      WiFi: "Wi-Fi 7",
+      Bluetooth: "5.4",
+      Audio: "ROG SupremeFX 7.1",
+    },
+    media: { main: "/media/mainboard.webp", top: "/media/mainboard.webp" },
+    hotspots: [
+      {
+        id: "io",
+        type: "rear_io",
+        view: "top",
+        x: 20,
+        y: 24,
+        title: "Rear I/O",
+        subtitle: "Your connection hub",
+        description:
+          "Connect displays, USB peripherals, Ethernet, audio and the Wi-Fi antenna through the rear I/O panel.",
+      },
+      {
+        id: "cpu",
+        type: "cpu_socket",
+        view: "top",
+        x: 54,
+        y: 34,
+        title: "CPU Socket",
+        subtitle: "AM5 · Ryzen 7000 / 8000 / 9000",
+        description:
+          "The AM5 socket connects the processor to memory and high-speed PCIe lanes. Always check the ASUS CPU support list and required BIOS before installing a processor.",
+      },
+      {
+        id: "ram",
+        type: "ram",
+        view: "top",
+        x: 79,
+        y: 29,
+        title: "Memory (RAM)",
+        subtitle: "4 × DDR5 DIMM",
+        description:
+          "Dual-channel DDR5 memory holds the data your processor needs right now. Install a matched kit in the recommended slots; overclocked speeds depend on your CPU and memory kit.",
+      },
+      {
+        id: "pcie",
+        type: "pcie",
+        view: "top",
+        x: 36,
+        y: 58,
+        title: "PCIe Expansion",
+        subtitle: "PCIe 5.0 x16",
+        description:
+          "The reinforced expansion slot connects a graphics card directly to the processor. Available bandwidth and lane sharing depend on the CPU and installed devices.",
+      },
+      {
+        id: "m2",
+        type: "m2",
+        view: "top",
+        x: 58,
+        y: 72,
+        title: "M.2 Storage",
+        subtitle: "4 × M.2 slots",
+        description:
+          "Compact NVMe drives connect through PCIe for fast storage. Heatsinks help control drive temperature; consult the manual for slot bandwidth and lane sharing.",
+      },
+    ],
+  },
+];
