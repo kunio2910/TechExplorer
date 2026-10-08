@@ -30,6 +30,16 @@ test("publishing requires image, metadata and five hotspots", () => {
     validateProduct({ ...seed, media: { top: "javascript:alert(1)" } }),
   );
 });
+test("associated components keep their compatibility metadata", () => {
+  assert.equal(seed.components.length, 3);
+  assert.equal(validateProduct(seed).components[0].compatibility, "compatible");
+  assert.throws(() =>
+    validateProduct({
+      ...seed,
+      components: [{ ...seed.components[0], compatibility: "unknown" }],
+    }),
+  );
+});
 test("writes cannot authenticate without a configured secret", () => {
   const old = process.env.ADMIN_TOKEN;
   delete process.env.ADMIN_TOKEN;

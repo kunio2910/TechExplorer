@@ -1,0 +1,1 @@
+ALTER TABLE "Product" ADD COLUMN "components" JSONB NOT NULL DEFAULT '[]';

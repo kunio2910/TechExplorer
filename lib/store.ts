@@ -7,11 +7,24 @@ const globalDb = globalThis as unknown as { db?: PrismaClient };
 const db = globalDb.db ?? new PrismaClient();
 globalDb.db = db;
 const file = path.join(process.cwd(), "data", "products.json");
+function normalizeProduct(product: Product): Product {
+  const saved = product as Product & { components?: Product["components"] };
+  const defaults =
+    seedProducts.find((seed) => seed.id === product.id)?.components ?? [];
+  return {
+    ...product,
+    components: Array.isArray(saved.components) ? saved.components : defaults,
+  };
+}
 export async function allProducts(): Promise<Product[]> {
   if (process.env.DATABASE_URL)
-    return (await db.product.findMany()) as unknown as Product[];
+    return (await db.product.findMany()).map((product) =>
+      normalizeProduct(product as unknown as Product),
+    );
   try {
-    return JSON.parse(await readFile(file, "utf8"));
+    return (JSON.parse(await readFile(file, "utf8")) as Product[]).map(
+      normalizeProduct,
+    );
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
     return structuredClone(seedProducts);
@@ -24,6 +37,7 @@ export async function saveProduct(product: Product) {
       spec: product.spec as Prisma.InputJsonValue,
       media: product.media as Prisma.InputJsonValue,
       hotspots: product.hotspots as Prisma.InputJsonValue,
+      components: product.components as Prisma.InputJsonValue,
     };
     await db.product.upsert({
       where: { id: product.id },

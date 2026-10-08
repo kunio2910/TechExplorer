@@ -17,6 +17,7 @@ model Product {
   spec Json
   media Json
   hotspots Json
+  components Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

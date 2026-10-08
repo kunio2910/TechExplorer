@@ -8,6 +8,7 @@ async function main() {
       spec: p.spec as Prisma.InputJsonValue,
       media: p.media as Prisma.InputJsonValue,
       hotspots: p.hotspots as Prisma.InputJsonValue,
+      components: p.components as Prisma.InputJsonValue,
     };
     await db.product.upsert({
       where: { id: p.id },

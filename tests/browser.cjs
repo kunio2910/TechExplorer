@@ -22,6 +22,19 @@ const assert = require("node:assert/strict");
   await page
     .getByRole("heading", { name: "CPU Socket", exact: true })
     .waitFor();
+  await page.getByRole("button", { name: "Close component detail" }).click();
+  await page.locator(".callout").filter({ hasText: "CPU Socket" }).click();
+  await page
+    .getByRole("heading", { name: "CPU Socket", exact: true })
+    .waitFor();
+  const beforeRotation = await page
+    .locator(".image-stage")
+    .getAttribute("style");
+  await page.getByRole("button", { name: "Rotate view", exact: true }).click();
+  const afterRotation = await page
+    .locator(".image-stage")
+    .getAttribute("style");
+  assert.notEqual(afterRotation, beforeRotation);
   await page
     .getByRole("button", { name: "Compatibility", exact: true })
     .click();
@@ -77,6 +90,11 @@ const assert = require("node:assert/strict");
   await page
     .getByRole("combobox", { name: "Select product" })
     .selectOption("mb_asus_b850f");
+  assert.equal(await page.locator(".associated-component").count(), 3);
+  await page
+    .getByRole("button", { name: "+ Add associated component" })
+    .click();
+  assert.equal(await page.locator(".associated-component").count(), 4);
   await page.locator(".editor-board").click({ position: { x: 50, y: 250 } });
   assert.equal(await page.locator(".editor-node").count(), 6);
   await page.getByText("Position:", { exact: false }).waitFor();

@@ -1,7 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Product, Hotspot, mediaRoles, MediaRole } from "@/lib/types";
+import {
+  Product,
+  Hotspot,
+  mediaRoles,
+  MediaRole,
+  AssociatedComponent,
+} from "@/lib/types";
 import DetailPanel from "@/components/DetailPanel";
 import DeviceCanvas from "@/components/DeviceCanvas";
 const blank = (): Product => ({
@@ -15,6 +21,7 @@ const blank = (): Product => ({
   spec: { Socket: "AM5", "Memory type": "DDR5" },
   media: {},
   hotspots: [],
+  components: [],
 });
 export default function Admin() {
   const [ratio, setRatio] = useState(720 / 950);
@@ -52,6 +59,14 @@ export default function Admin() {
       update({
         hotspots: product.hotspots.map((h) =>
           h.id === active.id ? { ...h, ...patch } : h,
+        ),
+      });
+  }
+  function updateComponent(id: string, patch: Partial<AssociatedComponent>) {
+    if (product)
+      update({
+        components: product.components.map((component) =>
+          component.id === id ? { ...component, ...patch } : component,
         ),
       });
   }
@@ -223,6 +238,102 @@ export default function Admin() {
               }}
             >
               + Add specification
+            </button>
+            <h3 style={{ marginTop: 25 }}>Associated components</h3>
+            <p className="muted">
+              Add the CPU, RAM, GPU, storage or other parts that belong with
+              this mainboard.
+            </p>
+            {product.components.map((component) => (
+              <div className="associated-component" key={component.id}>
+                <div className="associated-component-heading">
+                  <strong>{component.category}</strong>
+                  <button
+                    className="danger"
+                    aria-label={`Remove ${component.name}`}
+                    onClick={() =>
+                      update({
+                        components: product.components.filter(
+                          (item) => item.id !== component.id,
+                        ),
+                      })
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+                <label>
+                  Category
+                  <select
+                    value={component.category}
+                    onChange={(e) =>
+                      updateComponent(component.id, {
+                        category: e.target
+                          .value as AssociatedComponent["category"],
+                      })
+                    }
+                  >
+                    {[
+                      "CPU",
+                      "RAM",
+                      "GPU",
+                      "Storage",
+                      "PSU",
+                      "Cooling",
+                      "Case",
+                      "Other",
+                    ].map((category) => (
+                      <option key={category}>{category}</option>
+                    ))}
+                  </select>
+                </label>
+                {(["name", "model", "notes"] as const).map((key) => (
+                  <label key={key}>
+                    {key}
+                    <input
+                      value={component[key]}
+                      onChange={(e) =>
+                        updateComponent(component.id, { [key]: e.target.value })
+                      }
+                    />
+                  </label>
+                ))}
+                <label>
+                  Compatibility
+                  <select
+                    value={component.compatibility}
+                    onChange={(e) =>
+                      updateComponent(component.id, {
+                        compatibility: e.target
+                          .value as AssociatedComponent["compatibility"],
+                      })
+                    }
+                  >
+                    <option value="compatible">Compatible</option>
+                    <option value="warning">Warning / check</option>
+                    <option value="incompatible">Incompatible</option>
+                  </select>
+                </label>
+              </div>
+            ))}
+            <button
+              onClick={() =>
+                update({
+                  components: [
+                    ...product.components,
+                    {
+                      id: crypto.randomUUID(),
+                      category: "CPU",
+                      name: "New component",
+                      model: "New model",
+                      compatibility: "warning",
+                      notes: "",
+                    },
+                  ],
+                })
+              }
+            >
+              + Add associated component
             </button>
             <h3 style={{ marginTop: 25 }}>Media library</h3>
             <label>

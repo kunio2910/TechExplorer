@@ -11,6 +11,32 @@ export const seedProducts: Product[] = [
     status: "published",
     description:
       "A powerful foundation for your next build. Discover the connections, components, and engineering behind the ROG Strix B850-F.",
+    components: [
+      {
+        id: "cpu-9800x3d",
+        category: "CPU",
+        name: "AMD Ryzen 7",
+        model: "9800X3D",
+        compatibility: "compatible",
+        notes: "AM5 processor; verify BIOS support before installation.",
+      },
+      {
+        id: "ram-ddr5",
+        category: "RAM",
+        name: "Corsair Vengeance",
+        model: "32 GB DDR5-6000",
+        compatibility: "compatible",
+        notes: "Use a matched dual-channel kit for best results.",
+      },
+      {
+        id: "ssd-990pro",
+        category: "Storage",
+        name: "Samsung 990 PRO",
+        model: "2 TB NVMe PCIe 4.0",
+        compatibility: "compatible",
+        notes: "Install in an M.2 slot with its heatsink.",
+      },
+    ],
     spec: {
       Chipset: "AMD B850",
       Socket: "AM5",

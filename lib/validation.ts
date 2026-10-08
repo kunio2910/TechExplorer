@@ -73,5 +73,32 @@ export function validateProduct(value: unknown): Product {
     (typeof p.sourceUrl !== "string" || !p.sourceUrl.startsWith("https://"))
   )
     throw Error("Source URL must use HTTPS.");
+  if (
+    !Array.isArray(p.components) ||
+    p.components.some(
+      (component) =>
+        !component.id ||
+        typeof component.id !== "string" ||
+        !component.name ||
+        typeof component.name !== "string" ||
+        !component.model ||
+        typeof component.model !== "string" ||
+        typeof component.notes !== "string" ||
+        ![
+          "CPU",
+          "RAM",
+          "GPU",
+          "Storage",
+          "PSU",
+          "Cooling",
+          "Case",
+          "Other",
+        ].includes(component.category) ||
+        !["compatible", "warning", "incompatible"].includes(
+          component.compatibility,
+        ),
+    )
+  )
+    throw Error("Invalid associated component.");
   return p;
 }

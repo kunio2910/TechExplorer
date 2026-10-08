@@ -1,7 +1,7 @@
 "use client";
 import { assetUrl, basePath } from "@/lib/runtime";
 import { useState } from "react";
-import { Plus, Minus, RotateCcw, Maximize, Move } from "lucide-react";
+import { Plus, Minus, RotateCcw, RotateCw, Maximize, Move } from "lucide-react";
 import { Product, Hotspot } from "@/lib/types";
 export default function DeviceCanvas({
   product,
@@ -18,6 +18,7 @@ export default function DeviceCanvas({
 }) {
   const [ratio, setRatio] = useState(720 / 950);
   const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [failed, setFailed] = useState(false);
   const hotspots = product.hotspots.filter(
     (h) => h.view === (view === "rear_io" ? "rear_io" : "top"),
@@ -42,7 +43,10 @@ export default function DeviceCanvas({
       <div className="orbital orbital-two" />
       <div
         className="image-stage"
-        style={{ transform: `scale(${zoom})`, aspectRatio: ratio }}
+        style={{
+          transform: `rotate(${rotation}deg) scale(${zoom})`,
+          aspectRatio: ratio,
+        }}
       >
         {source && !failed ? (
           <img
@@ -94,7 +98,10 @@ export default function DeviceCanvas({
               <span className="marker">
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <span className={"callout " + (h.x > 65 ? "right" : "")}>
+              <span
+                className={"callout " + (h.x > 65 ? "right" : "")}
+                onClick={() => onSelect(h)}
+              >
                 <b>{h.title}</b>
                 <small>
                   {expert ? h.subtitle : "Click to explore"} <span>↗</span>
@@ -124,6 +131,12 @@ export default function DeviceCanvas({
         <span className="divider" />
         <button aria-label="Reset zoom" onClick={() => setZoom(1)}>
           <RotateCcw size={15} />
+        </button>
+        <button
+          aria-label="Rotate view"
+          onClick={() => setRotation((angle) => (angle + 90) % 360)}
+        >
+          <RotateCw size={15} />
         </button>
         <button
           aria-label="Focus canvas"

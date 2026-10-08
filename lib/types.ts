@@ -20,6 +20,15 @@ export type Hotspot = {
   subtitle: string;
   description: string;
 };
+export type AssociatedComponent = {
+  id: string;
+  category:
+    "CPU" | "RAM" | "GPU" | "Storage" | "PSU" | "Cooling" | "Case" | "Other";
+  name: string;
+  model: string;
+  compatibility: "compatible" | "warning" | "incompatible";
+  notes: string;
+};
 export type Product = {
   id: string;
   slug: string;
@@ -32,4 +41,5 @@ export type Product = {
   spec: Record<string, string>;
   media: Partial<Record<MediaRole, string>>;
   hotspots: Hotspot[];
+  components: AssociatedComponent[];
 };

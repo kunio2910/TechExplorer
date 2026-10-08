@@ -151,6 +151,30 @@ export default function DetailPanel({
                   </div>
                 ))}
             </dl>
+            {tab === "Overview" && product.components.length > 0 && (
+              <section className="associated-list">
+                <div className="section-heading">
+                  <h3>Suggested components</h3>
+                  <span className="tiny">
+                    {product.components.length} PARTS
+                  </span>
+                </div>
+                {product.components.map((component) => (
+                  <div className="associated-row" key={component.id}>
+                    <span className={`status-dot ${component.compatibility}`} />
+                    <div>
+                      <b>{component.name}</b>
+                      <small>
+                        {component.category} · {component.model}
+                      </small>
+                    </div>
+                    <span className="associated-status">
+                      {component.compatibility}
+                    </span>
+                  </div>
+                ))}
+              </section>
+            )}
             {product.sourceUrl && (
               <a
                 className="source-link"

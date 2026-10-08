@@ -35,9 +35,9 @@ The local upload adapter saves to `public/uploads` (8 MB limit, raster formats o
 ## Features
 
 - Sci-fi three-column Explorer, responsive tablet navigation and mobile detail sheet.
-- Five accurate relative hotspots on a local WebP product image; click selection, zoom/reset/fullscreen, SVG signal paths and reduced-motion support.
+- Five accurate relative hotspots on a local WebP product image; click selection from either marker or callout, long connector lines, zoom/reset/90-degree rotate/fullscreen, SVG signal paths and reduced-motion support.
 - Data-driven overview/specification panels, CPU socket and RAM type checks with explanations and BIOS/QVL warning.
-- Product CRUD, media roles, upload, visual hotspot editing and draft/publish workflow.
+- Product CRUD, media roles, upload, visual hotspot editing, draft/publish workflow and associated component records for CPU, RAM, GPU, storage, PSU, cooling and case parts.
 - Unavailable rear I/O, X-ray and exploded assets show disabled Coming soon cards. Add these media roles to enable them. 360° and real 3D are outside this MVP.
 - Light/dark toggle, loading, error and empty states.
 
