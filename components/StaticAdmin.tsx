@@ -26,9 +26,10 @@ import type {
   Hotspot,
   Product,
 } from "@/lib/types";
+import ComponentCanvas from "./ComponentCanvas";
 
 type AdminTab = "Mainboard" | CatalogComponentType;
-const tabs: AdminTab[] = ["Mainboard", "CPU", "RAM", "SSD"];
+const tabs: AdminTab[] = ["Mainboard", "CPU", "RAM", "SSD", "GPU", "PSU"];
 const statuses: AssociatedComponent["compatibility"][] = [
   "compatible",
   "warning",
@@ -569,17 +570,6 @@ export default function StaticAdmin({
                 </select>
               </label>
               <label className="wide">
-                Link ảnh linh kiện
-                <input
-                  type="url"
-                  value={component.imageUrl ?? ""}
-                  placeholder="https://… hoặc /media/…"
-                  onChange={(event) =>
-                    updateComponentDraft({ imageUrl: event.target.value })
-                  }
-                />
-              </label>
-              <label className="wide">
                 Mô tả
                 <textarea
                   value={product.description}
@@ -809,6 +799,17 @@ export default function StaticAdmin({
                 </select>
               </label>
               <label className="wide">
+                Link ảnh linh kiện
+                <input
+                  type="url"
+                  value={component.imageUrl ?? ""}
+                  placeholder="https://… hoặc /media/…"
+                  onChange={(event) =>
+                    updateComponentDraft({ imageUrl: event.target.value })
+                  }
+                />
+              </label>
+              <label className="wide">
                 Mô tả
                 <textarea
                   value={component.description}
@@ -984,6 +985,21 @@ export default function StaticAdmin({
             )}
             <p className="admin-local-note">
               Bấm “Lưu lên Firestore” để cập nhật ảnh và hotspot trên Explorer.
+            </p>
+          </section>
+        )}
+        {tab !== "Mainboard" && (
+          <section className="admin-preview admin-component-preview">
+            <div className="admin-section-heading">
+              <div>
+                <h2>Ảnh linh kiện xem trước</h2>
+                <span>Ảnh được hiển thị theo URL đã nhập ở biểu mẫu.</span>
+              </div>
+              <span>{component.type} · không có hotspot</span>
+            </div>
+            <ComponentCanvas component={component} />
+            <p className="admin-local-note">
+              Lưu thay đổi để cập nhật ảnh và thông tin linh kiện lên Firestore.
             </p>
           </section>
         )}

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Tech Explorer</title>
+  <desc id="desc">Abstract circuit board illustration for the Tech Explorer home screen</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071827"/>
+      <stop offset="1" stop-color="#0c2a3c"/>
+    </linearGradient>
+    <linearGradient id="chip" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#63edff"/>
+      <stop offset="1" stop-color="#137ea9"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="720" rx="28" fill="url(#bg)"/>
+  <g opacity=".2" stroke="#5ce6ff" stroke-width="1">
+    <path d="M0 120h1200M0 240h1200M0 360h1200M0 480h1200M0 600h1200"/>
+    <path d="M120 0v720M240 0v720M360 0v720M480 0v720M600 0v720M720 0v720M840 0v720M960 0v720M1080 0v720"/>
+  </g>
+  <g fill="none" stroke="#39d7f7" stroke-width="3" opacity=".8">
+    <path d="M88 152h166v76h94"/>
+    <path d="M916 164h112v116h84"/>
+    <path d="M92 555h196v-85h94"/>
+    <path d="M902 544h146v-94h86"/>
+    <circle cx="88" cy="152" r="9" fill="#39d7f7"/>
+    <circle cx="1112" cy="280" r="9" fill="#39d7f7"/>
+    <circle cx="92" cy="555" r="9" fill="#39d7f7"/>
+    <circle cx="1134" cy="450" r="9" fill="#39d7f7"/>
+  </g>
+  <g transform="translate(600 360)" filter="url(#glow)">
+    <circle r="206" fill="#0b2335" stroke="#2e9fc3" stroke-width="2"/>
+    <circle r="168" fill="none" stroke="#43dfff" stroke-width="2" stroke-dasharray="5 13"/>
+    <circle r="124" fill="none" stroke="#1982a7" stroke-width="2"/>
+    <rect x="-86" y="-86" width="172" height="172" rx="16" fill="url(#chip)" opacity=".22" stroke="#89f4ff" stroke-width="3"/>
+    <rect x="-56" y="-56" width="112" height="112" rx="9" fill="#0b1d2c" stroke="#5deaff" stroke-width="3"/>
+    <path d="M-24-16h48M-24 0h48M-24 16h48M-16-24v48M0-24v48M16-24v48" stroke="#5deaff" stroke-width="3" opacity=".75"/>
+    <g stroke="#64eaff" stroke-width="4">
+      <path d="M-132-36h-42M-132 0h-56M-132 36h-42M132-36h42M132 0h56M132 36h42"/>
+      <path d="M-36-132v-42M0-132v-56M36-132v-42M-36 132v42M0 132v56M36 132v42"/>
+    </g>
+  </g>
+  <text x="600" y="90" text-anchor="middle" fill="#8cefff" font-family="Arial, sans-serif" font-size="20" letter-spacing="7">TECH EXPLORER</text>
+  <text x="600" y="668" text-anchor="middle" fill="#6d9db5" font-family="Arial, sans-serif" font-size="14" letter-spacing="4">DISCOVER · CONNECT · BUILD</text>
+</svg>

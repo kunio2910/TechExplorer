@@ -18,6 +18,15 @@ const assert = require("node:assert/strict");
   });
   await page.goto(url);
   await page
+    .getByRole("heading", { name: "Khám phá công nghệ", exact: true })
+    .waitFor();
+  assert.equal(await page.locator(".home-hero-image").count(), 1);
+  await page.getByRole("button", { name: "Components", exact: true }).click();
+  await page.getByRole("heading", { name: "Explore Mainboard" }).waitFor();
+  await page
+    .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
+    .click();
+  await page
     .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })
     .waitFor();
   assert.equal(await page.locator(".hotspot").count(), 5);

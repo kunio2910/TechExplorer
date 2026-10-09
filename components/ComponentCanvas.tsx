@@ -3,7 +3,7 @@
 import { assetUrl } from "@/lib/runtime";
 import type { CatalogComponent } from "@/lib/types";
 import { Maximize, Minus, Move, Plus, RotateCcw, RotateCw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function ComponentCanvas({
   component,
@@ -15,6 +15,9 @@ export default function ComponentCanvas({
   const [rotation, setRotation] = useState(0);
   const [failed, setFailed] = useState(false);
   const source = component.imageUrl?.trim();
+  useEffect(() => {
+    setFailed(false);
+  }, [source]);
 
   return (
     <div className="canvas component-canvas">

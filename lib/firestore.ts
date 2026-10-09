@@ -101,7 +101,14 @@ export async function deleteProduct(productId: string) {
 function componentType(
   category: AssociatedComponent["category"],
 ): CatalogComponentType | null {
-  if (category === "CPU" || category === "RAM") return category;
+  if (
+    category === "CPU" ||
+    category === "RAM" ||
+    category === "GPU" ||
+    category === "PSU"
+  ) {
+    return category;
+  }
   if (category === "Storage") return "SSD";
   return null;
 }

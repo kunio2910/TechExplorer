@@ -91,10 +91,24 @@ const categoryAliases: Record<string, string[]> = {
   Peripherals: ["Peripherals"],
   Networking: ["Networking"],
 };
+const catalogTypeByCategory: Record<string, CatalogComponent["type"]> = {
+  CPU: "CPU",
+  RAM: "RAM",
+  SSD: "SSD",
+  GPU: "GPU",
+  "Power Supply": "PSU",
+};
 function componentTypeForCategory(
   category: AssociatedComponent["category"],
-): "CPU" | "RAM" | "SSD" | null {
-  if (category === "CPU" || category === "RAM") return category;
+): CatalogComponent["type"] | null {
+  if (
+    category === "CPU" ||
+    category === "RAM" ||
+    category === "GPU" ||
+    category === "PSU"
+  ) {
+    return category;
+  }
   if (category === "Storage") return "SSD";
   return null;
 }
@@ -128,13 +142,15 @@ export default function Explorer({
   const compareDialog = useRef<HTMLDialogElement>(null);
   const technologyDialog = useRef<HTMLDialogElement>(null);
   const [catalog, setCatalog] = useState(products);
-  const [selected, setSelected] = useState(initialSlug ?? products[0]?.slug);
+  const [selected, setSelected] = useState(initialSlug);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<string | null>(null);
-  const [workspaceMode, setWorkspaceMode] = useState<"explorer" | "components">(
-    "explorer",
+  const [workspaceMode, setWorkspaceMode] = useState<
+    "home" | "explorer" | "components"
+  >(initialSlug ? "explorer" : "home");
+  const [activeCategory, setActiveCategory] = useState(
+    initialSlug ? "Mainboard" : "",
   );
-  const [activeCategory, setActiveCategory] = useState("Mainboard");
   const [catalogComponents, setCatalogComponents] = useState<
     CatalogComponent[]
   >(() => seedCatalogComponents(products));
@@ -162,10 +178,12 @@ export default function Explorer({
           if (cancelled) return;
           setCatalog(remoteProducts.length ? remoteProducts : products);
           setSelected((current) => {
-            if (remoteProducts.some((item) => item.slug === current)) {
+            if (!current || remoteProducts.some((item) => item.slug === current)) {
               return current;
             }
-            return remoteProducts[0]?.slug ?? products[0]?.slug;
+            return initialSlug
+              ? remoteProducts[0]?.slug ?? products[0]?.slug
+              : undefined;
           });
         });
         unsubscribeComponents = subscribeToPublishedComponents(
@@ -219,12 +237,12 @@ export default function Explorer({
     return matches.filter((p) => accepted.includes(p.category));
   }, [activeCategory, matches]);
   const componentMatches = useMemo(() => {
-    if (!(["CPU", "RAM", "SSD"] as string[]).includes(activeCategory)) {
+    if (!catalogTypeByCategory[activeCategory]) {
       return [];
     }
     return catalogComponents.filter(
       (component) =>
-        component.type === activeCategory &&
+        component.type === catalogTypeByCategory[activeCategory] &&
         JSON.stringify([
           component.name,
           component.brand,
@@ -239,9 +257,7 @@ export default function Explorer({
   const activeComponent = componentMatches.find(
     (component) => component.id === selectedComponentId,
   );
-  const isCatalogComponent = (["CPU", "RAM", "SSD"] as string[]).includes(
-    activeCategory,
-  );
+  const isCatalogComponent = !!catalogTypeByCategory[activeCategory];
   const libraryCount = isCatalogComponent
     ? componentMatches.length
     : categoryProducts.length;
@@ -250,10 +266,7 @@ export default function Explorer({
     setActiveCategory(name);
     setWorkspaceMode("components");
     setActive(null);
-    const firstComponent = (["CPU", "RAM", "SSD"] as string[]).includes(name)
-      ? catalogComponents.find((component) => component.type === name)
-      : undefined;
-    setSelectedComponentId(firstComponent?.id ?? null);
+    setSelectedComponentId(null);
     setTab("Overview");
     setMobileMenu(false);
   }
@@ -344,9 +357,13 @@ export default function Explorer({
         </Link>
         <nav aria-label="Main navigation">
           <button
-            className={workspaceMode === "explorer" ? "nav-active" : ""}
+            className={
+              workspaceMode === "explorer" || workspaceMode === "home"
+                ? "nav-active"
+                : ""
+            }
             onClick={() => {
-              setWorkspaceMode("explorer");
+              setWorkspaceMode(selected ? "explorer" : "home");
               setView("top");
               setTab("Overview");
             }}
@@ -432,74 +449,40 @@ export default function Explorer({
               </button>
             ))}
           </div>
-          <div className="sidebar-section models">
-            <div className="section-heading">
-              <span className="eyebrow">
-                {isCatalogComponent
-                  ? `EXPLORE ${activeCategory}`
-                  : "EXPLORE MODELS"}
-              </span>
-              <span className="tiny">
-                {isCatalogComponent ? componentMatches.length : matches.length}
-              </span>
+          {workspaceMode === "explorer" && (
+            <div className="sidebar-section models">
+              <div className="section-heading">
+                <span className="eyebrow">EXPLORE MODELS</span>
+                <span className="tiny">{matches.length}</span>
+              </div>
+              {matches.map((p) => (
+                <button
+                  key={p.id}
+                  className={
+                    "model " + (product?.id === p.id ? "selected" : "")
+                  }
+                  onClick={() => choose(p)}
+                >
+                  <img
+                    src={assetUrl(p.media.main)}
+                    alt=""
+                    width={34}
+                    height={46}
+                    loading="lazy"
+                  />
+                  <span>
+                    {p.name}
+                    <small>
+                      {p.brand} · {p.spec.Socket}
+                    </small>
+                  </span>
+                </button>
+              ))}
+              {matches.length === 0 && (
+                <p className="muted">No models match “{query}”.</p>
+              )}
             </div>
-            {isCatalogComponent
-              ? componentMatches.map((component) => (
-                  <button
-                    key={component.id}
-                    className={
-                      "model " +
-                      (activeComponent?.id === component.id ? "selected" : "")
-                    }
-                    onClick={() => chooseComponent(component)}
-                  >
-                    {component.imageUrl ? (
-                      <img
-                        src={assetUrl(component.imageUrl)}
-                        alt=""
-                        width={34}
-                        height={46}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span className="model-placeholder">
-                        {component.type}
-                      </span>
-                    )}
-                    <span>
-                      {component.name}
-                      <small>
-                        {component.brand || component.type} · {component.model}
-                      </small>
-                    </span>
-                  </button>
-                ))
-              : matches.map((p) => (
-                  <button
-                    key={p.id}
-                    className={
-                      "model " + (product?.id === p.id ? "selected" : "")
-                    }
-                    onClick={() => choose(p)}
-                  >
-                    <img
-                      src={assetUrl(p.media.main)}
-                      alt=""
-                      width={34}
-                      height={46}
-                      loading="lazy"
-                    />
-                    <span>
-                      {p.name}
-                      <small>
-                        {p.brand} · {p.spec.Socket}
-                      </small>
-                    </span>
-                  </button>
-                ))}
-            {(isCatalogComponent ? componentMatches.length : matches.length) ===
-              0 && <p className="muted">No models match “{query}”.</p>}
-          </div>
+          )}
           <div className="sidebar-note">
             <span className="live-dot" /> KNOWLEDGE, CONNECTED.
             <p>
@@ -509,7 +492,54 @@ export default function Explorer({
             </p>
           </div>
         </aside>
-        {workspaceMode === "components" ? (
+        {workspaceMode === "home" ? (
+          <>
+            <main className="explorer-main home-landing">
+              <div className="breadcrumb">
+                <span>Tech Explorer</span> <ChevronRight size={11} /> Trang chủ
+              </div>
+              <div className="home-hero">
+                <div>
+                  <span className="eyebrow">TECH EXPLORER</span>
+                  <h1>Khám phá công nghệ</h1>
+                  <p>
+                    Chọn một linh kiện ở bên trái để bắt đầu tìm hiểu cấu tạo,
+                    hình ảnh và thông số kỹ thuật.
+                  </p>
+                </div>
+                <img
+                  className="home-hero-image"
+                  src={assetUrl("/media/explorer-home.svg")}
+                  alt="Minh họa Tech Explorer"
+                  width={900}
+                  height={540}
+                />
+              </div>
+              <div className="explorer-footer">
+                <span>
+                  <i className="live-dot" /> SYSTEM ONLINE
+                </span>
+                <span>SELECT A COMPONENT TO BEGIN</span>
+              </div>
+            </main>
+            <aside className="detail-panel home-detail-panel">
+              <div className="panel-content">
+                <span className="eyebrow">START HERE</span>
+                <h2>Chọn linh kiện để bắt đầu</h2>
+                <p>
+                  Duyệt mainboard hoặc thư viện CPU, RAM, SSD, GPU và PSU từ
+                  menu Components.
+                </p>
+                <button
+                  className="home-cta"
+                  onClick={() => browseCategory("Mainboard")}
+                >
+                  Xem mainboard <ArrowRight size={15} />
+                </button>
+              </div>
+            </aside>
+          </>
+        ) : workspaceMode === "components" ? (
           isCatalogComponent && activeComponent ? (
             <>
               <main className="explorer-main component-review">
