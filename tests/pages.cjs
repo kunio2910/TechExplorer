@@ -25,6 +25,7 @@ const assert = require("node:assert/strict");
   await page.getByRole("heading", { name: "Explore Mainboard" }).waitFor();
   await page
     .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
+    .first()
     .click();
   await page
     .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })
