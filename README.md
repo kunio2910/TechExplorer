@@ -34,7 +34,7 @@ The local upload adapter saves to `public/uploads` (8 MB limit, raster formats o
 
 ### Firestore administration
 
-The static `/admin/` page uses Firebase Authentication and Firestore. Create an Email/Password user in Firebase Authentication, then create an `admins/{uid}` document in Firestore for each administrator. Deploy the included rules with `firebase deploy --only firestore:rules` after selecting project `techexplorer-38d83`. Sign in to `/admin/` and click **Đồng bộ dữ liệu mẫu** once to copy the bundled mainboard and component seed data into Firestore. Firestore public reads require a query constrained to `status == "published"`; draft documents remain visible only to administrators.
+The static `/admin/` page uses Firebase Authentication and Firestore. Create an Email/Password user in Firebase Authentication, copy that user's UID, then create an `admins/{uid}` document in Firestore for each administrator (the document can contain a simple `role: "admin"` field). Deploy the included rules with `firebase deploy --only firestore:rules` after selecting project `techexplorer-38d83`. Sign in to `/admin/` and click **Đồng bộ dữ liệu mẫu** once to copy the bundled mainboard and component seed data into Firestore. Firestore public reads require a query constrained to `status == "published"`; draft documents remain visible only to administrators. If the admin page reports `permission-denied`, the page now includes the exact UID path to create; deploy the rules and create that document before trying again.
 
 ## Features
 

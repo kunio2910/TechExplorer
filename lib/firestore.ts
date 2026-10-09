@@ -18,6 +18,38 @@ import type {
 const productsCollection = collection(firestore, "products");
 const componentsCollection = collection(firestore, "components");
 
+/**
+ * Translate Firebase's terse error codes into an actionable message for the
+ * content studio. Firestore reports both an undeployed rules file and a
+ * missing admin marker as `permission-denied`, so the hint covers both.
+ */
+export function firebaseErrorCode(error: unknown): string {
+  if (!error || typeof error !== "object" || !("code" in error)) return "";
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : "";
+}
+
+export function firestoreErrorMessage(
+  error: unknown,
+  action: string,
+  adminUid?: string,
+): string {
+  const code = firebaseErrorCode(error);
+
+  if (code === "permission-denied") {
+    const adminPath = adminUid ? `admins/${adminUid}` : "admins/{UID}";
+    return `Firestore từ chối quyền ${action}. Hãy deploy firestore.rules và tạo document ${adminPath} trong Firestore cho tài khoản đang đăng nhập (permission-denied).`;
+  }
+  if (code === "failed-precondition") {
+    return `Firestore chưa sẵn sàng để ${action}. Hãy kiểm tra đã tạo Firestore Database ở đúng project techexplorer-38d83 (failed-precondition).`;
+  }
+  if (code === "unavailable" || code === "deadline-exceeded") {
+    return `Không thể ${action} Firestore lúc này. Hãy kiểm tra kết nối mạng rồi thử lại (${code}).`;
+  }
+
+  return `Không thể ${action} dữ liệu Firestore${code ? ` (${code})` : ""}. Hãy kiểm tra cấu hình Firebase và Rules.`;
+}
+
 function clean<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }

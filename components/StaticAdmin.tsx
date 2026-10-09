@@ -17,6 +17,7 @@ import {
   saveCatalogComponent,
   saveProduct,
   seedProductsToFirestore,
+  firestoreErrorMessage,
 } from "@/lib/firestore";
 import type {
   AssociatedComponent,
@@ -161,10 +162,8 @@ export default function StaticAdmin({
           ? `Đã tải ${remoteProducts.length} mainboard và ${remoteComponents.length} linh kiện.`
           : "Firestore chưa có dữ liệu. Bạn có thể đồng bộ dữ liệu mẫu.",
       );
-    } catch {
-      setMessage(
-        "Không thể đọc Firestore. Hãy kiểm tra Rules và quyền đăng nhập.",
-      );
+    } catch (error) {
+      setMessage(firestoreErrorMessage(error, "đọc", auth.currentUser?.uid));
     }
   }
 
@@ -222,8 +221,8 @@ export default function StaticAdmin({
         setComponent(copy(saved));
         setMessage(`Đã lưu ${tab} lên Firestore.`);
       }
-    } catch {
-      setMessage("Không thể lưu dữ liệu. Hãy kiểm tra Firestore Rules.");
+    } catch (error) {
+      setMessage(firestoreErrorMessage(error, "lưu", auth.currentUser?.uid));
     } finally {
       setBusy(false);
     }
@@ -237,8 +236,10 @@ export default function StaticAdmin({
       setMessage(
         `Đã đồng bộ ${result.products} mainboard và ${result.components} linh kiện mẫu lên Firestore.`,
       );
-    } catch {
-      setMessage("Không thể đồng bộ dữ liệu mẫu. Hãy kiểm tra quyền quản trị.");
+    } catch (error) {
+      setMessage(
+        firestoreErrorMessage(error, "đồng bộ", auth.currentUser?.uid),
+      );
     } finally {
       setBusy(false);
     }
@@ -261,8 +262,8 @@ export default function StaticAdmin({
         );
       }
       setMessage("Đã xóa dữ liệu trên Firestore.");
-    } catch {
-      setMessage("Không thể xóa dữ liệu.");
+    } catch (error) {
+      setMessage(firestoreErrorMessage(error, "xóa", auth.currentUser?.uid));
     } finally {
       setBusy(false);
     }
