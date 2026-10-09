@@ -69,109 +69,111 @@ export default function DeviceCanvas({
       </div>
       <div className="orbital orbital-one" />
       <div className="orbital orbital-two" />
-      <div
-        className="image-stage"
-        style={{
-          transform: `rotate(${rotation}deg) scale(${zoom})`,
-          aspectRatio: ratio,
-        }}
-      >
-        {source && !failed ? (
-          <img
-            key={source}
-            className="board-image"
-            src={assetUrl(source)}
-            alt={`${product.name} ${view} view`}
-            width={720}
-            height={950}
-            onLoad={(e) =>
-              setRatio(
-                e.currentTarget.naturalWidth / e.currentTarget.naturalHeight,
-              )
-            }
-            onError={() => setFailed(true)}
-            draggable={false}
-          />
-        ) : (
-          <div className="image-placeholder">Product image unavailable</div>
-        )}
-        {view === "signal" && (
-          <svg
-            className="signal-paths"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <path
-              d={hotspots
-                .map((h) => {
-                  const cpu =
-                    hotspots.find((node) => node.type === "cpu_socket") ??
-                    hotspots[0];
-                  return cpu ? `M${cpu.x} ${cpu.y} V${h.y} H${h.x}` : "";
-                })
-                .join(" ")}
+      <div className="canvas-media-stack">
+        <div
+          className="image-stage"
+          style={{
+            transform: `rotate(${rotation}deg) scale(${zoom})`,
+            aspectRatio: ratio,
+          }}
+        >
+          {source && !failed ? (
+            <img
+              key={source}
+              className="board-image"
+              src={assetUrl(source)}
+              alt={`${product.name} ${view} view`}
+              width={720}
+              height={950}
+              onLoad={(e) =>
+                setRatio(
+                  e.currentTarget.naturalWidth / e.currentTarget.naturalHeight,
+                )
+              }
+              onError={() => setFailed(true)}
+              draggable={false}
             />
-          </svg>
-        )}
-        {!failed &&
-          showHotspots &&
-          hotspots.map((h, index) => (
-            <button
-              key={h.id}
-              className={"hotspot " + (active === h.id ? "selected" : "")}
-              style={{ left: `${h.x}%`, top: `${h.y}%` }}
-              onClick={() => onSelect(h)}
-              aria-pressed={active === h.id}
-              aria-label={`Explore ${h.title}`}
+          ) : (
+            <div className="image-placeholder">Product image unavailable</div>
+          )}
+          {view === "signal" && (
+            <svg
+              className="signal-paths"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden="true"
             >
-              <span className="marker">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span
-                className={"callout " + (h.x > 65 ? "right" : "")}
-                onClick={() => onSelect(h)}
-              >
-                <b>{h.title}</b>
-                <small>
-                  {expert ? h.subtitle : "Click to explore"} <span>↗</span>
-                </small>
-              </span>
-            </button>
-          ))}
-      </div>
-      {view === "top" && gallery.length > 1 && (
-        <div className="device-gallery" aria-label="Image gallery">
-          <button
-            aria-label="Ảnh mainboard trước"
-            onClick={() =>
-              setGalleryIndex(
-                (safeGalleryIndex - 1 + gallery.length) % gallery.length,
-              )
-            }
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <div className="device-gallery-thumbnails">
-            {gallery.map((image, index) => (
+              <path
+                d={hotspots
+                  .map((h) => {
+                    const cpu =
+                      hotspots.find((node) => node.type === "cpu_socket") ??
+                      hotspots[0];
+                    return cpu ? `M${cpu.x} ${cpu.y} V${h.y} H${h.x}` : "";
+                  })
+                  .join(" ")}
+              />
+            </svg>
+          )}
+          {!failed &&
+            showHotspots &&
+            hotspots.map((h, index) => (
               <button
-                key={image + "-" + index}
-                className={index === safeGalleryIndex ? "active" : ""}
-                aria-label={"Chọn ảnh mainboard " + (index + 1)}
-                onClick={() => setGalleryIndex(index)}
+                key={h.id}
+                className={"hotspot " + (active === h.id ? "selected" : "")}
+                style={{ left: `${h.x}%`, top: `${h.y}%` }}
+                onClick={() => onSelect(h)}
+                aria-pressed={active === h.id}
+                aria-label={`Explore ${h.title}`}
               >
-                <img src={assetUrl(image)} alt="" />
+                <span className="marker">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span
+                  className={"callout " + (h.x > 65 ? "right" : "")}
+                  onClick={() => onSelect(h)}
+                >
+                  <b>{h.title}</b>
+                  <small>
+                    {expert ? h.subtitle : "Click to explore"} <span>↗</span>
+                  </small>
+                </span>
               </button>
             ))}
-          </div>
-          <button
-            aria-label="Ảnh mainboard tiếp theo"
-            onClick={() => setGalleryIndex((safeGalleryIndex + 1) % gallery.length)}
-          >
-            <ChevronRight size={16} />
-          </button>
         </div>
-      )}
+        {view === "top" && gallery.length > 1 && (
+          <div className="device-gallery" aria-label="Image gallery">
+            <button
+              aria-label="Ảnh mainboard trước"
+              onClick={() =>
+                setGalleryIndex(
+                  (safeGalleryIndex - 1 + gallery.length) % gallery.length,
+                )
+              }
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div className="device-gallery-thumbnails">
+              {gallery.map((image, index) => (
+                <button
+                  key={image + "-" + index}
+                  className={index === safeGalleryIndex ? "active" : ""}
+                  aria-label={"Chọn ảnh mainboard " + (index + 1)}
+                  onClick={() => setGalleryIndex(index)}
+                >
+                  <img src={assetUrl(image)} alt="" />
+                </button>
+              ))}
+            </div>
+            <button
+              aria-label="Ảnh mainboard tiếp theo"
+              onClick={() => setGalleryIndex((safeGalleryIndex + 1) % gallery.length)}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
+      </div>
       <div className="canvas-floor" />
       <div className="canvas-caption">
         <Move size={13} /> Select a component to discover what connects it all.

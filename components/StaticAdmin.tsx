@@ -27,7 +27,7 @@ import type {
   Hotspot,
   Product,
 } from "@/lib/types";
-import { CircleX } from "lucide-react";
+import { CircleX, Plus } from "lucide-react";
 import ComponentCanvas from "./ComponentCanvas";
 import ImageGallery from "./ImageGallery";
 
@@ -201,10 +201,32 @@ export default function StaticAdmin({
     updateProduct({ gallery });
   }
 
+  function addProductGalleryField() {
+    updateProduct({ gallery: [...(product.gallery ?? []), ""] });
+  }
+
+  function removeProductGalleryField(index: number) {
+    updateProduct({
+      gallery: (product.gallery ?? []).filter((_, itemIndex) => itemIndex !== index),
+    });
+  }
+
   function updateComponentGallery(index: number, value: string) {
     const gallery = [...(component.gallery ?? [])];
     gallery[index] = value;
     updateComponentDraft({ gallery });
+  }
+
+  function addComponentGalleryField() {
+    updateComponentDraft({ gallery: [...(component.gallery ?? []), ""] });
+  }
+
+  function removeComponentGalleryField(index: number) {
+    updateComponentDraft({
+      gallery: (component.gallery ?? []).filter(
+        (_, itemIndex) => itemIndex !== index,
+      ),
+    });
   }
 
   async function removeProductById(id: string, name: string) {
@@ -274,7 +296,12 @@ export default function StaticAdmin({
           setMessage("Vui lòng nhập tên và slug cho mainboard.");
           return;
         }
-        const saved = { ...product };
+        const saved = {
+          ...product,
+          gallery: (product.gallery ?? [])
+            .map((url) => url.trim())
+            .filter(Boolean),
+        };
         await saveProduct(saved);
         setProducts((current) =>
           current.some((item) => item.id === saved.id)
@@ -288,7 +315,13 @@ export default function StaticAdmin({
           setMessage("Vui lòng nhập tên linh kiện.");
           return;
         }
-        const saved = { ...component, type: tab };
+        const saved = {
+          ...component,
+          type: tab,
+          gallery: (component.gallery ?? [])
+            .map((url) => url.trim())
+            .filter(Boolean),
+        };
         await saveCatalogComponent(saved);
         setComponents((current) =>
           current.some((item) => item.id === saved.id)
@@ -817,21 +850,40 @@ export default function StaticAdmin({
                 }
               />
             </label>
-            <div className="admin-gallery-fields">
-              {Array.from({ length: 4 }, (_, index) => (
-                <label key={index}>
-                  Thumbnail {index + 1}
-                  <input
-                    type="url"
-                    value={product.gallery?.[index] ?? ""}
-                    placeholder="https://… hoặc /media/…"
-                    onChange={(event) =>
-                      updateProductGallery(index, event.target.value)
-                    }
-                  />
-                </label>
-              ))}
-            </div>
+            {(product.gallery ?? []).length > 0 && (
+              <div className="admin-gallery-fields">
+                {(product.gallery ?? []).map((url, index) => (
+                  <div className="admin-gallery-field" key={index}>
+                    <label>
+                      <span>Thumbnail {index + 1}</span>
+                      <input
+                        type="url"
+                        value={url}
+                        placeholder="https://… hoặc /media/…"
+                        onChange={(event) =>
+                          updateProductGallery(index, event.target.value)
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="admin-gallery-remove"
+                      aria-label={`Xóa thumbnail ${index + 1}`}
+                      onClick={() => removeProductGalleryField(index)}
+                    >
+                      <CircleX size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              className="admin-gallery-add"
+              onClick={addProductGalleryField}
+            >
+              <Plus size={16} /> Thêm thumbnail
+            </button>
             <div className="admin-actions">
               <button
                 className="primary"
@@ -908,21 +960,40 @@ export default function StaticAdmin({
                   }
                 />
               </label>
-              <div className="admin-gallery-fields wide">
-                {Array.from({ length: 4 }, (_, index) => (
-                  <label key={index}>
-                    Thumbnail {index + 1}
-                    <input
-                      type="url"
-                      value={component.gallery?.[index] ?? ""}
-                      placeholder="https://… hoặc /media/…"
-                      onChange={(event) =>
-                        updateComponentGallery(index, event.target.value)
-                      }
-                    />
-                  </label>
-                ))}
-              </div>
+              {(component.gallery ?? []).length > 0 && (
+                <div className="admin-gallery-fields wide">
+                  {(component.gallery ?? []).map((url, index) => (
+                    <div className="admin-gallery-field" key={index}>
+                      <label>
+                        <span>Thumbnail {index + 1}</span>
+                        <input
+                          type="url"
+                          value={url}
+                          placeholder="https://… hoặc /media/…"
+                          onChange={(event) =>
+                            updateComponentGallery(index, event.target.value)
+                          }
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="admin-gallery-remove"
+                        aria-label={`Xóa thumbnail ${index + 1}`}
+                        onClick={() => removeComponentGalleryField(index)}
+                      >
+                        <CircleX size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                className="admin-gallery-add wide"
+                onClick={addComponentGalleryField}
+              >
+                <Plus size={16} /> Thêm thumbnail
+              </button>
               <label className="wide">
                 Mô tả
                 <textarea
@@ -1013,12 +1084,6 @@ export default function StaticAdmin({
                 }
               />
             </label>
-            <h3>Image gallery</h3>
-            <ImageGallery
-              images={productGallery(product)}
-              alt="Ảnh mainboard xem trước"
-              className="admin-gallery-preview"
-            />
             <div
               ref={boardRef}
               className="editor-board"
@@ -1056,6 +1121,12 @@ export default function StaticAdmin({
                 </button>
               ))}
             </div>
+            <h3>Image gallery</h3>
+            <ImageGallery
+              images={productGallery(product)}
+              alt="Ảnh mainboard xem trước"
+              className="admin-gallery-preview"
+            />
             {activeHotspot && (
               <div className="editor-fields">
                 <label>

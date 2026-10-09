@@ -411,11 +411,21 @@ select {
 }
 .image-stage {
   position: relative;
-  width: min(68%, 400px);
+  width: min(72%, 410px);
   aspect-ratio: 720/950;
   transition: transform 0.25s ease;
   z-index: 3;
   margin-top: -18px;
+}
+.canvas-media-stack {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  transform: translateY(-24px);
 }
 .board-image {
   display: block;
@@ -531,12 +541,11 @@ select {
 }
 .device-gallery,
 .component-gallery {
-  position: absolute;
-  right: 15%;
-  bottom: 94px;
-  left: 15%;
+  position: static;
   z-index: 7;
   display: flex;
+  width: min(72%, 410px);
+  margin: 0 auto;
   align-items: center;
   gap: 7px;
 }
@@ -554,6 +563,7 @@ select {
 .device-gallery-thumbnails,
 .component-gallery-thumbnails {
   flex: 1;
+  justify-content: center;
 }
 .device-gallery-thumbnails button,
 .component-gallery-thumbnails button {
@@ -1533,6 +1543,19 @@ select {
   gap: 10px;
   margin: 11px 0;
 }
+.admin-gallery-field {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  gap: 7px;
+}
+.admin-gallery-field label {
+  min-width: 0;
+  flex: 1;
+}
+.admin-gallery-field label span {
+  display: block;
+}
 .admin-gallery-fields label {
   color: var(--muted);
   font-size: 11px;
@@ -1540,6 +1563,30 @@ select {
 .admin-gallery-fields input {
   width: 100%;
   margin-top: 6px;
+}
+.admin-gallery-remove {
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  margin-bottom: 0;
+  padding: 0;
+  place-items: center;
+  color: #ff6b77;
+  border: 1px solid #793844;
+  border-radius: 50%;
+  background: #30141c;
+}
+.admin-gallery-remove:hover {
+  color: #fff;
+  border-color: #ff6b77;
+  background: #6e2231;
+}
+.admin-gallery-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 8px;
 }
 .admin-gallery-preview {
   margin: 10px 0 15px;
@@ -1688,9 +1735,7 @@ select {
   }
   .device-gallery,
   .component-gallery {
-    right: 7%;
-    bottom: 94px;
-    left: 7%;
+    width: 86%;
   }
   .device-gallery-thumbnails button,
   .component-gallery-thumbnails button {

@@ -44,66 +44,68 @@ export default function ComponentCanvas({
         </span>
         <span>{component.type} · NO HOTSPOTS</span>
       </div>
-      <div
-        className="image-stage component-image-stage"
-        style={{
-          transform: `rotate(${rotation}deg) scale(${zoom})`,
-          aspectRatio: ratio,
-        }}
-      >
-        {source && !failed ? (
-          <img
-            key={source}
-            className="component-image"
-            src={assetUrl(source)}
-            alt={`${component.name} ${component.model}`}
-            width={720}
-            height={720}
-            onLoad={(event) => {
-              const image = event.currentTarget;
-              setRatio(image.naturalWidth / image.naturalHeight || 1);
-            }}
-            onError={() => setFailed(true)}
-            draggable={false}
-          />
-        ) : (
-          <div className="image-placeholder">
-            Chưa có ảnh linh kiện
+      <div className="canvas-media-stack">
+        <div
+          className="image-stage component-image-stage"
+          style={{
+            transform: `rotate(${rotation}deg) scale(${zoom})`,
+            aspectRatio: ratio,
+          }}
+        >
+          {source && !failed ? (
+            <img
+              key={source}
+              className="component-image"
+              src={assetUrl(source)}
+              alt={`${component.name} ${component.model}`}
+              width={720}
+              height={720}
+              onLoad={(event) => {
+                const image = event.currentTarget;
+                setRatio(image.naturalWidth / image.naturalHeight || 1);
+              }}
+              onError={() => setFailed(true)}
+              draggable={false}
+            />
+          ) : (
+            <div className="image-placeholder">
+              Chưa có ảnh linh kiện
+            </div>
+          )}
+        </div>
+        {images.length > 1 && (
+          <div className="component-gallery">
+            <button
+              aria-label="Ảnh linh kiện trước"
+              onClick={() =>
+                setGalleryIndex(
+                  (safeGalleryIndex - 1 + images.length) % images.length,
+                )
+              }
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <div className="component-gallery-thumbnails" aria-label="Ảnh thu nhỏ">
+              {images.map((image, index) => (
+                <button
+                  key={image + "-" + index}
+                  className={index === safeGalleryIndex ? "active" : ""}
+                  aria-label={"Chọn ảnh linh kiện " + (index + 1)}
+                  onClick={() => setGalleryIndex(index)}
+                >
+                  <img src={assetUrl(image)} alt="" />
+                </button>
+              ))}
+            </div>
+            <button
+              aria-label="Ảnh linh kiện tiếp theo"
+              onClick={() => setGalleryIndex((safeGalleryIndex + 1) % images.length)}
+            >
+              <ChevronRight size={15} />
+            </button>
           </div>
         )}
       </div>
-      {images.length > 1 && (
-        <div className="component-gallery">
-          <button
-            aria-label="Ảnh linh kiện trước"
-            onClick={() =>
-              setGalleryIndex(
-                (safeGalleryIndex - 1 + images.length) % images.length,
-              )
-            }
-          >
-            <ChevronLeft size={15} />
-          </button>
-          <div className="component-gallery-thumbnails" aria-label="Ảnh thu nhỏ">
-            {images.map((image, index) => (
-              <button
-                key={image + "-" + index}
-                className={index === safeGalleryIndex ? "active" : ""}
-                aria-label={"Chọn ảnh linh kiện " + (index + 1)}
-                onClick={() => setGalleryIndex(index)}
-              >
-                <img src={assetUrl(image)} alt="" />
-              </button>
-            ))}
-          </div>
-          <button
-            aria-label="Ảnh linh kiện tiếp theo"
-            onClick={() => setGalleryIndex((safeGalleryIndex + 1) % images.length)}
-          >
-            <ChevronRight size={15} />
-          </button>
-        </div>
-      )}
       <div className="canvas-floor" />
       <div className="canvas-caption">
         <Move size={13} /> Hình ảnh linh kiện, không có hotspot.
