@@ -1551,6 +1551,51 @@ select {
 .admin-form-grid textarea {
   min-height: 85px;
 }
+.admin-collapsible {
+  margin: 15px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #07152266;
+}
+.admin-collapsible > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 13px;
+  color: var(--cyan);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.admin-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+.admin-collapsible > summary::after {
+  content: "+";
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--cyan);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1;
+}
+.admin-collapsible[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+.admin-collapsible[open] > summary::after {
+  content: "−";
+}
+.admin-collapsible-body {
+  padding: 2px 13px 13px;
+}
+.admin-collapsible-body > .admin-form-grid {
+  margin-top: 11px;
+}
 .admin-gallery-fields {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

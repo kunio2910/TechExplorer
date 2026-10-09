@@ -159,6 +159,34 @@ export default function StaticAdmin({
     });
   }, []);
 
+  useEffect(() => {
+    function handleHotspotDelete(event: KeyboardEvent) {
+      if (tab !== "Mainboard" || !selectedHotspot) return;
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.isContentEditable ||
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT"
+      ) {
+        return;
+      }
+      event.preventDefault();
+      setProduct((current) => ({
+        ...current,
+        hotspots: current.hotspots.filter(
+          (item) => item.id !== selectedHotspot,
+        ),
+      }));
+      setSelectedHotspot(null);
+      setMessage("Đã xóa hotspot. Hãy lưu để cập nhật Firestore.");
+    }
+
+    window.addEventListener("keydown", handleHotspotDelete);
+    return () => window.removeEventListener("keydown", handleHotspotDelete);
+  }, [selectedHotspot, tab]);
+
   async function reloadFromFirestore() {
     try {
       const [remoteProducts, remoteComponents] = await Promise.all([
@@ -760,194 +788,206 @@ export default function StaticAdmin({
                 />
               </label>
             </div>
-            <h3>Thông số kỹ thuật</h3>
-            <div className="admin-form-grid">
-              {Object.entries(product.spec).map(([key, value]) => (
-                <label key={key}>
-                  {key}
-                  <input
-                    value={value}
-                    onChange={(event) =>
-                      updateProduct({
-                        spec: { ...product.spec, [key]: event.target.value },
-                      })
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-            <button
-              onClick={() => {
-                const key = window.prompt("Tên thông số mới");
-                if (key?.trim())
-                  updateProduct({
-                    spec: { ...product.spec, [key.trim()]: "" },
-                  });
-              }}
-            >
-              ＋ Thêm thông số
-            </button>
-            <h3>Linh kiện đi kèm</h3>
-            {product.components.map((item) => (
-              <div className="associated-component" key={item.id}>
-                <div className="associated-component-heading">
-                  <strong>{item.category}</strong>
-                  <button
-                    className="danger"
-                    onClick={() =>
-                      updateProduct({
-                        components: product.components.filter(
-                          (entry) => entry.id !== item.id,
-                        ),
-                      })
-                    }
-                  >
-                    Xóa
-                  </button>
-                </div>
-                <label>
-                  Loại
-                  <select
-                    value={item.category}
-                    onChange={(event) =>
-                      updateProduct({
-                        components: product.components.map((entry) =>
-                          entry.id === item.id
-                            ? {
-                                ...entry,
-                                category: event.target
-                                  .value as AssociatedComponent["category"],
-                              }
-                            : entry,
-                        ),
-                      })
-                    }
-                  >
-                    {[
-                      "CPU",
-                      "RAM",
-                      "GPU",
-                      "Storage",
-                      "PSU",
-                      "Cooling",
-                      "Case",
-                      "Other",
-                    ].map((value) => (
-                      <option key={value}>{value}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Tên
-                  <input
-                    value={item.name}
-                    onChange={(event) =>
-                      updateProduct({
-                        components: product.components.map((entry) =>
-                          entry.id === item.id
-                            ? { ...entry, name: event.target.value }
-                            : entry,
-                        ),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Mã sản phẩm
-                  <input
-                    value={item.model}
-                    onChange={(event) =>
-                      updateProduct({
-                        components: product.components.map((entry) =>
-                          entry.id === item.id
-                            ? { ...entry, model: event.target.value }
-                            : entry,
-                        ),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Trạng thái
-                  <select
-                    value={item.compatibility}
-                    onChange={(event) =>
-                      updateProduct({
-                        components: product.components.map((entry) =>
-                          entry.id === item.id
-                            ? {
-                                ...entry,
-                                compatibility: event.target
-                                  .value as AssociatedComponent["compatibility"],
-                              }
-                            : entry,
-                        ),
-                      })
-                    }
-                  >
-                    {statuses.map((value) => (
-                      <option key={value} value={value}>
-                        {compatibilityLabel(value)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            ))}
-            <button onClick={addAssociatedComponent}>
-              ＋ Thêm linh kiện đi kèm
-            </button>
-            <h3>Ảnh mặt trước</h3>
-            <label>
-              Link ảnh
-              <input
-                value={product.media.top ?? ""}
-                placeholder="https://… hoặc /media/…"
-                onChange={(event) =>
-                  updateProduct({
-                    media: {
-                      ...product.media,
-                      top: event.target.value,
-                      main: event.target.value,
-                    },
-                  })
-                }
-              />
-            </label>
-            {(product.gallery ?? []).length > 0 && (
-              <div className="admin-gallery-fields">
-                {(product.gallery ?? []).map((url, index) => (
-                  <div className="admin-gallery-field" key={index}>
-                    <label>
-                      <span>Thumbnail {index + 1}</span>
+            <details className="admin-collapsible">
+              <summary>Thông số kỹ thuật</summary>
+              <div className="admin-collapsible-body">
+                <div className="admin-form-grid">
+                  {Object.entries(product.spec).map(([key, value]) => (
+                    <label key={key}>
+                      {key}
                       <input
-                        type="url"
-                        value={url}
-                        placeholder="https://… hoặc /media/…"
+                        value={value}
                         onChange={(event) =>
-                          updateProductGallery(index, event.target.value)
+                          updateProduct({
+                            spec: { ...product.spec, [key]: event.target.value },
+                          })
                         }
                       />
                     </label>
-                    <button
-                      type="button"
-                      className="admin-gallery-remove"
-                      aria-label={`Xóa thumbnail ${index + 1}`}
-                      onClick={() => removeProductGalleryField(index)}
-                    >
-                      <CircleX size={18} />
-                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    const key = window.prompt("Tên thông số mới");
+                    if (key?.trim())
+                      updateProduct({
+                        spec: { ...product.spec, [key.trim()]: "" },
+                      });
+                  }}
+                >
+                  ＋ Thêm thông số
+                </button>
+              </div>
+            </details>
+            <details className="admin-collapsible">
+              <summary>Linh kiện đi kèm</summary>
+              <div className="admin-collapsible-body">
+                {product.components.map((item) => (
+                  <div className="associated-component" key={item.id}>
+                    <div className="associated-component-heading">
+                      <strong>{item.category}</strong>
+                      <button
+                        className="danger"
+                        onClick={() =>
+                          updateProduct({
+                            components: product.components.filter(
+                              (entry) => entry.id !== item.id,
+                            ),
+                          })
+                        }
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                    <label>
+                      Loại
+                      <select
+                        value={item.category}
+                        onChange={(event) =>
+                          updateProduct({
+                            components: product.components.map((entry) =>
+                              entry.id === item.id
+                                ? {
+                                    ...entry,
+                                    category: event.target
+                                      .value as AssociatedComponent["category"],
+                                  }
+                                : entry,
+                            ),
+                          })
+                        }
+                      >
+                        {[
+                          "CPU",
+                          "RAM",
+                          "GPU",
+                          "Storage",
+                          "PSU",
+                          "Cooling",
+                          "Case",
+                          "Other",
+                        ].map((value) => (
+                          <option key={value}>{value}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Tên
+                      <input
+                        value={item.name}
+                        onChange={(event) =>
+                          updateProduct({
+                            components: product.components.map((entry) =>
+                              entry.id === item.id
+                                ? { ...entry, name: event.target.value }
+                                : entry,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Mã sản phẩm
+                      <input
+                        value={item.model}
+                        onChange={(event) =>
+                          updateProduct({
+                            components: product.components.map((entry) =>
+                              entry.id === item.id
+                                ? { ...entry, model: event.target.value }
+                                : entry,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Trạng thái
+                      <select
+                        value={item.compatibility}
+                        onChange={(event) =>
+                          updateProduct({
+                            components: product.components.map((entry) =>
+                              entry.id === item.id
+                                ? {
+                                    ...entry,
+                                    compatibility: event.target
+                                      .value as AssociatedComponent["compatibility"],
+                                  }
+                                : entry,
+                            ),
+                          })
+                        }
+                      >
+                        {statuses.map((value) => (
+                          <option key={value} value={value}>
+                            {compatibilityLabel(value)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 ))}
+                <button onClick={addAssociatedComponent}>
+                  ＋ Thêm linh kiện đi kèm
+                </button>
               </div>
-            )}
-            <button
-              type="button"
-              className="admin-gallery-add"
-              onClick={addProductGalleryField}
-            >
-              <Plus size={16} /> Thêm thumbnail
-            </button>
+            </details>
+            <details className="admin-collapsible">
+              <summary>Ảnh mặt trước</summary>
+              <div className="admin-collapsible-body">
+                <label>
+                  Link ảnh
+                  <input
+                    value={product.media.top ?? ""}
+                    placeholder="https://… hoặc /media/…"
+                    onChange={(event) =>
+                      updateProduct({
+                        media: {
+                          ...product.media,
+                          top: event.target.value,
+                          main: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+                {(product.gallery ?? []).length > 0 && (
+                  <div className="admin-gallery-fields">
+                    {(product.gallery ?? []).map((url, index) => (
+                      <div className="admin-gallery-field" key={index}>
+                        <label>
+                          <span>Thumbnail {index + 1}</span>
+                          <input
+                            type="url"
+                            value={url}
+                            placeholder="https://… hoặc /media/…"
+                            onChange={(event) =>
+                              updateProductGallery(index, event.target.value)
+                            }
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="admin-gallery-remove"
+                          aria-label={`Xóa thumbnail ${index + 1}`}
+                          onClick={() => removeProductGalleryField(index)}
+                        >
+                          <CircleX size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="admin-gallery-add"
+                  onClick={addProductGalleryField}
+                >
+                  <Plus size={16} /> Thêm thumbnail
+                </button>
+              </div>
+            </details>
             <div className="admin-actions">
               <button
                 className="primary"
