@@ -97,20 +97,39 @@ export default function Explorer({
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
   useEffect(() => {
-    try {
-      const saved = JSON.parse(
-        window.localStorage.getItem("tech-explorer-products-v1") ?? "[]",
-      ) as Product[];
-      if (Array.isArray(saved)) {
-        const savedIds = new Set(saved.map((product) => product.id));
-        setCatalog([
-          ...products.filter((product) => !savedIds.has(product.id)),
-          ...saved,
-        ]);
+    let cancelled = false;
+    async function loadRemoteCatalog() {
+      try {
+        const { loadPublishedProducts } = await import("@/lib/firestore");
+        const remoteProducts = await loadPublishedProducts();
+        if (!cancelled && remoteProducts.length > 0) {
+          setCatalog(remoteProducts);
+          return;
+        }
+      } catch {
+        // Keep the bundled catalog available when Firestore is not configured
+        // or public read rules have not been deployed yet.
       }
-    } catch {
-      // Ignore invalid browser-local content and keep the published catalog.
+      if (cancelled) return;
+      try {
+        const saved = JSON.parse(
+          window.localStorage.getItem("tech-explorer-products-v1") ?? "[]",
+        ) as Product[];
+        if (Array.isArray(saved)) {
+          const savedIds = new Set(saved.map((product) => product.id));
+          setCatalog([
+            ...products.filter((product) => !savedIds.has(product.id)),
+            ...saved,
+          ]);
+        }
+      } catch {
+        // Ignore invalid browser-local content and keep the published catalog.
+      }
     }
+    void loadRemoteCatalog();
+    return () => {
+      cancelled = true;
+    };
   }, [products]);
   const matches = useMemo(
     () =>

@@ -32,6 +32,10 @@ Visit `/admin`, enter the token from ADMIN_TOKEN and click **Tải danh sách s�
 
 The local upload adapter saves to `public/uploads` (8 MB limit, raster formats only). Use a persistent writable volume on a self-hosted deployment. Replace `app/api/media/route.ts` with your Cloudinary or S3 adapter before deploying to ephemeral/serverless infrastructure. Production should also add individual admin accounts and a rate limit; the current content API uses a single server-side bearer secret.
 
+### Firestore administration
+
+The static `/admin/` page uses Firebase Authentication and Firestore. Create an Email/Password user in Firebase Authentication, then create an `admins/{uid}` document in Firestore for each administrator. Deploy the included rules with `firebase deploy --only firestore:rules` after selecting project `techexplorer-38d83`. Sign in to `/admin/` and click **Đồng bộ dữ liệu mẫu** once to copy the bundled mainboard and component seed data into Firestore. Firestore public reads require a query constrained to `status == "published"`; draft documents remain visible only to administrators.
+
 ## Features
 
 - Sci-fi three-column Explorer, responsive tablet navigation and mobile detail sheet.
@@ -72,4 +76,4 @@ The current manufacturer lists 256 GB RAM, 4 M.2 slots and 2 SATA ports, differi
 
 The Pages workflow builds and deploys a static Explorer to https://kunio2910.github.io/TechExplorer/. Repository Settings → Pages → Source must be **GitHub Actions**. It uses `/TechExplorer` as the base path for routes, JavaScript, fonts and images. `npm run build:pages` writes the deployable files to `pages-out` without modifying the server application.
 
-GitHub Pages cannot run the Node.js API or PostgreSQL. The static version includes the seeded products, hotspots, search, comparison and compatibility checks. Trang `/admin/` trên GitHub Pages cho phép chỉnh sửa mainboard, thông số, hotspot và linh kiện đi kèm bằng `localStorage` của trình duyệt hiện tại; dữ liệu này không tự đồng bộ giữa các thiết bị. Bản Next.js server vẫn cung cấp quản trị đầy đủ qua API và PostgreSQL để dùng chung. Change seed data and push to update the static catalog.
+GitHub Pages cannot run the Node.js API or PostgreSQL. The static version includes the seeded products, hotspots, search, comparison and compatibility checks. Trang `/admin/` dùng Firebase Authentication để đăng nhập quản trị và lưu mainboard, CPU, RAM, SSD, ảnh URL và hotspot vào Firestore; Explorer đọc các sản phẩm `published` từ Firestore rồi dùng dữ liệu seed làm dự phòng khi Firestore chưa có quyền đọc. Hãy triển khai `firestore.rules` trước khi dùng production. Bản Next.js server vẫn cung cấp quản trị API và PostgreSQL độc lập. Change seed data and push to update the static catalog.

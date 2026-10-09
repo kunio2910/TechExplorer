@@ -1,131 +1,356 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { assetUrl, basePath } from "@/lib/runtime";
-import { AssociatedComponent, Hotspot, Product } from "@/lib/types";
 
-const storageKey = "tech-explorer-products-v1";
-const categories: AssociatedComponent["category"][] = [
-  "CPU",
-  "RAM",
-  "GPU",
-  "Storage",
-  "PSU",
-  "Cooling",
-  "Case",
-  "Other",
-];
-const componentStatuses: AssociatedComponent["compatibility"][] = [
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  type User,
+} from "firebase/auth";
+import { assetUrl, basePath } from "@/lib/runtime";
+import { auth } from "@/lib/firebase-client";
+import {
+  deleteCatalogComponent,
+  deleteProduct,
+  loadAllProducts,
+  loadCatalogComponents,
+  saveCatalogComponent,
+  saveProduct,
+  seedProductsToFirestore,
+} from "@/lib/firestore";
+import type {
+  AssociatedComponent,
+  CatalogComponent,
+  CatalogComponentType,
+  Hotspot,
+  Product,
+} from "@/lib/types";
+
+type AdminTab = "Mainboard" | CatalogComponentType;
+const tabs: AdminTab[] = ["Mainboard", "CPU", "RAM", "SSD"];
+const statuses: AssociatedComponent["compatibility"][] = [
   "compatible",
   "warning",
   "incompatible",
 ];
+
 const makeId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const blankProduct = (): Product => ({
-  id: makeId(),
-  slug: "mainboard-moi",
-  name: "Mainboard mới",
-  brand: "",
-  category: "Mainboard",
-  description: "",
-  status: "published",
-  spec: { Chipset: "", Socket: "AM5", "Memory type": "DDR5", PCIe: "" },
-  media: {},
-  hotspots: [],
-  components: [],
-});
-const copyProduct = (product: Product) =>
-  JSON.parse(JSON.stringify(product)) as Product;
+const copy = <T,>(value: T) => JSON.parse(JSON.stringify(value)) as T;
+
+function blankProduct(): Product {
+  return {
+    id: makeId(),
+    slug: "mainboard-moi",
+    name: "Mainboard mới",
+    brand: "",
+    category: "Mainboard",
+    description: "",
+    status: "draft",
+    spec: { Socket: "AM5", "Memory type": "DDR5" },
+    media: {},
+    hotspots: [],
+    components: [],
+  };
+}
+
+function blankComponent(type: CatalogComponentType): CatalogComponent {
+  return {
+    id: makeId(),
+    type,
+    category: type === "SSD" ? "Storage" : type,
+    name: `${type} mới`,
+    brand: "",
+    model: "",
+    description: "",
+    spec: {},
+    compatibility: "warning",
+    notes: "",
+    status: "draft",
+  };
+}
+
+function statusLabel(status: Product["status"] | CatalogComponent["status"]) {
+  return status === "published" ? "Đã xuất bản" : "Bản nháp";
+}
+
+function compatibilityLabel(status: AssociatedComponent["compatibility"]) {
+  return status === "compatible"
+    ? "Tương thích"
+    : status === "warning"
+      ? "Cần kiểm tra"
+      : "Không tương thích";
+}
 
 export default function StaticAdmin({
   initialProducts,
 }: {
   initialProducts: Product[];
 }) {
-  const [products, setProducts] = useState(initialProducts);
-  const [draft, setDraft] = useState<Product>(() =>
-    copyProduct(initialProducts[0] ?? blankProduct()),
+  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [tab, setTab] = useState<AdminTab>("Mainboard");
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [components, setComponents] = useState<CatalogComponent[]>([]);
+  const [product, setProduct] = useState<Product>(() =>
+    copy(initialProducts[0] ?? blankProduct()),
   );
-  const [query, setQuery] = useState("");
+  const [component, setComponent] = useState<CatalogComponent>(() =>
+    blankComponent("CPU"),
+  );
+  const [queryText, setQueryText] = useState("");
   const [message, setMessage] = useState("");
-  const [ratio, setRatio] = useState(720 / 950);
+  const [busy, setBusy] = useState(false);
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
-  const visibleProducts = useMemo(
+  const [draggingHotspot, setDraggingHotspot] = useState<string | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const draggedRef = useRef(false);
+
+  const filteredProducts = useMemo(
     () =>
-      products.filter((product) =>
-        product.name.toLowerCase().includes(query.toLowerCase()),
+      products.filter((item) =>
+        `${item.name} ${item.brand} ${item.slug}`
+          .toLowerCase()
+          .includes(queryText.toLowerCase()),
       ),
-    [products, query],
+    [products, queryText],
   );
-  const activeHotspot = draft.hotspots.find(
-    (hotspot) => hotspot.id === selectedHotspot,
+  const filteredComponents = useMemo(
+    () =>
+      components.filter(
+        (item) =>
+          item.type === tab &&
+          `${item.name} ${item.brand} ${item.model}`
+            .toLowerCase()
+            .includes(queryText.toLowerCase()),
+      ),
+    [components, queryText, tab],
+  );
+  const activeHotspot = product.hotspots.find(
+    (item) => item.id === selectedHotspot,
   );
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(
-        window.localStorage.getItem(storageKey) ?? "null",
-      ) as Product[] | null;
-      if (Array.isArray(saved) && saved.length > 0) {
-        setProducts(saved);
-        setDraft(copyProduct(saved[0]));
-      }
-    } catch {
-      setMessage("Không thể đọc dữ liệu đã lưu trên trình duyệt.");
-    }
+    return onAuthStateChanged(auth, (nextUser) => {
+      setUser(nextUser);
+      if (nextUser) void reloadFromFirestore();
+    });
   }, []);
 
-  function update(patch: Partial<Product>) {
-    setDraft((current) => ({ ...current, ...patch }));
+  async function reloadFromFirestore() {
+    try {
+      const [remoteProducts, remoteComponents] = await Promise.all([
+        loadAllProducts(),
+        loadCatalogComponents(),
+      ]);
+      if (remoteProducts.length) {
+        setProducts(remoteProducts);
+        setProduct((current) =>
+          copy(
+            remoteProducts.find((item) => item.id === current.id) ??
+              remoteProducts[0],
+          ),
+        );
+      }
+      setComponents(remoteComponents);
+      setMessage(
+        remoteProducts.length
+          ? `Đã tải ${remoteProducts.length} mainboard và ${remoteComponents.length} linh kiện.`
+          : "Firestore chưa có dữ liệu. Bạn có thể đồng bộ dữ liệu mẫu.",
+      );
+    } catch {
+      setMessage(
+        "Không thể đọc Firestore. Hãy kiểm tra Rules và quyền đăng nhập.",
+      );
+    }
   }
-  function selectProduct(product: Product) {
-    setDraft(copyProduct(product));
+
+  async function login(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      setPassword("");
+      setMessage("Đăng nhập thành công.");
+    } catch {
+      setMessage("Đăng nhập thất bại. Hãy kiểm tra email và mật khẩu.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function updateProduct(patch: Partial<Product>) {
+    setProduct((current) => ({ ...current, ...patch }));
+  }
+
+  function updateComponentDraft(patch: Partial<CatalogComponent>) {
+    setComponent((current) => ({ ...current, ...patch }));
+  }
+
+  async function saveCurrent() {
+    setBusy(true);
+    try {
+      if (tab === "Mainboard") {
+        if (!product.name.trim() || !product.slug.trim()) {
+          setMessage("Vui lòng nhập tên và slug cho mainboard.");
+          return;
+        }
+        const saved = { ...product };
+        await saveProduct(saved);
+        setProducts((current) =>
+          current.some((item) => item.id === saved.id)
+            ? current.map((item) => (item.id === saved.id ? saved : item))
+            : [...current, saved],
+        );
+        setProduct(copy(saved));
+        setMessage("Đã lưu mainboard lên Firestore.");
+      } else {
+        if (!component.name.trim() || !component.model.trim()) {
+          setMessage("Vui lòng nhập tên và mã sản phẩm.");
+          return;
+        }
+        const saved = { ...component, type: tab };
+        await saveCatalogComponent(saved);
+        setComponents((current) =>
+          current.some((item) => item.id === saved.id)
+            ? current.map((item) => (item.id === saved.id ? saved : item))
+            : [...current, saved],
+        );
+        setComponent(copy(saved));
+        setMessage(`Đã lưu ${tab} lên Firestore.`);
+      }
+    } catch {
+      setMessage("Không thể lưu dữ liệu. Hãy kiểm tra Firestore Rules.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function seedFirestore() {
+    setBusy(true);
+    try {
+      const result = await seedProductsToFirestore(initialProducts);
+      await reloadFromFirestore();
+      setMessage(
+        `Đã đồng bộ ${result.products} mainboard và ${result.components} linh kiện mẫu lên Firestore.`,
+      );
+    } catch {
+      setMessage("Không thể đồng bộ dữ liệu mẫu. Hãy kiểm tra quyền quản trị.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeCurrent() {
+    setBusy(true);
+    try {
+      if (tab === "Mainboard") {
+        await deleteProduct(product.id);
+        const next = products.filter((item) => item.id !== product.id);
+        setProducts(next);
+        setProduct(copy(next[0] ?? blankProduct()));
+      } else {
+        await deleteCatalogComponent(component.id);
+        const next = components.filter((item) => item.id !== component.id);
+        setComponents(next);
+        setComponent(
+          copy(next.find((item) => item.type === tab) ?? blankComponent(tab)),
+        );
+      }
+      setMessage("Đã xóa dữ liệu trên Firestore.");
+    } catch {
+      setMessage("Không thể xóa dữ liệu.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function chooseTab(nextTab: AdminTab) {
+    setTab(nextTab);
+    setQueryText("");
     setSelectedHotspot(null);
-    setMessage("");
+    if (nextTab !== "Mainboard") {
+      setComponent(
+        copy(
+          components.find((item) => item.type === nextTab) ??
+            blankComponent(nextTab),
+        ),
+      );
+    }
   }
-  function saveProduct() {
-    if (!draft.name.trim() || !draft.slug.trim()) {
-      setMessage("Vui lòng nhập tên và đường dẫn sản phẩm.");
+
+  function addHotspot(event: React.MouseEvent<HTMLDivElement>) {
+    if (draggedRef.current || !product.media.top || !boardRef.current) {
+      draggedRef.current = false;
       return;
     }
-    const saved = { ...draft, status: "published" as const };
-    const next = products.some((product) => product.id === saved.id)
-      ? products.map((product) => (product.id === saved.id ? saved : product))
-      : [...products, saved];
-    setProducts(next);
-    setDraft(copyProduct(saved));
-    window.localStorage.setItem(storageKey, JSON.stringify(next));
-    setMessage("Đã lưu sản phẩm trên trình duyệt này.");
+    const rect = boardRef.current.getBoundingClientRect();
+    const hotspot: Hotspot = {
+      id: makeId(),
+      type: "component",
+      view: "top",
+      x: Math.round(((event.clientX - rect.left) / rect.width) * 10000) / 100,
+      y: Math.round(((event.clientY - rect.top) / rect.height) * 10000) / 100,
+      title: "Linh kiện mới",
+      subtitle: "",
+      description: "",
+    };
+    updateProduct({ hotspots: [...product.hotspots, hotspot] });
+    setSelectedHotspot(hotspot.id);
   }
-  function addProduct() {
-    const product = blankProduct();
-    setProducts((current) => [...current, product]);
-    setDraft(product);
-    setSelectedHotspot(null);
-    setMessage("Đã tạo sản phẩm mới. Hãy nhập thông tin rồi bấm Lưu sản phẩm.");
+
+  function moveHotspot(event: React.PointerEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedHotspot(event.currentTarget.dataset.hotspot ?? null);
+    setDraggingHotspot(event.currentTarget.dataset.hotspot ?? null);
   }
-  function deleteProduct() {
-    if (!window.confirm(`Xóa ${draft.name}?`)) return;
-    const next = products.filter((product) => product.id !== draft.id);
-    setProducts(next);
-    setDraft(copyProduct(next[0] ?? blankProduct()));
-    setSelectedHotspot(null);
-    window.localStorage.setItem(storageKey, JSON.stringify(next));
-    setMessage("Đã xóa sản phẩm.");
-  }
-  function updateComponent(id: string, patch: Partial<AssociatedComponent>) {
-    update({
-      components: draft.components.map((component) =>
-        component.id === id ? { ...component, ...patch } : component,
+
+  function updateDraggedHotspot(event: React.PointerEvent<HTMLDivElement>) {
+    if (!draggingHotspot || !boardRef.current) return;
+    draggedRef.current = true;
+    const rect = boardRef.current.getBoundingClientRect();
+    const x = Math.max(
+      0,
+      Math.min(100, ((event.clientX - rect.left) / rect.width) * 100),
+    );
+    const y = Math.max(
+      0,
+      Math.min(100, ((event.clientY - rect.top) / rect.height) * 100),
+    );
+    updateProduct({
+      hotspots: product.hotspots.map((item) =>
+        item.id === draggingHotspot
+          ? {
+              ...item,
+              x: Math.round(x * 100) / 100,
+              y: Math.round(y * 100) / 100,
+            }
+          : item,
       ),
     });
   }
-  function addComponent() {
-    update({
+
+  function finishDragging() {
+    setDraggingHotspot(null);
+  }
+
+  function updateHotspot(patch: Partial<Hotspot>) {
+    updateProduct({
+      hotspots: product.hotspots.map((item) =>
+        item.id === selectedHotspot ? { ...item, ...patch } : item,
+      ),
+    });
+  }
+
+  function addAssociatedComponent() {
+    updateProduct({
       components: [
-        ...draft.components,
+        ...product.components,
         {
           id: makeId(),
           category: "CPU",
@@ -137,170 +362,413 @@ export default function StaticAdmin({
       ],
     });
   }
-  function addHotspot(event: React.MouseEvent<HTMLDivElement>) {
-    if (!draft.media.top) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const hotspot: Hotspot = {
-      id: makeId(),
-      type: "component",
-      view: "top",
-      x: Math.round(((event.clientX - rect.left) / rect.width) * 10000) / 100,
-      y: Math.round(((event.clientY - rect.top) / rect.height) * 10000) / 100,
-      title: "Linh kiện mới",
-      subtitle: "",
-      description: "",
-    };
-    update({ hotspots: [...draft.hotspots, hotspot] });
-    setSelectedHotspot(hotspot.id);
+
+  if (user === undefined) {
+    return <main className="empty">Đang kiểm tra đăng nhập…</main>;
   }
-  function updateHotspot(patch: Partial<Hotspot>) {
-    update({
-      hotspots: draft.hotspots.map((hotspot) =>
-        hotspot.id === selectedHotspot ? { ...hotspot, ...patch } : hotspot,
-      ),
-    });
+
+  if (!user) {
+    return (
+      <main className="admin-shell static-admin admin-login">
+        <div className="admin-login-card">
+          <span className="eyebrow">TECH EXPLORER / FIRESTORE</span>
+          <h1>Đăng nhập quản trị</h1>
+          <p>
+            Đăng nhập bằng tài khoản Firebase có quyền quản trị để chỉnh sửa dữ
+            liệu.
+          </p>
+          <form onSubmit={login}>
+            <label>
+              Email
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Mật khẩu
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </label>
+            <button className="primary" disabled={busy}>
+              Đăng nhập
+            </button>
+          </form>
+          {message && (
+            <div className="admin-message" role="status">
+              {message}
+            </div>
+          )}
+          <a href={`${basePath}/`}>← Về trang Explorer</a>
+        </div>
+      </main>
+    );
   }
+
+  const activeItems =
+    tab === "Mainboard" ? filteredProducts : filteredComponents;
 
   return (
     <main className="admin-shell static-admin">
       <div className="admin-header">
         <div>
-          <span className="eyebrow">TECH EXPLORER / QUẢN LÝ NỘI DUNG</span>
-          <h1>Quản lý mainboard</h1>
+          <span className="eyebrow">TECH EXPLORER / FIRESTORE</span>
+          <h1>Quản lý phần cứng</h1>
           <p className="admin-title-note">
-            Thêm mainboard, thông số, hotspot và các linh kiện đi kèm.
+            Quản lý mainboard, CPU, RAM và SSD trong Firestore.
           </p>
         </div>
-        <a href={`${basePath}/`}>← Về trang Explorer</a>
+        <div className="admin-header-actions">
+          <span className="admin-user">{user.email}</span>
+          <button onClick={() => void signOut(auth)}>Đăng xuất</button>
+          <a href={`${basePath}/`}>← Về Explorer</a>
+        </div>
       </div>
-      <div className="admin-controls">
-        <input
-          aria-label="Tìm sản phẩm"
-          placeholder="Tìm mainboard…"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <select
-          aria-label="Chọn sản phẩm"
-          value={draft.id}
-          onChange={(event) =>
-            selectProduct(
-              products.find((product) => product.id === event.target.value) ??
-                draft,
-            )
-          }
-        >
-          {visibleProducts.map((product) => (
-            <option key={product.id} value={product.id}>
-              {product.name}
-            </option>
+      <div className="admin-toolbar">
+        <nav className="admin-tabs" aria-label="Danh mục phần cứng">
+          {tabs.map((item) => (
+            <button
+              key={item}
+              className={tab === item ? "active" : ""}
+              onClick={() => chooseTab(item)}
+            >
+              {item}
+            </button>
           ))}
-        </select>
-        <button className="primary" onClick={addProduct}>
-          + Thêm mainboard
-        </button>
+        </nav>
+        <div className="admin-toolbar-actions">
+          <button disabled={busy} onClick={() => void seedFirestore()}>
+            ↥ Đồng bộ dữ liệu mẫu
+          </button>
+          <button
+            className="primary"
+            disabled={busy}
+            onClick={() => void saveCurrent()}
+          >
+            ✓ Lưu lên Firestore
+          </button>
+        </div>
       </div>
       {message && (
         <div className="admin-message" role="status">
           {message}
         </div>
       )}
-      <div className="admin-layout">
-        <section className="admin-form">
-          <h2>Thông tin mainboard</h2>
-          {(["name", "slug", "brand", "description"] as const).map((key) => (
-            <label key={key}>
-              {key === "name"
-                ? "Tên sản phẩm"
-                : key === "slug"
-                  ? "Đường dẫn (slug)"
-                  : key === "brand"
-                    ? "Thương hiệu"
-                    : "Mô tả"}
-              {key === "description" ? (
-                <textarea
-                  value={draft[key]}
-                  onChange={(event) => update({ [key]: event.target.value })}
-                />
-              ) : (
+      <div className="admin-workspace">
+        <aside className="admin-list-panel">
+          <div className="admin-list-heading">
+            <h2>Danh sách {tab === "Mainboard" ? "mainboard" : tab}</h2>
+            <span>{activeItems.length} mục</span>
+          </div>
+          <input
+            aria-label="Tìm dữ liệu"
+            placeholder="Tìm theo tên, hãng…"
+            value={queryText}
+            onChange={(event) => setQueryText(event.target.value)}
+          />
+          <div className="admin-cards">
+            {tab === "Mainboard"
+              ? filteredProducts.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`admin-card ${product.id === item.id ? "selected" : ""}`}
+                    onClick={() => setProduct(copy(item))}
+                  >
+                    <strong>{item.name}</strong>
+                    <span>
+                      {item.brand} · {item.spec.Socket ?? "Chưa có socket"}
+                    </span>
+                    <em>{statusLabel(item.status)}</em>
+                  </button>
+                ))
+              : filteredComponents.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`admin-card ${component.id === item.id ? "selected" : ""}`}
+                    onClick={() => setComponent(copy(item))}
+                  >
+                    <strong>{item.name}</strong>
+                    <span>
+                      {item.brand || "Chưa có hãng"} · {item.model}
+                    </span>
+                    <em>{statusLabel(item.status)}</em>
+                  </button>
+                ))}
+            {!activeItems.length && (
+              <p className="muted">
+                Chưa có dữ liệu. Hãy đồng bộ mẫu hoặc thêm mới.
+              </p>
+            )}
+          </div>
+          <button
+            className="add-record"
+            onClick={() =>
+              tab === "Mainboard"
+                ? setProduct(blankProduct())
+                : setComponent(blankComponent(tab))
+            }
+          >
+            ＋ Thêm {tab === "Mainboard" ? "mainboard" : tab}
+          </button>
+        </aside>
+
+        {tab === "Mainboard" ? (
+          <section className="admin-form">
+            <div className="admin-section-heading">
+              <h2>Thông tin mainboard</h2>
+              <span>ID: {product.id}</span>
+            </div>
+            <div className="admin-form-grid">
+              <label>
+                Tên sản phẩm
                 <input
-                  value={draft[key]}
-                  onChange={(event) => update({ [key]: event.target.value })}
+                  value={product.name}
+                  onChange={(event) =>
+                    updateProduct({ name: event.target.value })
+                  }
                 />
-              )}
-            </label>
-          ))}
-          <label>
-            Link thông tin nhà sản xuất
-            <input
-              value={draft.sourceUrl ?? ""}
-              onChange={(event) => update({ sourceUrl: event.target.value })}
-            />
-          </label>
-          <h3>Thông số kỹ thuật</h3>
-          {Object.entries(draft.spec).map(([key, value]) => (
-            <label key={key}>
-              {key}
+              </label>
+              <label>
+                Thương hiệu
+                <input
+                  value={product.brand}
+                  onChange={(event) =>
+                    updateProduct({ brand: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Đường dẫn (slug)
+                <input
+                  value={product.slug}
+                  onChange={(event) =>
+                    updateProduct({ slug: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Trạng thái
+                <select
+                  value={product.status}
+                  onChange={(event) =>
+                    updateProduct({
+                      status: event.target.value as Product["status"],
+                    })
+                  }
+                >
+                  <option value="published">Đã xuất bản</option>
+                  <option value="draft">Bản nháp</option>
+                </select>
+              </label>
+              <label className="wide">
+                Mô tả
+                <textarea
+                  value={product.description}
+                  onChange={(event) =>
+                    updateProduct({ description: event.target.value })
+                  }
+                />
+              </label>
+            </div>
+            <h3>Thông số kỹ thuật</h3>
+            <div className="admin-form-grid">
+              {Object.entries(product.spec).map(([key, value]) => (
+                <label key={key}>
+                  {key}
+                  <input
+                    value={value}
+                    onChange={(event) =>
+                      updateProduct({
+                        spec: { ...product.spec, [key]: event.target.value },
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                const key = window.prompt("Tên thông số mới");
+                if (key?.trim())
+                  updateProduct({
+                    spec: { ...product.spec, [key.trim()]: "" },
+                  });
+              }}
+            >
+              ＋ Thêm thông số
+            </button>
+            <h3>Linh kiện đi kèm</h3>
+            {product.components.map((item) => (
+              <div className="associated-component" key={item.id}>
+                <div className="associated-component-heading">
+                  <strong>{item.category}</strong>
+                  <button
+                    className="danger"
+                    onClick={() =>
+                      updateProduct({
+                        components: product.components.filter(
+                          (entry) => entry.id !== item.id,
+                        ),
+                      })
+                    }
+                  >
+                    Xóa
+                  </button>
+                </div>
+                <label>
+                  Loại
+                  <select
+                    value={item.category}
+                    onChange={(event) =>
+                      updateProduct({
+                        components: product.components.map((entry) =>
+                          entry.id === item.id
+                            ? {
+                                ...entry,
+                                category: event.target
+                                  .value as AssociatedComponent["category"],
+                              }
+                            : entry,
+                        ),
+                      })
+                    }
+                  >
+                    {[
+                      "CPU",
+                      "RAM",
+                      "GPU",
+                      "Storage",
+                      "PSU",
+                      "Cooling",
+                      "Case",
+                      "Other",
+                    ].map((value) => (
+                      <option key={value}>{value}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Tên
+                  <input
+                    value={item.name}
+                    onChange={(event) =>
+                      updateProduct({
+                        components: product.components.map((entry) =>
+                          entry.id === item.id
+                            ? { ...entry, name: event.target.value }
+                            : entry,
+                        ),
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Mã sản phẩm
+                  <input
+                    value={item.model}
+                    onChange={(event) =>
+                      updateProduct({
+                        components: product.components.map((entry) =>
+                          entry.id === item.id
+                            ? { ...entry, model: event.target.value }
+                            : entry,
+                        ),
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Trạng thái
+                  <select
+                    value={item.compatibility}
+                    onChange={(event) =>
+                      updateProduct({
+                        components: product.components.map((entry) =>
+                          entry.id === item.id
+                            ? {
+                                ...entry,
+                                compatibility: event.target
+                                  .value as AssociatedComponent["compatibility"],
+                              }
+                            : entry,
+                        ),
+                      })
+                    }
+                  >
+                    {statuses.map((value) => (
+                      <option key={value} value={value}>
+                        {compatibilityLabel(value)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ))}
+            <button onClick={addAssociatedComponent}>
+              ＋ Thêm linh kiện đi kèm
+            </button>
+            <h3>Ảnh mặt trước</h3>
+            <label>
+              Link ảnh
               <input
-                value={value}
+                value={product.media.top ?? ""}
+                placeholder="https://… hoặc /media/…"
                 onChange={(event) =>
-                  update({ spec: { ...draft.spec, [key]: event.target.value } })
+                  updateProduct({
+                    media: {
+                      ...product.media,
+                      top: event.target.value,
+                      main: event.target.value,
+                    },
+                  })
                 }
               />
             </label>
-          ))}
-          <button
-            onClick={() => {
-              const key = window.prompt("Tên thông số mới");
-              if (key?.trim())
-                update({ spec: { ...draft.spec, [key.trim()]: "" } });
-            }}
-          >
-            + Thêm thông số
-          </button>
-          <h3 className="admin-section-title">Linh kiện đi kèm</h3>
-          <p className="muted">
-            Khai báo CPU, RAM, GPU, ổ lưu trữ và các linh kiện tương thích.
-          </p>
-          {draft.components.map((component) => (
-            <div className="associated-component" key={component.id}>
-              <div className="associated-component-heading">
-                <strong>{component.category}</strong>
-                <button
-                  className="danger"
-                  onClick={() =>
-                    update({
-                      components: draft.components.filter(
-                        (item) => item.id !== component.id,
-                      ),
-                    })
-                  }
-                >
-                  Xóa
-                </button>
-              </div>
+            <div className="admin-actions">
+              <button
+                className="primary"
+                disabled={busy}
+                onClick={() => void saveCurrent()}
+              >
+                Lưu thay đổi
+              </button>
+              <button
+                className="danger"
+                disabled={busy}
+                onClick={() => void removeCurrent()}
+              >
+                Xóa
+              </button>
+            </div>
+          </section>
+        ) : (
+          <section className="admin-form">
+            <div className="admin-section-heading">
+              <h2>Thông tin {tab}</h2>
+              <span>ID: {component.id}</span>
+            </div>
+            <div className="admin-form-grid">
               <label>
-                Loại
-                <select
-                  value={component.category}
-                  onChange={(event) =>
-                    updateComponent(component.id, {
-                      category: event.target
-                        .value as AssociatedComponent["category"],
-                    })
-                  }
-                >
-                  {categories.map((category) => (
-                    <option key={category}>{category}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Tên
+                Tên linh kiện
                 <input
                   value={component.name}
                   onChange={(event) =>
-                    updateComponent(component.id, { name: event.target.value })
+                    updateComponentDraft({ name: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Thương hiệu
+                <input
+                  value={component.brand}
+                  onChange={(event) =>
+                    updateComponentDraft({ brand: event.target.value })
                   }
                 />
               </label>
@@ -309,73 +777,107 @@ export default function StaticAdmin({
                 <input
                   value={component.model}
                   onChange={(event) =>
-                    updateComponent(component.id, { model: event.target.value })
+                    updateComponentDraft({ model: event.target.value })
                   }
                 />
               </label>
               <label>
                 Trạng thái
                 <select
-                  value={component.compatibility}
+                  value={component.status}
                   onChange={(event) =>
-                    updateComponent(component.id, {
-                      compatibility: event.target
-                        .value as AssociatedComponent["compatibility"],
+                    updateComponentDraft({
+                      status: event.target.value as CatalogComponent["status"],
                     })
                   }
                 >
-                  {componentStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status === "compatible"
-                        ? "Tương thích"
-                        : status === "warning"
-                          ? "Cần kiểm tra"
-                          : "Không tương thích"}
-                    </option>
-                  ))}
+                  <option value="published">Đã xuất bản</option>
+                  <option value="draft">Bản nháp</option>
                 </select>
               </label>
-              <label>
-                Ghi chú
-                <input
+              <label className="wide">
+                Mô tả
+                <textarea
+                  value={component.description}
+                  onChange={(event) =>
+                    updateComponentDraft({ description: event.target.value })
+                  }
+                />
+              </label>
+              <label className="wide">
+                Ghi chú tương thích
+                <textarea
                   value={component.notes}
                   onChange={(event) =>
-                    updateComponent(component.id, { notes: event.target.value })
+                    updateComponentDraft({ notes: event.target.value })
                   }
                 />
               </label>
             </div>
-          ))}
-          <button onClick={addComponent}>+ Thêm linh kiện đi kèm</button>
-          <div className="admin-actions">
-            <button className="primary" onClick={saveProduct}>
-              Lưu sản phẩm
+            <h3>Thông số {tab}</h3>
+            <div className="admin-form-grid">
+              {Object.entries(component.spec).map(([key, value]) => (
+                <label key={key}>
+                  {key}
+                  <input
+                    value={value}
+                    onChange={(event) =>
+                      updateComponentDraft({
+                        spec: { ...component.spec, [key]: event.target.value },
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                const key = window.prompt("Tên thông số mới");
+                if (key?.trim())
+                  updateComponentDraft({
+                    spec: { ...component.spec, [key.trim()]: "" },
+                  });
+              }}
+            >
+              ＋ Thêm thông số
             </button>
-            <button className="danger" onClick={deleteProduct}>
-              Xóa sản phẩm
-            </button>
-          </div>
-          <p className="admin-local-note">
-            Bản GitHub Pages lưu dữ liệu trên trình duyệt hiện tại. Bản server
-            có thể lưu dùng chung qua API và PostgreSQL.
-          </p>
-        </section>
-        <section>
-          <div className="editor-wrap">
-            <h2>Ảnh và hotspot</h2>
-            <p>
-              Dán link ảnh mainboard, sau đó click lên ảnh để đặt điểm chú
-              thích.
-            </p>
+            <div className="admin-actions">
+              <button
+                className="primary"
+                disabled={busy}
+                onClick={() => void saveCurrent()}
+              >
+                Lưu thay đổi
+              </button>
+              <button
+                className="danger"
+                disabled={busy}
+                onClick={() => void removeCurrent()}
+              >
+                Xóa
+              </button>
+            </div>
+          </section>
+        )}
+
+        {tab === "Mainboard" && (
+          <section className="admin-preview">
+            <div className="admin-section-heading">
+              <div>
+                <h2>Ảnh và hotspot</h2>
+                <span>Kéo vòng tròn số để cập nhật tọa độ.</span>
+              </div>
+              <span>{product.hotspots.length} hotspot</span>
+            </div>
             <label>
               Link ảnh mặt trước
               <input
-                value={draft.media.top ?? ""}
+                value={product.media.top ?? ""}
                 placeholder="https://… hoặc /media/…"
                 onChange={(event) =>
-                  update({
+                  updateProduct({
                     media: {
-                      ...draft.media,
+                      ...product.media,
                       top: event.target.value,
                       main: event.target.value,
                     },
@@ -384,32 +886,35 @@ export default function StaticAdmin({
               />
             </label>
             <div
+              ref={boardRef}
               className="editor-board"
-              style={{ aspectRatio: ratio }}
               onClick={addHotspot}
+              onPointerMove={updateDraggedHotspot}
+              onPointerUp={finishDragging}
+              onPointerLeave={finishDragging}
             >
-              {draft.media.top ? (
+              {product.media.top ? (
                 <img
-                  src={assetUrl(draft.media.top)}
-                  alt="Ảnh chỉnh sửa hotspot"
-                  onLoad={(event) =>
-                    setRatio(
-                      event.currentTarget.naturalWidth /
-                        event.currentTarget.naturalHeight,
-                    )
-                  }
+                  src={assetUrl(product.media.top)}
+                  alt="Ảnh mainboard xem trước"
                 />
               ) : (
-                <p>Nhập link ảnh để bắt đầu.</p>
+                <p>Nhập URL ảnh để bắt đầu.</p>
               )}
-              {draft.hotspots.map((hotspot, index) => (
+              {product.hotspots.map((hotspot, index) => (
                 <button
                   key={hotspot.id}
+                  data-hotspot={hotspot.id}
                   className={`editor-node ${selectedHotspot === hotspot.id ? "selected" : ""}`}
                   style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
                   aria-label={`Sửa ${hotspot.title}`}
+                  onPointerDown={moveHotspot}
                   onClick={(event) => {
                     event.stopPropagation();
+                    if (draggedRef.current) {
+                      draggedRef.current = false;
+                      return;
+                    }
                     setSelectedHotspot(hotspot.id);
                   }}
                 >
@@ -452,9 +957,9 @@ export default function StaticAdmin({
                 <button
                   className="danger"
                   onClick={() => {
-                    update({
-                      hotspots: draft.hotspots.filter(
-                        (hotspot) => hotspot.id !== selectedHotspot,
+                    updateProduct({
+                      hotspots: product.hotspots.filter(
+                        (item) => item.id !== selectedHotspot,
                       ),
                     });
                     setSelectedHotspot(null);
@@ -464,8 +969,11 @@ export default function StaticAdmin({
                 </button>
               </div>
             )}
-          </div>
-        </section>
+            <p className="admin-local-note">
+              Bấm “Lưu lên Firestore” để cập nhật ảnh và hotspot trên Explorer.
+            </p>
+          </section>
+        )}
       </div>
     </main>
   );

@@ -29,6 +29,14 @@ export type AssociatedComponent = {
   compatibility: "compatible" | "warning" | "incompatible";
   notes: string;
 };
+export type CatalogComponentType = "CPU" | "RAM" | "SSD";
+export type CatalogComponent = AssociatedComponent & {
+  type: CatalogComponentType;
+  brand: string;
+  description: string;
+  spec: Record<string, string>;
+  status: "draft" | "published";
+};
 export type Product = {
   id: string;
   slug: string;
