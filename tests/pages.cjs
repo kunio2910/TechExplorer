@@ -70,7 +70,7 @@ const assert = require("node:assert/strict");
     .waitFor();
   await page.getByRole("link", { name: "← Về trang Explorer" }).click();
   await page
-    .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })
+    .getByRole("heading", { name: "Khám phá công nghệ", exact: true })
     .waitFor();
   assert.deepEqual(errors, []);
   assert.deepEqual(failures, []);

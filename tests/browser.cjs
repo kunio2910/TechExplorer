@@ -84,7 +84,7 @@ const assert = require("node:assert/strict");
   await page
     .getByRole("button", { name: "Explore Memory (RAM)", exact: true })
     .click();
-  assert.ok(await page.locator(".component-review").isVisible());
+  assert.ok(await page.locator(".component-detail").isVisible());
   assert.equal(await page.locator(".component-canvas .hotspot").count(), 0);
   assert.ok(
     await page.evaluate(
