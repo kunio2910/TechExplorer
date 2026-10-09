@@ -19,8 +19,6 @@ import {
   Workflow,
   Plug,
   ShieldCheck,
-  Sun,
-  Moon,
   ArrowUpRight,
   ArrowRight,
   PackageOpen,
@@ -161,7 +159,6 @@ export default function Explorer({
   const [view, setView] = useState("top");
   const [tab, setTab] = useState("Overview");
   const [expert, setExpert] = useState(true);
-  const [light, setLight] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
   useEffect(() => {
@@ -294,7 +291,7 @@ export default function Explorer({
     setMobileMenu(false);
   }
   return (
-    <div className={"app-shell " + (light ? "light" : "")}>
+    <div className="app-shell">
       <dialog ref={compareDialog} className="info-dialog">
         <div className="section-heading">
           <h2>Compare mainboards</h2>
@@ -411,13 +408,6 @@ export default function Explorer({
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <button
-          className="icon-button"
-          aria-label="Toggle color theme"
-          onClick={() => setLight((v) => !v)}
-        >
-          {light ? <Moon size={19} /> : <Sun size={19} />}
-        </button>
         <Link href="/admin" className="admin-link">
           Admin <ArrowUpRight size={13} />
         </Link>

@@ -27,7 +27,7 @@ import type {
   Hotspot,
   Product,
 } from "@/lib/types";
-import { CircleX, Plus } from "lucide-react";
+import { CircleX, Copy as CopyIcon, Plus } from "lucide-react";
 import ComponentCanvas from "./ComponentCanvas";
 import ImageGallery from "./ImageGallery";
 
@@ -89,6 +89,18 @@ function compatibilityLabel(status: AssociatedComponent["compatibility"]) {
     : status === "warning"
       ? "Cần kiểm tra"
       : "Không tương thích";
+}
+
+function duplicateSlug(slug: string, products: Product[]) {
+  const base = `${slug.trim() || "mainboard-moi"}-ban-sao`;
+  const used = new Set(products.map((item) => item.slug));
+  let candidate = base;
+  let suffix = 2;
+  while (used.has(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
 }
 
 export default function StaticAdmin({
@@ -264,6 +276,40 @@ export default function StaticAdmin({
       setMessage("Đã xóa linh kiện trên Firestore.");
     } catch (error) {
       setMessage(firestoreErrorMessage(error, "xóa", auth.currentUser?.uid));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function duplicateProduct(item: Product) {
+    setBusy(true);
+    try {
+      const duplicated = {
+        ...copy(item),
+        id: makeId(),
+        slug: duplicateSlug(item.slug, products),
+      };
+      await saveProduct(duplicated);
+      setProducts((current) => [...current, duplicated]);
+      setProduct(copy(duplicated));
+      setMessage(`Đã nhân đôi mainboard “${item.name}”.`);
+    } catch (error) {
+      setMessage(firestoreErrorMessage(error, "nhân đôi", auth.currentUser?.uid));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function duplicateComponent(item: CatalogComponent) {
+    setBusy(true);
+    try {
+      const duplicated = { ...copy(item), id: makeId() };
+      await saveCatalogComponent(duplicated);
+      setComponents((current) => [...current, duplicated]);
+      setComponent(copy(duplicated));
+      setMessage(`Đã nhân đôi ${item.type} “${item.name}”.`);
+    } catch (error) {
+      setMessage(firestoreErrorMessage(error, "nhân đôi", auth.currentUser?.uid));
     } finally {
       setBusy(false);
     }
@@ -576,14 +622,23 @@ export default function StaticAdmin({
                   <div className="admin-card-row" key={item.id}>
                     <button
                       type="button"
-                    className={`admin-card ${product.id === item.id ? "selected" : ""}`}
-                    onClick={() => setProduct(copy(item))}
-                  >
-                    <strong>{item.name}</strong>
-                    <span>
-                      {item.brand} · {item.spec.Socket ?? "Chưa có socket"}
-                    </span>
-                    <em>{statusLabel(item.status)}</em>
+                      className={`admin-card ${product.id === item.id ? "selected" : ""}`}
+                      onClick={() => setProduct(copy(item))}
+                    >
+                      <strong>{item.name}</strong>
+                      <span>
+                        {item.brand} · {item.spec.Socket ?? "Chưa có socket"}
+                      </span>
+                      <em>{statusLabel(item.status)}</em>
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-card-duplicate"
+                      aria-label={"Nhân đôi " + item.name}
+                      disabled={busy}
+                      onClick={() => void duplicateProduct(item)}
+                    >
+                      <CopyIcon size={16} />
                     </button>
                     <button
                       type="button"
@@ -600,14 +655,23 @@ export default function StaticAdmin({
                   <div className="admin-card-row" key={item.id}>
                     <button
                       type="button"
-                    className={`admin-card ${component.id === item.id ? "selected" : ""}`}
-                    onClick={() => setComponent(copy(item))}
-                  >
-                    <strong>{item.name}</strong>
-                    <span>
-                      {item.brand || "Chưa có hãng"} · {item.model}
-                    </span>
-                    <em>{statusLabel(item.status)}</em>
+                      className={`admin-card ${component.id === item.id ? "selected" : ""}`}
+                      onClick={() => setComponent(copy(item))}
+                    >
+                      <strong>{item.name}</strong>
+                      <span>
+                        {item.brand || "Chưa có hãng"} · {item.model || "Chưa có mã"}
+                      </span>
+                      <em>{statusLabel(item.status)}</em>
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-card-duplicate"
+                      aria-label={"Nhân đôi " + item.name}
+                      disabled={busy}
+                      onClick={() => void duplicateComponent(item)}
+                    >
+                      <CopyIcon size={16} />
                     </button>
                     <button
                       type="button"

@@ -1471,14 +1471,28 @@ select {
   flex: 1;
   min-width: 0;
 }
+.admin-card-duplicate,
 .admin-card-delete {
   display: grid;
-  flex: 0 0 34px;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 100%;
   place-items: center;
   padding: 0;
+  background: var(--soft);
+}
+.admin-card-duplicate {
+  color: var(--cyan);
+  border-color: transparent;
+}
+.admin-card-duplicate:hover {
+  color: #d8f9ff;
+  border-color: #329fcc;
+  background: #123c54;
+}
+.admin-card-delete {
   color: #ff7e8d;
   border-color: transparent;
-  background: var(--soft);
 }
 .admin-card-delete:hover {
   color: #ffd5da;
@@ -1552,6 +1566,7 @@ select {
 .admin-gallery-field label {
   min-width: 0;
   flex: 1;
+  margin-bottom: 0;
 }
 .admin-gallery-field label span {
   display: block;
@@ -1566,9 +1581,9 @@ select {
 }
 .admin-gallery-remove {
   display: grid;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
   margin-bottom: 0;
   padding: 0;
   place-items: center;
