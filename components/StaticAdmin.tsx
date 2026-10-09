@@ -65,6 +65,7 @@ function blankComponent(type: CatalogComponentType): CatalogComponent {
     name: `${type} mới`,
     brand: "",
     model: "",
+    imageUrl: "",
     description: "",
     spec: {},
     compatibility: "warning",
@@ -566,6 +567,17 @@ export default function StaticAdmin({
                   <option value="published">Đã xuất bản</option>
                   <option value="draft">Bản nháp</option>
                 </select>
+              </label>
+              <label className="wide">
+                Link ảnh linh kiện
+                <input
+                  type="url"
+                  value={component.imageUrl ?? ""}
+                  placeholder="https://… hoặc /media/…"
+                  onChange={(event) =>
+                    updateComponentDraft({ imageUrl: event.target.value })
+                  }
+                />
               </label>
               <label className="wide">
                 Mô tả

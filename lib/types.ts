@@ -33,6 +33,7 @@ export type CatalogComponentType = "CPU" | "RAM" | "SSD";
 export type CatalogComponent = AssociatedComponent & {
   type: CatalogComponentType;
   brand: string;
+  imageUrl?: string;
   description: string;
   spec: Record<string, string>;
   status: "draft" | "published";

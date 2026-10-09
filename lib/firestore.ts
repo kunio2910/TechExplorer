@@ -3,9 +3,11 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  onSnapshot,
   query,
   setDoc,
   where,
+  type Unsubscribe,
 } from "firebase/firestore";
 import { firestore } from "./firebase-client";
 import type {
@@ -68,6 +70,21 @@ export async function loadPublishedProducts(): Promise<Product[]> {
   return snapshot.docs.map((item) => productFromDocument(item.id, item.data()));
 }
 
+export function subscribeToPublishedProducts(
+  onProducts: (products: Product[]) => void,
+  onError?: (error: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    query(productsCollection, where("status", "==", "published")),
+    (snapshot) => {
+      onProducts(
+        snapshot.docs.map((item) => productFromDocument(item.id, item.data())),
+      );
+    },
+    onError,
+  );
+}
+
 export async function loadAllProducts(): Promise<Product[]> {
   const snapshot = await getDocs(productsCollection);
   return snapshot.docs.map((item) => productFromDocument(item.id, item.data()));
@@ -100,6 +117,23 @@ export async function loadCatalogComponents(
   );
 }
 
+export function subscribeToPublishedComponents(
+  onComponents: (components: CatalogComponent[]) => void,
+  onError?: (error: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    query(componentsCollection, where("status", "==", "published")),
+    (snapshot) => {
+      onComponents(
+        snapshot.docs.map(
+          (item) => ({ id: item.id, ...item.data() }) as CatalogComponent,
+        ),
+      );
+    },
+    onError,
+  );
+}
+
 export async function saveCatalogComponent(component: CatalogComponent) {
   await setDoc(doc(firestore, "components", component.id), clean(component));
 }
@@ -120,6 +154,7 @@ export async function seedProductsToFirestore(products: Product[]) {
           ...component,
           type,
           brand: "",
+          imageUrl: "",
           description: component.notes,
           spec: {},
           status: "published",

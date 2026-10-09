@@ -58,6 +58,15 @@ const assert = require("node:assert/strict");
   assert.equal(await page.locator(".signal-paths").count(), 1);
   await page.getByRole("button", { name: "Zoom in", exact: true }).click();
   await page.screenshot({ path: "test-results/desktop.png", fullPage: true });
+  await page.getByRole("button", { name: "Components", exact: true }).click();
+  await page.getByRole("heading", { name: "Explore Mainboard" }).waitFor();
+  assert.equal(await page.locator(".device-card").count(), 1);
+  await page
+    .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
+    .click();
+  await page
+    .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })
+    .waitFor();
   await page
     .getByRole("textbox", { name: "Search products" })
     .fill("does-not-exist");
@@ -66,14 +75,14 @@ const assert = require("node:assert/strict");
   await page
     .getByRole("button", { name: "Explore Memory (RAM)", exact: true })
     .click();
-  assert.ok(await page.locator(".sheet-open").isVisible());
+  assert.ok(await page.locator(".component-review").isVisible());
+  assert.equal(await page.locator(".component-canvas .hotspot").count(), 0);
   assert.ok(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   );
   await page.screenshot({ path: "test-results/mobile.png", fullPage: true });
-  await page.getByRole("button", { name: "Close component detail" }).click();
   await page.goto("http://localhost:3000/admin");
   await page
     .getByRole("heading", { name: "Quản lý mainboard và hotspot" })
