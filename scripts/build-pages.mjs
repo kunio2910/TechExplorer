@@ -45,20 +45,26 @@ await writeFile(
 );
 await writeFile(
   path.join(stage, "app", "admin", "page.tsx"),
-  `import Link from '@/components/StaticLink';export default function Admin(){return <main className="empty"><h1>Content Studio requires a server</h1><p>This GitHub Pages site hosts the interactive Explorer as a static website.</p><p>Product editing, uploads and shared database storage are available in the full Next.js server deployment.</p><Link href="/">← Back to Explorer</Link><p><a href="https://github.com/kunio2910/TechExplorer#run-locally">Server setup instructions ↗</a></p></main>;}`,
+  `import StaticAdmin from '@/components/StaticAdmin';import {seedProducts} from '@/lib/seed';export default function Admin(){return <StaticAdmin initialProducts={seedProducts.filter(p=>p.status==='published')}/>;}`,
 );
-await symlink(
-  path.join(root, "node_modules"),
-  path.join(stage, "node_modules"),
-  process.platform === "win32" ? "junction" : "dir",
-);
+// The temporary stage lives inside the repository, so Node can resolve the
+// repository's dependencies through its parent directory. Avoid creating a
+// Windows junction here because GitHub Pages builds run fine without it and
+// junction creation is blocked in some local environments.
+if (process.platform !== "win32") {
+  await symlink(
+    path.join(root, "node_modules"),
+    path.join(stage, "node_modules"),
+    "dir",
+  );
+}
 await writeFile(
   path.join(stage, "next.config.mjs"),
-  `export default {output:'export',basePath:'/TechExplorer',trailingSlash:true,env:{NEXT_PUBLIC_BASE_PATH:'/TechExplorer'},images:{unoptimized:true},turbopack:{root:${JSON.stringify(root)}}};`,
+  `export default {output:'export',basePath:'/TechExplorer',trailingSlash:true,env:{NEXT_PUBLIC_BASE_PATH:'/TechExplorer'},images:{unoptimized:true},experimental:{cpus:1},turbopack:{root:${JSON.stringify(root)}}};`,
 );
 const result = spawnSync(
   process.execPath,
-  [path.join(root, "node_modules/next/dist/bin/next"), "build"],
+  [path.join(root, "node_modules/next/dist/bin/next"), "build", "--webpack"],
   {
     cwd: stage,
     stdio: "inherit",

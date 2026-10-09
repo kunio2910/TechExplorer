@@ -1,6 +1,6 @@
 "use client";
 import { assetUrl, basePath } from "@/lib/runtime";
-import { useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -86,6 +86,7 @@ export default function Explorer({
 }) {
   const compareDialog = useRef<HTMLDialogElement>(null);
   const technologyDialog = useRef<HTMLDialogElement>(null);
+  const [catalog, setCatalog] = useState(products);
   const [selected, setSelected] = useState(initialSlug ?? products[0]?.slug);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<string | null>(null);
@@ -95,16 +96,32 @@ export default function Explorer({
   const [light, setLight] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(
+        window.localStorage.getItem("tech-explorer-products-v1") ?? "[]",
+      ) as Product[];
+      if (Array.isArray(saved)) {
+        const savedIds = new Set(saved.map((product) => product.id));
+        setCatalog([
+          ...products.filter((product) => !savedIds.has(product.id)),
+          ...saved,
+        ]);
+      }
+    } catch {
+      // Ignore invalid browser-local content and keep the published catalog.
+    }
+  }, [products]);
   const matches = useMemo(
     () =>
-      products.filter((p) =>
+      catalog.filter((p) =>
         JSON.stringify([p.name, p.category, p.spec])
           .toLowerCase()
           .includes(query.toLowerCase()),
       ),
-    [products, query],
+    [catalog, query],
   );
-  const product = products.find((p) => p.slug === selected) ?? products[0];
+  const product = catalog.find((p) => p.slug === selected) ?? catalog[0];
   function choose(p: Product) {
     setSelected(p.slug);
     setActive(null);
@@ -121,7 +138,7 @@ export default function Explorer({
           <button onClick={() => compareDialog.current?.close()}>Close</button>
         </div>
         <p>Compare published products by their specifications.</p>
-        {products.length < 2 && (
+        {catalog.length < 2 && (
           <p className="muted">
             Publish a second mainboard in Admin to compare models side by side.
           </p>
@@ -131,18 +148,18 @@ export default function Explorer({
             <thead>
               <tr>
                 <th>Specification</th>
-                {products.map((p) => (
+                {catalog.map((p) => (
                   <th key={p.id}>{p.name}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {Array.from(
-                new Set(products.flatMap((p) => Object.keys(p.spec))),
+                new Set(catalog.flatMap((p) => Object.keys(p.spec))),
               ).map((k) => (
                 <tr key={k}>
                   <th>{k}</th>
-                  {products.map((p) => (
+                  {catalog.map((p) => (
                     <td key={p.id}>{p.spec[k] ?? "—"}</td>
                   ))}
                 </tr>

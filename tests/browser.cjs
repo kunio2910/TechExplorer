@@ -76,28 +76,26 @@ const assert = require("node:assert/strict");
   await page.getByRole("button", { name: "Close component detail" }).click();
   await page.goto("http://localhost:3000/admin");
   await page
-    .getByRole("heading", { name: "Product & Hotspot Editor" })
+    .getByRole("heading", { name: "Quản lý mainboard và hotspot" })
     .waitFor();
-  await page.getByRole("button", { name: "+ New product" }).click();
-  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await page.getByRole("button", { name: "+ Thêm mainboard" }).click();
+  await page.getByRole("button", { name: "Xuất bản", exact: true }).click();
   await page.getByText("Admin token required.").waitFor();
   assert.deepEqual(errors, []);
   await page.setViewportSize({ width: 1440, height: 1050 });
   await page
     .getByRole("textbox", { name: "Admin token" })
     .fill("browser-test-token");
-  await page.getByRole("button", { name: "Load all products" }).click();
+  await page.getByRole("button", { name: "Tải danh sách sản phẩm" }).click();
   await page
     .getByRole("combobox", { name: "Select product" })
     .selectOption("mb_asus_b850f");
   assert.equal(await page.locator(".associated-component").count(), 3);
-  await page
-    .getByRole("button", { name: "+ Add associated component" })
-    .click();
+  await page.getByRole("button", { name: "+ Thêm linh kiện đi kèm" }).click();
   assert.equal(await page.locator(".associated-component").count(), 4);
   await page.locator(".editor-board").click({ position: { x: 50, y: 250 } });
   assert.equal(await page.locator(".editor-node").count(), 6);
-  await page.getByText("Position:", { exact: false }).waitFor();
+  await page.getByText("Vị trí:", { exact: false }).waitFor();
   await page.screenshot({ path: "test-results/admin.png", fullPage: true });
   const api = page.request;
   const headers = { Authorization: "Bearer browser-test-token" };

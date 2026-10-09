@@ -10,10 +10,21 @@ import {
 } from "@/lib/types";
 import DetailPanel from "@/components/DetailPanel";
 import DeviceCanvas from "@/components/DeviceCanvas";
+const mediaRoleLabels: Record<MediaRole, string> = {
+  main: "Ảnh chính",
+  top: "Mặt trước",
+  angle: "Góc nghiêng",
+  rear_io: "Cổng phía sau",
+  socket: "Socket CPU",
+  ram: "Khe RAM",
+  m2: "Khe M.2",
+  xray: "Ảnh X-quang",
+  exploded: "Ảnh tách lớp",
+};
 const blank = (): Product => ({
   id: crypto.randomUUID(),
   slug: "new-mainboard",
-  name: "New mainboard",
+  name: "Mainboard mới",
   brand: "",
   category: "Mainboard",
   description: "",
@@ -39,7 +50,7 @@ export default function Admin() {
       const response = await fetch("/api/products", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw Error("Failed to load products.");
+      if (!response.ok) throw Error("Không thể tải danh sách sản phẩm.");
       const data: Product[] = await response.json();
       setProducts(data);
       setProduct((p) => p ?? data[0] ?? blank());
@@ -87,8 +98,8 @@ export default function Admin() {
       update({ status });
       setMessage(
         status === "published"
-          ? "Published. Open Explorer to see your product."
-          : "Draft saved.",
+          ? "Đã xuất bản. Mở Explorer để xem sản phẩm."
+          : "Đã lưu bản nháp.",
       );
       await load();
     } catch (e) {
@@ -116,7 +127,7 @@ export default function Admin() {
           ...(role === "top" && !product?.media.main ? { main: data.url } : {}),
         },
       });
-      setMessage(`${role} image uploaded. Save the product to keep it.`);
+      setMessage(`Đã tải ảnh ${role}. Hãy lưu sản phẩm để giữ thay đổi.`);
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
@@ -124,7 +135,7 @@ export default function Admin() {
     }
   }
   async function remove() {
-    if (!product || !window.confirm(`Delete ${product.name}?`)) return;
+    if (!product || !window.confirm(`Xóa ${product.name}?`)) return;
     setBusy(true);
     try {
       const response = await fetch("/api/products", {
@@ -135,10 +146,10 @@ export default function Admin() {
         },
         body: JSON.stringify({ id: product.id }),
       });
-      if (!response.ok) throw Error("Delete failed.");
+      if (!response.ok) throw Error("Xóa sản phẩm thất bại.");
       setProduct(null);
       await load();
-      setMessage("Product deleted.");
+      setMessage("Đã xóa sản phẩm.");
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
@@ -149,23 +160,23 @@ export default function Admin() {
     <main className="admin-shell">
       <div className="admin-header">
         <div>
-          <span className="eyebrow">TECH EXPLORER / CONTENT STUDIO</span>
-          <h1>Product & Hotspot Editor</h1>
+          <span className="eyebrow">TECH EXPLORER / QUẢN LÝ NỘI DUNG</span>
+          <h1>Quản lý mainboard và hotspot</h1>
           <p className="admin-title-note">
-            Create a product. Add its images. Connect the details.
+            Thêm mainboard, thông số, hotspot và các linh kiện đi kèm.
           </p>
         </div>
-        <Link href="/">← Back to Explorer</Link>
+        <Link href="/">← Về Explorer</Link>
       </div>
       <div className="admin-controls">
         <input
           type="password"
           aria-label="Admin token"
-          placeholder="Admin token from ADMIN_TOKEN"
+          placeholder="Mã quản trị ADMIN_TOKEN"
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />
-        <button onClick={load}>Load all products</button>
+        <button onClick={load}>Tải danh sách sản phẩm</button>
         <select
           aria-label="Select product"
           value={product?.id ?? ""}
@@ -176,7 +187,7 @@ export default function Admin() {
         >
           {products.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} ({p.status})
+              {p.name} ({p.status === "published" ? "đã xuất bản" : "bản nháp"})
             </option>
           ))}
         </select>
@@ -187,7 +198,7 @@ export default function Admin() {
             setSelected(null);
           }}
         >
-          + New product
+          + Thêm mainboard
         </button>
       </div>
       {message && (
@@ -198,10 +209,16 @@ export default function Admin() {
       {product && (
         <div className="admin-layout">
           <section className="admin-form">
-            <h2>Product details</h2>
+            <h2>Thông tin mainboard</h2>
             {(["name", "slug", "brand", "description"] as const).map((k) => (
               <label key={k}>
-                {k}
+                {k === "name"
+                  ? "Tên sản phẩm"
+                  : k === "slug"
+                    ? "Đường dẫn (slug)"
+                    : k === "brand"
+                      ? "Thương hiệu"
+                      : "Mô tả"}
                 <input
                   value={product[k]}
                   onChange={(e) => update({ [k]: e.target.value })}
@@ -209,16 +226,17 @@ export default function Admin() {
               </label>
             ))}
             <p className="muted">
-              Category: Mainboard · Status: {product.status}
+              Loại: Mainboard · Trạng thái:{" "}
+              {product.status === "published" ? "đã xuất bản" : "bản nháp"}
             </p>
             <label>
-              Manufacturer source URL
+              Link thông tin nhà sản xuất
               <input
                 value={product.sourceUrl ?? ""}
                 onChange={(e) => update({ sourceUrl: e.target.value })}
               />
             </label>
-            <h3>Specifications</h3>
+            <h3>Thông số kỹ thuật</h3>
             {Object.entries(product.spec).map(([k, v]) => (
               <label key={k}>
                 {k}
@@ -232,17 +250,16 @@ export default function Admin() {
             ))}
             <button
               onClick={() => {
-                const key = window.prompt("Specification name (e.g. Chipset)");
+                const key = window.prompt("Tên thông số mới (ví dụ: Chipset)");
                 if (key?.trim())
                   update({ spec: { ...product.spec, [key.trim()]: "" } });
               }}
             >
-              + Add specification
+              + Thêm thông số
             </button>
-            <h3 style={{ marginTop: 25 }}>Associated components</h3>
+            <h3 style={{ marginTop: 25 }}>Linh kiện đi kèm</h3>
             <p className="muted">
-              Add the CPU, RAM, GPU, storage or other parts that belong with
-              this mainboard.
+              Khai báo CPU, RAM, GPU, ổ lưu trữ và các linh kiện tương thích.
             </p>
             {product.components.map((component) => (
               <div className="associated-component" key={component.id}>
@@ -250,7 +267,7 @@ export default function Admin() {
                   <strong>{component.category}</strong>
                   <button
                     className="danger"
-                    aria-label={`Remove ${component.name}`}
+                    aria-label={`Xóa ${component.name}`}
                     onClick={() =>
                       update({
                         components: product.components.filter(
@@ -259,11 +276,11 @@ export default function Admin() {
                       })
                     }
                   >
-                    Remove
+                    Xóa
                   </button>
                 </div>
                 <label>
-                  Category
+                  Loại
                   <select
                     value={component.category}
                     onChange={(e) =>
@@ -289,7 +306,11 @@ export default function Admin() {
                 </label>
                 {(["name", "model", "notes"] as const).map((key) => (
                   <label key={key}>
-                    {key}
+                    {key === "name"
+                      ? "Tên"
+                      : key === "model"
+                        ? "Mã sản phẩm"
+                        : "Ghi chú"}
                     <input
                       value={component[key]}
                       onChange={(e) =>
@@ -299,7 +320,7 @@ export default function Admin() {
                   </label>
                 ))}
                 <label>
-                  Compatibility
+                  Tương thích
                   <select
                     value={component.compatibility}
                     onChange={(e) =>
@@ -309,9 +330,9 @@ export default function Admin() {
                       })
                     }
                   >
-                    <option value="compatible">Compatible</option>
-                    <option value="warning">Warning / check</option>
-                    <option value="incompatible">Incompatible</option>
+                    <option value="compatible">Tương thích</option>
+                    <option value="warning">Cần kiểm tra</option>
+                    <option value="incompatible">Không tương thích</option>
                   </select>
                 </label>
               </div>
@@ -324,8 +345,8 @@ export default function Admin() {
                     {
                       id: crypto.randomUUID(),
                       category: "CPU",
-                      name: "New component",
-                      model: "New model",
+                      name: "Linh kiện mới",
+                      model: "Mã sản phẩm",
                       compatibility: "warning",
                       notes: "",
                     },
@@ -333,24 +354,26 @@ export default function Admin() {
                 })
               }
             >
-              + Add associated component
+              + Thêm linh kiện đi kèm
             </button>
-            <h3 style={{ marginTop: 25 }}>Media library</h3>
+            <h3 style={{ marginTop: 25 }}>Thư viện hình ảnh</h3>
             <label>
-              Image role
+              Vai trò ảnh
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as MediaRole)}
               >
                 {mediaRoles.map((r) => (
-                  <option key={r}>{r}</option>
+                  <option key={r} value={r}>
+                    {mediaRoleLabels[r]}
+                  </option>
                 ))}
               </select>
             </label>
             <label>
-              Image URL
+              Link ảnh
               <input
-                placeholder="https://… or /uploads/…"
+                placeholder="https://… hoặc /uploads/…"
                 value={product.media[role] ?? ""}
                 onChange={(e) =>
                   update({
@@ -360,7 +383,7 @@ export default function Admin() {
               />
             </label>
             <label className="upload-row">
-              Upload PNG / JPG / WebP / AVIF (max 8 MB)
+              Tải PNG / JPG / WebP / AVIF (tối đa 8 MB)
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/avif"
@@ -373,30 +396,30 @@ export default function Admin() {
             </label>
             <div className="admin-actions">
               <button disabled={busy} onClick={() => save("draft")}>
-                Save draft
+                Lưu bản nháp
               </button>
               <button
                 disabled={busy}
                 className="primary"
                 onClick={() => save("published")}
               >
-                {busy ? "Working…" : "Publish"}
+                {busy ? "Đang xử lý…" : "Xuất bản"}
               </button>
-              <button onClick={() => setPreview((v) => !v)}>Preview</button>
+              <button onClick={() => setPreview((v) => !v)}>Xem trước</button>
               <button disabled={busy} className="danger" onClick={remove}>
-                Delete
+                Xóa
               </button>
             </div>
           </section>
           <section>
             <div className="editor-wrap">
-              <h2>Place your hotspots</h2>
+              <h2>Đặt hotspot trên ảnh</h2>
               <p>
-                Click the image to create a node. Select a node to edit its
-                content. Coordinates are calculated automatically.
+                Click lên ảnh để tạo điểm. Chọn một điểm để chỉnh nội dung; tọa
+                độ được tính tự động.
               </p>
               <label>
-                Editor view
+                Chế độ chỉnh sửa
                 <select
                   value={role === "rear_io" ? "rear_io" : "top"}
                   onChange={(e) => {
@@ -404,8 +427,8 @@ export default function Admin() {
                     setSelected(null);
                   }}
                 >
-                  <option value="top">Top / Mainboard</option>
-                  <option value="rear_io">Rear I/O</option>
+                  <option value="top">Mặt trước / Mainboard</option>
+                  <option value="rear_io">Cổng phía sau</option>
                 </select>
               </label>
               <div
@@ -427,7 +450,7 @@ export default function Admin() {
                       Math.round(
                         ((e.clientY - rect.top) / rect.height) * 10000,
                       ) / 100,
-                    title: "New component",
+                    title: "Linh kiện mới",
                     subtitle: "",
                     description: "",
                   };
@@ -447,7 +470,7 @@ export default function Admin() {
                     }
                   />
                 ) : (
-                  <p>Upload a top image to begin.</p>
+                  <p>Tải ảnh mặt trước để bắt đầu.</p>
                 )}
                 {product.hotspots
                   .filter(
@@ -460,7 +483,7 @@ export default function Admin() {
                         "editor-node " + (selected === h.id ? "selected" : "")
                       }
                       style={{ left: `${h.x}%`, top: `${h.y}%` }}
-                      aria-label={`Edit ${h.title}`}
+                      aria-label={`Sửa ${h.title}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelected(h.id);
@@ -478,7 +501,13 @@ export default function Admin() {
                         key={k}
                         className={k === "description" ? "wide" : ""}
                       >
-                        {k}
+                        {k === "title"
+                          ? "Tiêu đề"
+                          : k === "subtitle"
+                            ? "Tiêu đề phụ"
+                            : k === "type"
+                              ? "Loại"
+                              : "Mô tả"}
                         <input
                           value={active[k]}
                           onChange={(e) =>
@@ -489,7 +518,7 @@ export default function Admin() {
                     ),
                   )}
                   <p className="muted">
-                    Position: {active.x}% / {active.y}%
+                    Vị trí: {active.x}% / {active.y}%
                   </p>
                   <button
                     className="danger"
@@ -502,14 +531,14 @@ export default function Admin() {
                       setSelected(null);
                     }}
                   >
-                    Remove hotspot
+                    Xóa hotspot
                   </button>
                 </div>
               )}
             </div>
             {preview && (
               <div className="preview-box">
-                <h2>Explorer preview</h2>
+                <h2>Xem trước Explorer</h2>
                 <DeviceCanvas
                   product={product}
                   active={selected}

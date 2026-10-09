@@ -55,10 +55,13 @@ const assert = require("node:assert/strict");
     .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })
     .waitFor();
   await page.getByRole("link", { name: "Admin", exact: false }).click();
+  await page.getByRole("heading", { name: "Quản lý mainboard" }).waitFor();
+  await page.getByRole("heading", { name: "Linh kiện đi kèm" }).waitFor();
+  await page.getByRole("button", { name: "Lưu sản phẩm" }).click();
   await page
-    .getByRole("heading", { name: "Content Studio requires a server" })
+    .getByText("Đã lưu sản phẩm trên trình duyệt này.", { exact: true })
     .waitFor();
-  await page.getByRole("link", { name: "← Back to Explorer" }).click();
+  await page.getByRole("link", { name: "← Về trang Explorer" }).click();
   await page
     .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })
     .waitFor();
@@ -66,7 +69,7 @@ const assert = require("node:assert/strict");
   assert.deepEqual(failures, []);
   await browser.close();
   console.log(
-    "Pages smoke passed: JS/CSS/image loading, hotspots, compatibility, nested route reload, admin explanation.",
+    "Pages smoke passed: JS/CSS/image loading, hotspots, compatibility, nested route reload and browser-local admin editing.",
   );
 })().catch((e) => {
   console.error(e);

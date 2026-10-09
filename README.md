@@ -28,7 +28,7 @@ npm run dev
 
 ## Content studio
 
-Visit `/admin`, enter the token from ADMIN_TOKEN and click **Load all products**. Create or select a product, fill in specifications, upload media by role, and select Top or Rear I/O editor view. Click the image to create percentage-based hotspots; click a node to edit its title, subtitle, type and explanation. Preview the panel, save a draft, then publish. Publication requires a top image, CPU socket, memory type and at least five hotspots. Drafts require authenticated API access. Never place the admin secret in NEXT_PUBLIC variables.
+Visit `/admin`, enter the token from ADMIN_TOKEN and click **Tải danh sách sản phẩm**. Create or select a product, fill in specifications, upload media by role, and select Top or Rear I/O editor view. Click the image to create percentage-based hotspots; click a node to edit its title, subtitle, type and explanation. Preview the panel, save a draft, then publish. Publication requires a top image, CPU socket, memory type and at least five hotspots. Drafts require authenticated API access. Never place the admin secret in NEXT_PUBLIC variables.
 
 The local upload adapter saves to `public/uploads` (8 MB limit, raster formats only). Use a persistent writable volume on a self-hosted deployment. Replace `app/api/media/route.ts` with your Cloudinary or S3 adapter before deploying to ephemeral/serverless infrastructure. Production should also add individual admin accounts and a rate limit; the current content API uses a single server-side bearer secret.
 
@@ -72,4 +72,4 @@ The current manufacturer lists 256 GB RAM, 4 M.2 slots and 2 SATA ports, differi
 
 The Pages workflow builds and deploys a static Explorer to https://kunio2910.github.io/TechExplorer/. Repository Settings → Pages → Source must be **GitHub Actions**. It uses `/TechExplorer` as the base path for routes, JavaScript, fonts and images. `npm run build:pages` writes the deployable files to `pages-out` without modifying the server application.
 
-GitHub Pages cannot run the Node.js API or PostgreSQL. The static version includes the seeded products, hotspots, search, comparison and compatibility checks. Content Studio displays a clear server requirement; editing/upload and shared data remain available with the regular Next.js server deployment. Change seed data and push to update the static catalog.
+GitHub Pages cannot run the Node.js API or PostgreSQL. The static version includes the seeded products, hotspots, search, comparison and compatibility checks. Trang `/admin/` trên GitHub Pages cho phép chỉnh sửa mainboard, thông số, hotspot và linh kiện đi kèm bằng `localStorage` của trình duyệt hiện tại; dữ liệu này không tự đồng bộ giữa các thiết bị. Bản Next.js server vẫn cung cấp quản trị đầy đủ qua API và PostgreSQL để dùng chung. Change seed data and push to update the static catalog.
