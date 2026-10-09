@@ -124,6 +124,7 @@ function seedCatalogComponents(products: Product[]): CatalogComponent[] {
         type,
         brand: "",
         imageUrl: "",
+        gallery: [],
         description: item.notes,
         spec: {},
         status: "published",

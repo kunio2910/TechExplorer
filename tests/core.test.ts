@@ -4,6 +4,7 @@ import { evaluateCompatibility } from "../lib/compatibility";
 import { validateProduct } from "../lib/validation";
 import { seedProducts } from "../lib/seed";
 import { authorized } from "../lib/auth";
+import { componentGallery, productGallery } from "../lib/gallery";
 const seed = seedProducts[0];
 test("AM5 DDR5 pass and mismatched sockets/types fail", () => {
   assert.deepEqual(
@@ -63,4 +64,20 @@ test("writes cannot authenticate without a configured secret", () => {
   );
   if (old) process.env.ADMIN_TOKEN = old;
   else delete process.env.ADMIN_TOKEN;
+});
+test("image galleries deduplicate the main image and ignore empty URLs", () => {
+  assert.deepEqual(
+    productGallery({
+      media: { top: "/media/main.webp", main: "/media/main.webp" },
+      gallery: [" /media/angle.webp ", "", "/media/main.webp"],
+    }),
+    ["/media/main.webp", "/media/angle.webp"],
+  );
+  assert.deepEqual(
+    componentGallery({
+      imageUrl: "/media/cpu.webp",
+      gallery: ["/media/cpu.webp", "/media/cpu-side.webp"],
+    }),
+    ["/media/cpu.webp", "/media/cpu-side.webp"],
+  );
 });

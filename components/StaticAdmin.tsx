@@ -9,6 +9,7 @@ import {
 } from "firebase/auth";
 import { assetUrl, basePath } from "@/lib/runtime";
 import { auth } from "@/lib/firebase-client";
+import { componentGallery, productGallery } from "@/lib/gallery";
 import {
   deleteCatalogComponent,
   deleteProduct,
@@ -26,7 +27,9 @@ import type {
   Hotspot,
   Product,
 } from "@/lib/types";
+import { CircleX } from "lucide-react";
 import ComponentCanvas from "./ComponentCanvas";
+import ImageGallery from "./ImageGallery";
 
 type AdminTab = "Mainboard" | CatalogComponentType;
 const tabs: AdminTab[] = ["Mainboard", "CPU", "RAM", "SSD", "GPU", "PSU"];
@@ -67,6 +70,7 @@ function blankComponent(type: CatalogComponentType): CatalogComponent {
     brand: "",
     model: "",
     imageUrl: "",
+    gallery: [],
     description: "",
     spec: {},
     compatibility: "warning",
@@ -191,6 +195,77 @@ export default function StaticAdmin({
     setComponent((current) => ({ ...current, ...patch }));
   }
 
+  function updateProductGallery(index: number, value: string) {
+    const gallery = [...(product.gallery ?? [])];
+    gallery[index] = value;
+    updateProduct({ gallery });
+  }
+
+  function updateComponentGallery(index: number, value: string) {
+    const gallery = [...(component.gallery ?? [])];
+    gallery[index] = value;
+    updateComponentDraft({ gallery });
+  }
+
+  async function removeProductById(id: string, name: string) {
+    if (!window.confirm("Bạn có chắc muốn xóa “" + name + "” không?")) return;
+    setBusy(true);
+    try {
+      await deleteProduct(id);
+      const next = products.filter((item) => item.id !== id);
+      setProducts(next);
+      if (product.id === id) setProduct(copy(next[0] ?? blankProduct()));
+      setMessage("Đã xóa mainboard trên Firestore.");
+    } catch (error) {
+      setMessage(firestoreErrorMessage(error, "xóa", auth.currentUser?.uid));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeComponentById(id: string, name: string) {
+    if (!window.confirm("Bạn có chắc muốn xóa “" + name + "” không?")) return;
+    setBusy(true);
+    try {
+      await deleteCatalogComponent(id);
+      const next = components.filter((item) => item.id !== id);
+      setComponents(next);
+      if (component.id === id) {
+        const componentType = tab === "Mainboard" ? "CPU" : tab;
+        setComponent(
+          copy(
+            next.find((item) => item.type === componentType) ??
+              blankComponent(componentType),
+          ),
+        );
+      }
+      setMessage("Đã xóa linh kiện trên Firestore.");
+    } catch (error) {
+      setMessage(firestoreErrorMessage(error, "xóa", auth.currentUser?.uid));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function downloadBackup() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      products,
+      components,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download =
+      "tech-explorer-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    link.click();
+    URL.revokeObjectURL(url);
+    setMessage("Đã tải file backup dữ liệu JSON.");
+  }
+
   async function saveCurrent() {
     setBusy(true);
     try {
@@ -209,8 +284,8 @@ export default function StaticAdmin({
         setProduct(copy(saved));
         setMessage("Đã lưu mainboard lên Firestore.");
       } else {
-        if (!component.name.trim() || !component.model.trim()) {
-          setMessage("Vui lòng nhập tên và mã sản phẩm.");
+        if (!component.name.trim()) {
+          setMessage("Vui lòng nhập tên linh kiện.");
           return;
         }
         const saved = { ...component, type: tab };
@@ -248,26 +323,10 @@ export default function StaticAdmin({
   }
 
   async function removeCurrent() {
-    setBusy(true);
-    try {
-      if (tab === "Mainboard") {
-        await deleteProduct(product.id);
-        const next = products.filter((item) => item.id !== product.id);
-        setProducts(next);
-        setProduct(copy(next[0] ?? blankProduct()));
-      } else {
-        await deleteCatalogComponent(component.id);
-        const next = components.filter((item) => item.id !== component.id);
-        setComponents(next);
-        setComponent(
-          copy(next.find((item) => item.type === tab) ?? blankComponent(tab)),
-        );
-      }
-      setMessage("Đã xóa dữ liệu trên Firestore.");
-    } catch (error) {
-      setMessage(firestoreErrorMessage(error, "xóa", auth.currentUser?.uid));
-    } finally {
-      setBusy(false);
+    if (tab === "Mainboard") {
+      await removeProductById(product.id, product.name);
+    } else {
+      await removeComponentById(component.id, component.name);
     }
   }
 
@@ -424,7 +483,7 @@ export default function StaticAdmin({
           <span className="eyebrow">TECH EXPLORER / FIRESTORE</span>
           <h1>Quản lý phần cứng</h1>
           <p className="admin-title-note">
-            Quản lý mainboard, CPU, RAM và SSD trong Firestore.
+            Quản lý mainboard, CPU, RAM, SSD, GPU và PSU trong Firestore.
           </p>
         </div>
         <div className="admin-header-actions">
@@ -446,6 +505,9 @@ export default function StaticAdmin({
           ))}
         </nav>
         <div className="admin-toolbar-actions">
+          <button disabled={busy} onClick={downloadBackup}>
+            ↓ Backup JSON
+          </button>
           <button disabled={busy} onClick={() => void seedFirestore()}>
             ↥ Đồng bộ dữ liệu mẫu
           </button>
@@ -478,8 +540,9 @@ export default function StaticAdmin({
           <div className="admin-cards">
             {tab === "Mainboard"
               ? filteredProducts.map((item) => (
-                  <button
-                    key={item.id}
+                  <div className="admin-card-row" key={item.id}>
+                    <button
+                      type="button"
                     className={`admin-card ${product.id === item.id ? "selected" : ""}`}
                     onClick={() => setProduct(copy(item))}
                   >
@@ -488,11 +551,22 @@ export default function StaticAdmin({
                       {item.brand} · {item.spec.Socket ?? "Chưa có socket"}
                     </span>
                     <em>{statusLabel(item.status)}</em>
-                  </button>
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-card-delete"
+                      aria-label={"Xóa " + item.name}
+                      disabled={busy}
+                      onClick={() => void removeProductById(item.id, item.name)}
+                    >
+                      <CircleX size={19} />
+                    </button>
+                  </div>
                 ))
               : filteredComponents.map((item) => (
-                  <button
-                    key={item.id}
+                  <div className="admin-card-row" key={item.id}>
+                    <button
+                      type="button"
                     className={`admin-card ${component.id === item.id ? "selected" : ""}`}
                     onClick={() => setComponent(copy(item))}
                   >
@@ -501,7 +575,17 @@ export default function StaticAdmin({
                       {item.brand || "Chưa có hãng"} · {item.model}
                     </span>
                     <em>{statusLabel(item.status)}</em>
-                  </button>
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-card-delete"
+                      aria-label={"Xóa " + item.name}
+                      disabled={busy}
+                      onClick={() => void removeComponentById(item.id, item.name)}
+                    >
+                      <CircleX size={19} />
+                    </button>
+                  </div>
                 ))}
             {!activeItems.length && (
               <p className="muted">
@@ -733,6 +817,21 @@ export default function StaticAdmin({
                 }
               />
             </label>
+            <div className="admin-gallery-fields">
+              {Array.from({ length: 4 }, (_, index) => (
+                <label key={index}>
+                  Thumbnail {index + 1}
+                  <input
+                    type="url"
+                    value={product.gallery?.[index] ?? ""}
+                    placeholder="https://… hoặc /media/…"
+                    onChange={(event) =>
+                      updateProductGallery(index, event.target.value)
+                    }
+                  />
+                </label>
+              ))}
+            </div>
             <div className="admin-actions">
               <button
                 className="primary"
@@ -809,6 +908,21 @@ export default function StaticAdmin({
                   }
                 />
               </label>
+              <div className="admin-gallery-fields wide">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <label key={index}>
+                    Thumbnail {index + 1}
+                    <input
+                      type="url"
+                      value={component.gallery?.[index] ?? ""}
+                      placeholder="https://… hoặc /media/…"
+                      onChange={(event) =>
+                        updateComponentGallery(index, event.target.value)
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
               <label className="wide">
                 Mô tả
                 <textarea
@@ -899,6 +1013,12 @@ export default function StaticAdmin({
                 }
               />
             </label>
+            <h3>Image gallery</h3>
+            <ImageGallery
+              images={productGallery(product)}
+              alt="Ảnh mainboard xem trước"
+              className="admin-gallery-preview"
+            />
             <div
               ref={boardRef}
               className="editor-board"
@@ -997,7 +1117,7 @@ export default function StaticAdmin({
               </div>
               <span>{component.type} · không có hotspot</span>
             </div>
-            <ComponentCanvas component={component} />
+            <ComponentCanvas key={component.id} component={component} />
             <p className="admin-local-note">
               Lưu thay đổi để cập nhật ảnh và thông tin linh kiện lên Firestore.
             </p>

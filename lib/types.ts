@@ -34,6 +34,7 @@ export type CatalogComponent = AssociatedComponent & {
   type: CatalogComponentType;
   brand: string;
   imageUrl?: string;
+  gallery?: string[];
   description: string;
   spec: Record<string, string>;
   status: "draft" | "published";
@@ -49,6 +50,7 @@ export type Product = {
   status: "draft" | "published";
   spec: Record<string, string>;
   media: Partial<Record<MediaRole, string>>;
+  gallery?: string[];
   hotspots: Hotspot[];
   components: AssociatedComponent[];
 };

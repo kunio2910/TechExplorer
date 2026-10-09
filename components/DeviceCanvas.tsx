@@ -1,7 +1,17 @@
 "use client";
 import { assetUrl, basePath } from "@/lib/runtime";
-import { useState } from "react";
-import { Plus, Minus, RotateCcw, RotateCw, Maximize, Move } from "lucide-react";
+import { productGallery } from "@/lib/gallery";
+import { useEffect, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Minus,
+  RotateCcw,
+  RotateCw,
+  Maximize,
+  Move,
+} from "lucide-react";
 import { Product, Hotspot } from "@/lib/types";
 export default function DeviceCanvas({
   product,
@@ -19,18 +29,36 @@ export default function DeviceCanvas({
   const [ratio, setRatio] = useState(720 / 950);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const [failed, setFailed] = useState(false);
+  const gallery = view === "top" ? productGallery(product) : [];
+  const safeGalleryIndex = Math.min(
+    galleryIndex,
+    Math.max(gallery.length - 1, 0),
+  );
+  useEffect(() => {
+    setGalleryIndex(0);
+    setFailed(false);
+  }, [product.id, view]);
+  useEffect(() => {
+    setGalleryIndex((index) =>
+      Math.min(index, Math.max(gallery.length - 1, 0)),
+    );
+  }, [gallery.length]);
   const hotspots = product.hotspots.filter(
     (h) => h.view === (view === "rear_io" ? "rear_io" : "top"),
   );
   const source =
-    view === "rear_io"
+    view === "top" && gallery.length
+      ? gallery[safeGalleryIndex]
+      : view === "rear_io"
       ? product.media.rear_io
       : view === "xray"
         ? product.media.xray
         : view === "exploded"
           ? product.media.exploded
           : product.media.top;
+  const showHotspots = view !== "top" || safeGalleryIndex === 0;
   return (
     <div className={"canvas " + (view === "signal" ? "signal" : "")}>
       <div className="canvas-meta">
@@ -50,6 +78,7 @@ export default function DeviceCanvas({
       >
         {source && !failed ? (
           <img
+            key={source}
             className="board-image"
             src={assetUrl(source)}
             alt={`${product.name} ${view} view`}
@@ -86,6 +115,7 @@ export default function DeviceCanvas({
           </svg>
         )}
         {!failed &&
+          showHotspots &&
           hotspots.map((h, index) => (
             <button
               key={h.id}
@@ -110,6 +140,38 @@ export default function DeviceCanvas({
             </button>
           ))}
       </div>
+      {view === "top" && gallery.length > 1 && (
+        <div className="device-gallery" aria-label="Image gallery">
+          <button
+            aria-label="Ảnh mainboard trước"
+            onClick={() =>
+              setGalleryIndex(
+                (safeGalleryIndex - 1 + gallery.length) % gallery.length,
+              )
+            }
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <div className="device-gallery-thumbnails">
+            {gallery.map((image, index) => (
+              <button
+                key={image + "-" + index}
+                className={index === safeGalleryIndex ? "active" : ""}
+                aria-label={"Chọn ảnh mainboard " + (index + 1)}
+                onClick={() => setGalleryIndex(index)}
+              >
+                <img src={assetUrl(image)} alt="" />
+              </button>
+            ))}
+          </div>
+          <button
+            aria-label="Ảnh mainboard tiếp theo"
+            onClick={() => setGalleryIndex((safeGalleryIndex + 1) % gallery.length)}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
       <div className="canvas-floor" />
       <div className="canvas-caption">
         <Move size={13} /> Select a component to discover what connects it all.

@@ -162,6 +162,7 @@ export async function seedProductsToFirestore(products: Product[]) {
           type,
           brand: "",
           imageUrl: "",
+          gallery: [],
           description: component.notes,
           spec: {},
           status: "published",

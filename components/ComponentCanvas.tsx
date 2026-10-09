@@ -1,8 +1,18 @@
 "use client";
 
 import { assetUrl } from "@/lib/runtime";
+import { componentGallery } from "@/lib/gallery";
 import type { CatalogComponent } from "@/lib/types";
-import { Maximize, Minus, Move, Plus, RotateCcw, RotateCw } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Maximize,
+  Minus,
+  Move,
+  Plus,
+  RotateCcw,
+  RotateCw,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function ComponentCanvas({
@@ -13,11 +23,18 @@ export default function ComponentCanvas({
   const [ratio, setRatio] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const [failed, setFailed] = useState(false);
-  const source = component.imageUrl?.trim();
+  const images = componentGallery(component);
+  const safeGalleryIndex = Math.min(
+    galleryIndex,
+    Math.max(images.length - 1, 0),
+  );
+  const source = images[safeGalleryIndex];
   useEffect(() => {
     setFailed(false);
-  }, [source]);
+    setGalleryIndex((index) => Math.min(index, Math.max(images.length - 1, 0)));
+  }, [source, images.length]);
 
   return (
     <div className="canvas component-canvas">
@@ -36,6 +53,7 @@ export default function ComponentCanvas({
       >
         {source && !failed ? (
           <img
+            key={source}
             className="component-image"
             src={assetUrl(source)}
             alt={`${component.name} ${component.model}`}
@@ -54,6 +72,38 @@ export default function ComponentCanvas({
           </div>
         )}
       </div>
+      {images.length > 1 && (
+        <div className="component-gallery">
+          <button
+            aria-label="Ảnh linh kiện trước"
+            onClick={() =>
+              setGalleryIndex(
+                (safeGalleryIndex - 1 + images.length) % images.length,
+              )
+            }
+          >
+            <ChevronLeft size={15} />
+          </button>
+          <div className="component-gallery-thumbnails" aria-label="Ảnh thu nhỏ">
+            {images.map((image, index) => (
+              <button
+                key={image + "-" + index}
+                className={index === safeGalleryIndex ? "active" : ""}
+                aria-label={"Chọn ảnh linh kiện " + (index + 1)}
+                onClick={() => setGalleryIndex(index)}
+              >
+                <img src={assetUrl(image)} alt="" />
+              </button>
+            ))}
+          </div>
+          <button
+            aria-label="Ảnh linh kiện tiếp theo"
+            onClick={() => setGalleryIndex((safeGalleryIndex + 1) % images.length)}
+          >
+            <ChevronRight size={15} />
+          </button>
+        </div>
+      )}
       <div className="canvas-floor" />
       <div className="canvas-caption">
         <Move size={13} /> Hình ảnh linh kiện, không có hotspot.
