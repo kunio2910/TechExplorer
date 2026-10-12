@@ -8,6 +8,419 @@
   --border: #203749;
   --soft: #0d1c2a;
 }
+/* Catalog discovery and content management */
+.home-category-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+.home-category-grid button {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 18px;
+  text-align: left;
+  background: linear-gradient(145deg, #103448, var(--panel));
+}
+.home-category-grid svg {
+  color: var(--cyan);
+}
+.home-category-grid span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.recent-devices {
+  margin: 28px 0;
+}
+.recent-device-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.device-card-shell {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.device-card-shell .device-card {
+  width: 100%;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+}
+.device-card-shell .device-card h2 {
+  white-space: normal;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.8em;
+}
+.device-key-spec {
+  display: block;
+  line-height: 1.6;
+  color: var(--muted);
+  font-size: 12px;
+}
+.compare-card-action {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 0;
+  color: var(--cyan);
+}
+.catalog-filters {
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  margin: 12px 0;
+  text-align: left;
+}
+.catalog-filters h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.catalog-filters label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 14px;
+}
+.catalog-filters select {
+  margin-top: 5px;
+}
+.catalog-filters .section-heading button {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mobile-filters {
+  display: none;
+}
+.review-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.review-actions button {
+  padding: 9px 12px;
+}
+.comparison-tray {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 24px;
+  background: #081a28f5;
+  border-top: 1px solid var(--cyan);
+  box-shadow: 0 -5px 25px #0006;
+}
+.comparison-tray > div {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+.comparison-tray button {
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+.comparison-tray > div button {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-shell:has(.comparison-tray) {
+  padding-bottom: 85px;
+}
+.comparison-dialog {
+  width: min(1100px, 95vw);
+}
+.comparison-dialog th img {
+  display: block;
+  width: 100px;
+  height: 90px;
+  object-fit: contain;
+  margin: 0 auto 12px;
+}
+.comparison-dialog .different {
+  background: #16415155;
+}
+.comparison-dialog td {
+  min-width: 160px;
+}
+.comparison-dialog table {
+  width: 100%;
+}
+.callout-toggle {
+  position: absolute;
+  top: 45px;
+  right: 18px;
+  z-index: 8;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+.hide-callouts .hotspot .callout {
+  visibility: hidden;
+  opacity: 0;
+}
+.hide-callouts .hotspot:hover .callout,
+.hide-callouts .hotspot:focus-visible .callout,
+.hide-callouts .hotspot.selected .callout {
+  visibility: visible;
+  opacity: 1;
+}
+.board-image,
+.component-image {
+  cursor: zoom-in;
+}
+.image-lightbox {
+  width: min(1200px, 96vw);
+  height: 90vh;
+  padding: 20px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #050c14;
+}
+.image-lightbox::backdrop {
+  background: #000c;
+}
+.image-lightbox > img {
+  display: block;
+  width: 100%;
+  height: 75%;
+  object-fit: contain;
+}
+.image-lightbox > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 25px;
+}
+.image-lightbox button {
+  padding: 10px 16px;
+}
+.image-lightbox p {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.image-lightbox .lightbox-close {
+  display: block;
+  margin-left: auto;
+}
+.media-editor {
+  margin-bottom: 20px;
+}
+.media-dropzone {
+  display: block;
+  padding: 20px;
+  border: 1px dashed var(--cyan);
+  border-radius: 8px;
+  color: var(--cyan);
+  cursor: pointer;
+  background: #0b2332;
+}
+.media-dropzone input {
+  margin-top: 10px;
+  max-width: 100%;
+  font-size: 12px;
+}
+.media-editor p {
+  font-size: 12px;
+}
+.media-sort-list {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.media-sort-card {
+  flex: 0 0 115px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 5px;
+  cursor: grab;
+  background: var(--soft);
+}
+.media-sort-card img {
+  width: 100%;
+  height: 90px;
+  object-fit: contain;
+}
+.media-sort-card > button {
+  width: 100%;
+  font-size: 10px;
+  padding: 5px;
+}
+.media-sort-card > div {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+}
+.media-sort-card > div button {
+  flex: 1;
+}
+.admin-card-image {
+  width: 50px;
+  height: 55px;
+  object-fit: contain;
+  grid-row: 1/5;
+}
+.admin-card:has(.admin-card-image) {
+  grid-template-columns: 50px minmax(0, 1fr);
+  column-gap: 9px;
+}
+.admin-card small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.admin-status-filter {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.admin-status-filter select {
+  margin-top: 6px;
+}
+.trash-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.trash-row > span {
+  flex: 1;
+}
+.trash-row small {
+  display: block;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.admin-validation {
+  grid-column: 2/-1;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.admin-validation h2 {
+  font-size: 17px;
+}
+.admin-validation > div {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.admin-validation button {
+  padding: 5px 8px;
+  margin-left: 10px;
+}
+.check-pass {
+  color: #8be2bd;
+}
+.check-missing {
+  color: #ffd085;
+}
+.admin-validation ol {
+  padding-left: 20px;
+}
+@media (max-width: 1000px) {
+  .mobile-filters .catalog-filters .section-heading {
+    flex-basis: 100%;
+  }
+  .catalog-filters .section-heading button {
+    min-height: 32px;
+    padding: 5px 9px;
+  }
+}
+.admin-validation li {
+  padding: 8px;
+}
+.admin-validation small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+@media (max-width: 1100px) {
+  .home-category-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .recent-device-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1000px) {
+  .mobile-filters {
+    display: block;
+  }
+  .mobile-filters .catalog-filters {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .mobile-filters label {
+    flex: 1;
+    min-width: 120px;
+  }
+  .admin-validation {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 700px) {
+  .home-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .recent-device-grid {
+    grid-template-columns: 1fr;
+  }
+  .home-category-grid button {
+    padding: 16px;
+  }
+  .comparison-tray {
+    padding: 8px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .comparison-tray strong {
+    font-size: 11px;
+  }
+  .comparison-tray > div {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .comparison-tray > button {
+    margin-left: auto;
+  }
+  .review-actions button {
+    font-size: 12px;
+    padding: 8px;
+  }
+  .trash-row {
+    flex-wrap: wrap;
+  }
+  .trash-row > span {
+    flex-basis: 100%;
+  }
+  .callout-toggle {
+    top: 40px;
+    right: 10px;
+  }
+  .admin-validation {
+    margin-bottom: 15px;
+  }
+}
 * {
   box-sizing: border-box;
 }
@@ -522,7 +935,9 @@ select {
 .component-gallery-thumbnails button.active,
 .device-gallery-thumbnails button.active {
   border-color: var(--cyan);
-  box-shadow: 0 0 0 1px var(--cyan), 0 0 12px #42d9ff33;
+  box-shadow:
+    0 0 0 1px var(--cyan),
+    0 0 12px #42d9ff33;
 }
 .gallery-thumbnail img,
 .component-gallery-thumbnails img,
@@ -882,7 +1297,9 @@ select {
   object-fit: contain;
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 24px 70px #0008, 0 0 30px #27d8ff18;
+  box-shadow:
+    0 24px 70px #0008,
+    0 0 30px #27d8ff18;
 }
 .home-detail-panel {
   min-height: 760px;
@@ -1387,12 +1804,37 @@ select {
   border-radius: 10px;
   background: var(--soft);
 }
-.backup-upload { padding: 9px 13px; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; }
-.backup-upload input { display: block; max-width: 220px; margin-top: 5px; font-size: 11px; }
-.backup-preview { padding: 20px; margin-bottom: 16px; border: 1px solid var(--cyan); border-radius: 8px; background: var(--panel); }
-.backup-preview ul { max-height: 200px; overflow-y: auto; }
-.backup-preview button { padding: 8px 14px; margin: 10px 8px 0 0; }
-.admin-toolbar-actions > span { font-size: 12px; color: var(--cyan); }
+.backup-upload {
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+}
+.backup-upload input {
+  display: block;
+  max-width: 220px;
+  margin-top: 5px;
+  font-size: 11px;
+}
+.backup-preview {
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.backup-preview ul {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.backup-preview button {
+  padding: 8px 14px;
+  margin: 10px 8px 0 0;
+}
+.admin-toolbar-actions > span {
+  font-size: 12px;
+  color: var(--cyan);
+}
 .admin-tabs {
   gap: 5px;
   overflow-x: auto;
@@ -1755,10 +2197,19 @@ select {
   line-height: 1.5;
 }
 .admin-component-preview .component-canvas {
-  min-height: 520px;
-  height: 520px;
+  min-height: 680px;
+  height: 680px;
   max-height: none;
   margin-top: 16px;
+}
+.canvas:has(.device-gallery) {
+  min-height: 790px;
+}
+.canvas:has(.component-gallery) {
+  min-height: 740px;
+}
+.admin-component-preview .canvas:has(.component-gallery) {
+  min-height: 680px;
 }
 .admin-component-preview .component-canvas .component-image-stage {
   width: min(74%, 360px);
@@ -2530,4 +2981,30 @@ select {
   .spec-table > div {
     font-size: 11px;
   }
+}
+
+@media (min-width: 1101px) {
+  .admin-workspace {
+    grid-template-areas: "list form check" "list form preview";
+    align-items: start;
+  }
+  .admin-list-panel {
+    grid-area: list;
+  }
+  .admin-form {
+    grid-area: form;
+  }
+  .admin-preview {
+    grid-area: preview;
+  }
+  .admin-validation {
+    grid-area: check;
+  }
+}
+.admin-validation ol {
+  max-height: 180px;
+  overflow-y: auto;
+}
+.admin-validation h2:not(:first-child) {
+  margin-top: 20px;
 }

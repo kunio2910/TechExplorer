@@ -11,12 +11,18 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { firestore } from "./firebase-client";
-import type { CatalogBackup } from './backup';
+import type { CatalogBackup } from "./backup";
 
 export async function restoreCatalog(backup: CatalogBackup) {
   const batch = writeBatch(firestore);
-  for (const item of backup.products) batch.set(doc(firestore, 'products', item.id), clean(item));
-  for (const item of backup.components) batch.set(doc(firestore, 'components', item.id), clean(item));
+  for (const item of backup.products) {
+    checkSize(item);
+    batch.set(doc(firestore, "products", item.id), clean(item));
+  }
+  for (const item of backup.components) {
+    checkSize(item);
+    batch.set(doc(firestore, "components", item.id), clean(item));
+  }
   await batch.commit();
 }
 import type {
@@ -100,6 +106,7 @@ export async function loadAllProducts(): Promise<Product[]> {
 }
 
 export async function saveProduct(product: Product) {
+  checkSize(product);
   await setDoc(doc(firestore, "products", product.id), clean(product));
 }
 
@@ -151,7 +158,14 @@ export function subscribeToPublishedComponents(
 }
 
 export async function saveCatalogComponent(component: CatalogComponent) {
+  checkSize(component);
   await setDoc(doc(firestore, "components", component.id), clean(component));
+}
+function checkSize(value: unknown) {
+  if (new TextEncoder().encode(JSON.stringify(value)).length > 900000)
+    throw new Error(
+      "Dữ liệu ảnh quá lớn. Hãy giảm số ảnh hoặc dùng URL trước khi lưu.",
+    );
 }
 
 export async function deleteCatalogComponent(componentId: string) {

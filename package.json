@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/core.test.ts tests/backup.test.ts",
+    "test": "tsx --test tests/core.test.ts tests/backup.test.ts tests/catalog.test.ts",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
@@ -48,7 +48,8 @@
     "prettier": "^3.9.9",
     "prisma": "^6.19.3",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "esbuild": "^0.28.2"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.0"

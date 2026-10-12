@@ -14,6 +14,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import ImageLightbox from "./ImageLightbox";
 
 export default function ComponentCanvas({
   component,
@@ -25,6 +26,7 @@ export default function ComponentCanvas({
   const [rotation, setRotation] = useState(0);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const images = componentGallery(component);
   const safeGalleryIndex = Math.min(
     galleryIndex,
@@ -38,6 +40,14 @@ export default function ComponentCanvas({
 
   return (
     <div className="canvas component-canvas">
+      {source && (
+        <ImageLightbox
+          images={images}
+          initial={source}
+          open={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
       <div className="canvas-meta">
         <span>
           <i className="live-dot" /> XEM TRƯỚC LINH KIỆN
@@ -66,11 +76,10 @@ export default function ComponentCanvas({
               }}
               onError={() => setFailed(true)}
               draggable={false}
+              onClick={() => setViewerOpen(true)}
             />
           ) : (
-            <div className="image-placeholder">
-              Chưa có ảnh linh kiện
-            </div>
+            <div className="image-placeholder">Chưa có ảnh linh kiện</div>
           )}
         </div>
         {images.length > 1 && (
@@ -85,7 +94,10 @@ export default function ComponentCanvas({
             >
               <ChevronLeft size={15} />
             </button>
-            <div className="component-gallery-thumbnails" aria-label="Ảnh thu nhỏ">
+            <div
+              className="component-gallery-thumbnails"
+              aria-label="Ảnh thu nhỏ"
+            >
               {images.map((image, index) => (
                 <button
                   key={image + "-" + index}
@@ -99,7 +111,9 @@ export default function ComponentCanvas({
             </div>
             <button
               aria-label="Ảnh linh kiện tiếp theo"
-              onClick={() => setGalleryIndex((safeGalleryIndex + 1) % images.length)}
+              onClick={() =>
+                setGalleryIndex((safeGalleryIndex + 1) % images.length)
+              }
             >
               <ChevronRight size={15} />
             </button>

@@ -13,6 +13,7 @@ import {
   Move,
 } from "lucide-react";
 import { Product, Hotspot } from "@/lib/types";
+import ImageLightbox from "./ImageLightbox";
 export default function DeviceCanvas({
   product,
   active,
@@ -31,6 +32,8 @@ export default function DeviceCanvas({
   const [rotation, setRotation] = useState(0);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [showLabels, setShowLabels] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const gallery = view === "top" ? productGallery(product) : [];
   const safeGalleryIndex = Math.min(
     galleryIndex,
@@ -52,15 +55,36 @@ export default function DeviceCanvas({
     view === "top" && gallery.length
       ? gallery[safeGalleryIndex]
       : view === "rear_io"
-      ? product.media.rear_io
-      : view === "xray"
-        ? product.media.xray
-        : view === "exploded"
-          ? product.media.exploded
-          : product.media.top;
+        ? product.media.rear_io
+        : view === "xray"
+          ? product.media.xray
+          : view === "exploded"
+            ? product.media.exploded
+            : product.media.top;
   const showHotspots = view !== "top" || safeGalleryIndex === 0;
   return (
-    <div className={"canvas " + (view === "signal" ? "signal" : "")}>
+    <div
+      className={
+        "canvas " +
+        (showLabels ? "" : "hide-callouts ") +
+        (view === "signal" ? "signal" : "")
+      }
+    >
+      <button
+        className="callout-toggle"
+        aria-pressed={showLabels}
+        onClick={() => setShowLabels((v) => !v)}
+      >
+        {showLabels ? "Ẩn chú thích" : "Hiện chú thích"}
+      </button>
+      {source && (
+        <ImageLightbox
+          images={gallery.length ? gallery : [source]}
+          initial={source}
+          open={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
       <div className="canvas-meta">
         <span>
           <i className="live-dot" /> KHÁM PHÁ TƯƠNG TÁC
@@ -92,6 +116,7 @@ export default function DeviceCanvas({
               }
               onError={() => setFailed(true)}
               draggable={false}
+              onClick={() => setViewerOpen(true)}
             />
           ) : (
             <div className="image-placeholder">Không tải được ảnh sản phẩm</div>
@@ -167,7 +192,9 @@ export default function DeviceCanvas({
             </div>
             <button
               aria-label="Ảnh mainboard tiếp theo"
-              onClick={() => setGalleryIndex((safeGalleryIndex + 1) % gallery.length)}
+              onClick={() =>
+                setGalleryIndex((safeGalleryIndex + 1) % gallery.length)
+              }
             >
               <ChevronRight size={16} />
             </button>

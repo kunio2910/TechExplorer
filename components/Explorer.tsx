@@ -2,7 +2,7 @@
 import { assetUrl, basePath } from "@/lib/runtime";
 import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
-import { categoryLabel } from '@/lib/labels';
+import { categoryLabel } from "@/lib/labels";
 import {
   Search,
   Cpu,
@@ -32,6 +32,15 @@ import DeviceCanvas from "./DeviceCanvas";
 import DetailPanel from "./DetailPanel";
 import ComponentCanvas from "./ComponentCanvas";
 import ComponentDetailPanel from "./ComponentDetailPanel";
+import CatalogCard from "./CatalogCard";
+import CatalogFilters from "./CatalogFilters";
+import DeviceComparison from "./DeviceComparison";
+import {
+  filterDevices,
+  deviceType,
+  specLabel,
+  type Device,
+} from "@/lib/catalog-tools";
 const categories = [
   ["Mainboard", Cpu],
   ["CPU", Cpu],
@@ -139,7 +148,6 @@ export default function Explorer({
   products: Product[];
   initialSlug?: string;
 }) {
-  const compareDialog = useRef<HTMLDialogElement>(null);
   const technologyDialog = useRef<HTMLDialogElement>(null);
   const [catalog, setCatalog] = useState(products);
   const [selected, setSelected] = useState(initialSlug);
@@ -163,6 +171,50 @@ export default function Explorer({
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
   useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get("device");
+    if (slug) {
+      setSelected(slug);
+      setActiveCategory("Mainboard");
+      setWorkspaceMode("explorer");
+    }
+  }, []);
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [comparison, setComparison] = useState<Device[]>([]);
+  useEffect(() => {
+    setComparison((current) =>
+      current.flatMap((item) => {
+        const latest = [...catalog, ...catalogComponents].find(
+          (x) => x.id === item.id && deviceType(x) === deviceType(item),
+        );
+        return latest ? [latest] : [];
+      }),
+    );
+  }, [catalog, catalogComponents]);
+  const browseScroll = useRef(0);
+  function toggleComparison(item: Device) {
+    if (comparison.some((i) => i.id === item.id)) {
+      setComparison((current) => current.filter((i) => i.id !== item.id));
+      return;
+    }
+    if (comparison.length && deviceType(comparison[0]) !== deviceType(item)) {
+      setNotice(
+        "Chỉ so sánh các thiết bị cùng loại. Hãy bỏ lựa chọn hiện tại để đổi loại.",
+      );
+      return;
+    }
+    if (comparison.length >= 4) {
+      setNotice("Chọn tối đa 4 thiết bị để so sánh.");
+      return;
+    }
+    setComparison((current) => [...current, item]);
+  }
+  function backToLibrary() {
+    setWorkspaceMode("components");
+    setSelectedComponentId(null);
+    setActive(null);
+    requestAnimationFrame(() => window.scrollTo(0, browseScroll.current));
+  }
+  useEffect(() => {
     let cancelled = false;
     let unsubscribeProducts = () => {};
     let unsubscribeComponents = () => {};
@@ -173,24 +225,34 @@ export default function Explorer({
           await import("@/lib/firestore");
         if (cancelled) return;
 
-        unsubscribeProducts = subscribeToPublishedProducts((remoteProducts) => {
-          if (cancelled) return;
-          setCatalog(remoteProducts);
-          setSelected((current) => {
-            if (!current || remoteProducts.some((item) => item.slug === current)) {
-              return current;
-            }
-            return initialSlug
-              ? remoteProducts[0]?.slug
-              : undefined;
-          });
-        }, () => setNotice('Không thể đồng bộ danh sách mainboard. Vui lòng kiểm tra kết nối và tải lại trang.'));
+        unsubscribeProducts = subscribeToPublishedProducts(
+          (remoteProducts) => {
+            if (cancelled) return;
+            setCatalog(remoteProducts);
+            setSelected((current) => {
+              if (
+                !current ||
+                remoteProducts.some((item) => item.slug === current)
+              ) {
+                return current;
+              }
+              return initialSlug ? remoteProducts[0]?.slug : undefined;
+            });
+          },
+          () =>
+            setNotice(
+              "Không thể đồng bộ danh sách mainboard. Vui lòng kiểm tra kết nối và tải lại trang.",
+            ),
+        );
         unsubscribeComponents = subscribeToPublishedComponents(
           (remoteComponents) => {
             if (cancelled) return;
             setCatalogComponents(remoteComponents);
           },
-          () => setNotice('Không thể đồng bộ danh sách linh kiện. Vui lòng kiểm tra kết nối và tải lại trang.'),
+          () =>
+            setNotice(
+              "Không thể đồng bộ danh sách linh kiện. Vui lòng kiểm tra kết nối và tải lại trang.",
+            ),
         );
       } catch {
         // Keep the bundled catalog available when Firestore is unavailable.
@@ -229,27 +291,33 @@ export default function Explorer({
   );
   const categoryProducts = useMemo(() => {
     const accepted = categoryAliases[activeCategory] ?? [activeCategory];
-    return matches.filter((p) => accepted.includes(p.category));
-  }, [activeCategory, matches]);
+    return filterDevices(
+      matches.filter((p) => accepted.includes(p.category)),
+      filters,
+    );
+  }, [activeCategory, matches, filters]);
   const componentMatches = useMemo(() => {
     if (!catalogTypeByCategory[activeCategory]) {
       return [];
     }
-    return catalogComponents.filter(
-      (component) =>
-        component.type === catalogTypeByCategory[activeCategory] &&
-        JSON.stringify([
-          component.name,
-          component.brand,
-          component.model,
-          component.description,
-          component.spec,
-        ])
-          .toLowerCase()
-          .includes(query.toLowerCase()),
+    return filterDevices(
+      catalogComponents.filter(
+        (component) =>
+          component.type === catalogTypeByCategory[activeCategory] &&
+          JSON.stringify([
+            component.name,
+            component.brand,
+            component.model,
+            component.description,
+            component.spec,
+          ])
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+      ),
+      filters,
     );
-  }, [activeCategory, catalogComponents, query]);
-  const activeComponent = componentMatches.find(
+  }, [activeCategory, catalogComponents, query, filters]);
+  const activeComponent = catalogComponents.find(
     (component) => component.id === selectedComponentId,
   );
   const isCatalogComponent = !!catalogTypeByCategory[activeCategory];
@@ -258,6 +326,7 @@ export default function Explorer({
     : categoryProducts.length;
   const product = catalog.find((p) => p.slug === selected) ?? catalog[0];
   function browseCategory(name: string) {
+    if (name !== activeCategory) setFilters({});
     setActiveCategory(name);
     setWorkspaceMode("components");
     setActive(null);
@@ -266,6 +335,8 @@ export default function Explorer({
     setMobileMenu(false);
   }
   function choose(p: Product) {
+    browseScroll.current = window.scrollY;
+    setActiveCategory(p.category);
     setSelected(p.slug);
     setWorkspaceMode("explorer");
     setActive(null);
@@ -273,14 +344,21 @@ export default function Explorer({
     setView("top");
     setTab("Overview");
     const categorySlug = p.category.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const bundled = products.some((item) => item.slug === p.slug);
     history.replaceState(
       null,
       "",
-      `${basePath}/explore/${categorySlug}/${p.slug}/`,
+      bundled
+        ? `${basePath}/explore/${categorySlug}/${p.slug}/`
+        : `${basePath}/?device=${encodeURIComponent(p.slug)}`,
     );
     setMobileMenu(false);
   }
   function chooseComponent(component: CatalogComponent) {
+    browseScroll.current = window.scrollY;
+    setActiveCategory(
+      component.type === "PSU" ? "Power Supply" : component.type,
+    );
     setSelectedComponentId(component.id);
     setWorkspaceMode("components");
     setActive(null);
@@ -289,42 +367,6 @@ export default function Explorer({
   }
   return (
     <div className="app-shell">
-      <dialog ref={compareDialog} className="info-dialog">
-        <div className="section-heading">
-          <h2>So sánh mainboard</h2>
-          <button onClick={() => compareDialog.current?.close()}>Đóng</button>
-        </div>
-        <p>So sánh các sản phẩm đã xuất bản theo thông số kỹ thuật.</p>
-        {catalog.length < 2 && (
-          <p className="muted">
-            Xuất bản thêm mainboard trong trang quản trị để so sánh.
-          </p>
-        )}
-        <div className="compare-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Thông số</th>
-                {catalog.map((p) => (
-                  <th key={p.id}>{p.name}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from(
-                new Set(catalog.flatMap((p) => Object.keys(p.spec))),
-              ).map((k) => (
-                <tr key={k}>
-                  <th>{k}</th>
-                  {catalog.map((p) => (
-                    <td key={p.id}>{p.spec[k] ?? "—"}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </dialog>
       <dialog ref={technologyDialog} className="info-dialog">
         <div className="section-heading">
           <h2>Kết nối công nghệ</h2>
@@ -362,18 +404,37 @@ export default function Explorer({
               setView("top");
               setTab("Overview");
             }}
-          >Khám phá</button>
+          >
+            Khám phá
+          </button>
           <button
             className={workspaceMode === "components" ? "nav-active" : ""}
             onClick={() => browseCategory("Mainboard")}
-          >Linh kiện</button>
+          >
+            Linh kiện
+          </button>
           <button
             onClick={() => {
               setWorkspaceMode("explorer");
               setTab("Compatibility");
             }}
-          >Xây dựng cấu hình</button>
-          <button onClick={() => compareDialog.current?.showModal()}>So sánh</button>
+          >
+            Xây dựng cấu hình
+          </button>
+          <button
+            onClick={() => {
+              const dialog = document.querySelector(
+                ".comparison-dialog",
+              ) as HTMLDialogElement | null;
+              if (dialog && comparison.length >= 2) dialog.showModal();
+              else
+                setNotice(
+                  "Chọn ít nhất 2 thiết bị cùng loại bằng nút Thêm vào so sánh.",
+                );
+            }}
+          >
+            So sánh
+          </button>
           <button
             onClick={() => {
               setExpert(false);
@@ -381,8 +442,12 @@ export default function Explorer({
                 "Chế độ cơ bản: chọn linh kiện để tìm hiểu cách hoạt động.",
               );
             }}
-          >Tìm hiểu</button>
-          <button onClick={() => technologyDialog.current?.showModal()}>Công nghệ</button>
+          >
+            Tìm hiểu
+          </button>
+          <button onClick={() => technologyDialog.current?.showModal()}>
+            Công nghệ
+          </button>
         </nav>
         <label className="search">
           <Search size={17} />
@@ -406,6 +471,19 @@ export default function Explorer({
       </header>
       <div className="workspace">
         <aside className={"sidebar " + (mobileMenu ? "visible" : "")}>
+          {workspaceMode === "components" && !activeComponent && (
+            <CatalogFilters
+              items={
+                catalogTypeByCategory[activeCategory]
+                  ? catalogComponents.filter(
+                      (c) => c.type === catalogTypeByCategory[activeCategory],
+                    )
+                  : catalog.filter((p) => p.category === activeCategory)
+              }
+              value={filters}
+              onChange={setFilters}
+            />
+          )}
           <div className="sidebar-section">
             <div className="section-heading">
               <span className="eyebrow">LINH KIỆN</span>
@@ -491,6 +569,34 @@ export default function Explorer({
                   height={540}
                 />
               </div>
+              <div className="home-category-grid">
+                {categories.slice(0, 6).map(([name, Icon]) => (
+                  <button key={name} onClick={() => browseCategory(name)}>
+                    <Icon size={32} />
+                    <strong>{categoryLabel(name)}</strong>
+                    <span>Khám phá →</span>
+                  </button>
+                ))}
+              </div>
+              <section className="recent-devices">
+                <h2>Thiết bị mới cập nhật</h2>
+                <div className="recent-device-grid">
+                  {[...catalog, ...catalogComponents]
+                    .sort((a, b) =>
+                      (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
+                    )
+                    .slice(0, 6)
+                    .map((item) => (
+                      <CatalogCard
+                        key={item.id}
+                        item={item}
+                        onOpen={() =>
+                          "media" in item ? choose(item) : chooseComponent(item)
+                        }
+                      />
+                    ))}
+                </div>
+              </section>
               <div className="explorer-footer">
                 <span>
                   <i className="live-dot" /> HỆ THỐNG SẴN SÀNG
@@ -519,6 +625,14 @@ export default function Explorer({
           isCatalogComponent && activeComponent ? (
             <>
               <main className="explorer-main component-review">
+                <div className="review-actions">
+                  <button onClick={backToLibrary}>← Quay lại danh sách</button>
+                  <button onClick={() => toggleComparison(activeComponent)}>
+                    {comparison.some((i) => i.id === activeComponent.id)
+                      ? "Bỏ khỏi so sánh"
+                      : "＋ Thêm vào so sánh"}
+                  </button>
+                </div>
                 <div className="breadcrumb">
                   Linh kiện <ChevronRight size={11} /> {activeCategory}{" "}
                   <ChevronRight size={11} />{" "}
@@ -554,6 +668,20 @@ export default function Explorer({
           ) : (
             <>
               <main className="component-browser">
+                <div className="mobile-filters">
+                  <CatalogFilters
+                    items={
+                      isCatalogComponent
+                        ? catalogComponents.filter(
+                            (c) =>
+                              c.type === catalogTypeByCategory[activeCategory],
+                          )
+                        : catalog.filter((p) => p.category === activeCategory)
+                    }
+                    value={filters}
+                    onChange={setFilters}
+                  />
+                </div>
                 <div className="breadcrumb">
                   Linh kiện <ChevronRight size={11} />{" "}
                   <span>{activeCategory}</span>
@@ -561,7 +689,8 @@ export default function Explorer({
                 <div className="browser-topline">
                   <span className="eyebrow">THƯ VIỆN LINH KIỆN</span>
                   <span className="tiny">
-                    {libraryCount} {libraryCount === 1 ? "THIẾT BỊ" : "THIẾT BỊ"}
+                    {libraryCount}{" "}
+                    {libraryCount === 1 ? "THIẾT BỊ" : "THIẾT BỊ"}
                   </span>
                 </div>
                 <div className="browser-heading">
@@ -589,101 +718,29 @@ export default function Explorer({
                 </div>
                 {libraryCount > 0 ? (
                   <div className="device-grid">
-                    {isCatalogComponent
-                      ? componentMatches.map((component, index) => (
-                          <button
-                            key={component.id}
-                            className="device-card"
-                            onClick={() => chooseComponent(component)}
-                            aria-label={`Open ${component.name}`}
-                          >
-                            <div className="device-card-media">
-                              <span className="device-index">
-                                {String(index + 1).padStart(2, "0")}
-                              </span>
-                              {component.imageUrl ? (
-                                <img
-                                  src={assetUrl(component.imageUrl)}
-                                  alt=""
-                                  width={180}
-                                  height={220}
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <span className="device-card-placeholder">
-                                  {component.type}
-                                </span>
-                              )}
-                              <span className="device-card-arrow">
-                                <ArrowUpRight size={15} />
-                              </span>
-                            </div>
-                            <div className="device-card-body">
-                              <div className="device-card-meta">
-                                <span>{component.brand || component.type}</span>
-                                <span>
-                                  <i className="live-dot" /> ĐÃ XUẤT BẢN
-                                </span>
-                              </div>
-                              <h2>{component.name}</h2>
-                              <p>{component.model}</p>
-                              <span className="device-card-cta">
-                                Xem hình ảnh <ArrowRight size={14} />
-                              </span>
-                            </div>
-                          </button>
-                        ))
-                      : categoryProducts.map((p, index) => (
-                          <button
-                            key={p.id}
-                            className="device-card"
-                            onClick={() => choose(p)}
-                            aria-label={`Open ${p.name}`}
-                          >
-                            <div className="device-card-media">
-                              <span className="device-index">
-                                {String(index + 1).padStart(2, "0")}
-                              </span>
-                              <img
-                                src={assetUrl(p.media.main)}
-                                alt=""
-                                width={180}
-                                height={220}
-                                loading="lazy"
-                              />
-                              <span className="device-card-arrow">
-                                <ArrowUpRight size={15} />
-                              </span>
-                            </div>
-                            <div className="device-card-body">
-                              <div className="device-card-meta">
-                                <span>{p.brand}</span>
-                                <span>
-                                  <i className="live-dot" /> ĐÃ XUẤT BẢN
-                                </span>
-                              </div>
-                              <h2>{p.name}</h2>
-                              <p>
-                                {["Chipset", "Socket", "Form factor"]
-                                  .map((key) => p.spec[key])
-                                  .filter(Boolean)
-                                  .join("  ·  ")}
-                              </p>
-                              <span className="device-card-cta">
-                                Khám phá thiết bị <ArrowRight size={14} />
-                              </span>
-                            </div>
-                          </button>
-                        ))}
+                    {(isCatalogComponent
+                      ? componentMatches
+                      : categoryProducts
+                    ).map((item) => (
+                      <CatalogCard
+                        key={item.id}
+                        item={item}
+                        onOpen={() =>
+                          "media" in item ? choose(item) : chooseComponent(item)
+                        }
+                        onCompare={() => toggleComparison(item)}
+                        selected={comparison.some((i) => i.id === item.id)}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <div className="empty-browser">
                     <PackageOpen size={30} />
-                    <span className="eyebrow">NO ĐÃ XUẤT BẢN DEVICES</span>
+                    <span className="eyebrow">CHƯA CÓ THIẾT BỊ XUẤT BẢN</span>
                     <h2>{activeCategory} đang chờ bạn khám phá.</h2>
                     <p>
-                      Xuất bản thiết bị trong trang quản trị để hiển thị
-                      trong thư viện này.
+                      Xuất bản thiết bị trong trang quản trị để hiển thị trong
+                      thư viện này.
                     </p>
                     <Link href="/admin">
                       Mở trang quản trị <ArrowUpRight size={14} />
@@ -708,8 +765,8 @@ export default function Explorer({
                   </div>
                   <h2>Bắt đầu với một thiết bị</h2>
                   <p>
-                    Duyệt thư viện ở giữa, sau đó chọn một thiết bị
-                    để xem chi tiết.
+                    Duyệt thư viện ở giữa, sau đó chọn một thiết bị để xem chi
+                    tiết.
                   </p>
                   <div className="guide-preview">
                     <span className="eyebrow">DANH MỤC HIỆN TẠI</span>
@@ -735,9 +792,7 @@ export default function Explorer({
                   </ol>
                   <div className="guide-tip">
                     <SlidersHorizontal size={16} />
-                    <span>
-                      Gợi ý: tìm theo tên, chipset hoặc socket.
-                    </span>
+                    <span>Gợi ý: tìm theo tên, chipset hoặc socket.</span>
                   </div>
                 </div>
               </aside>
@@ -746,6 +801,14 @@ export default function Explorer({
         ) : product ? (
           <>
             <main className="explorer-main">
+              <div className="review-actions">
+                <button onClick={backToLibrary}>← Quay lại danh sách</button>
+                <button onClick={() => toggleComparison(product)}>
+                  {comparison.some((i) => i.id === product.id)
+                    ? "Bỏ khỏi so sánh"
+                    : "＋ Thêm vào so sánh"}
+                </button>
+              </div>
               <div className="breadcrumb">
                 Components <ChevronRight size={11} /> Mainboard{" "}
                 <ChevronRight size={11} /> <span>{product.brand}</span>
@@ -814,9 +877,7 @@ export default function Explorer({
                       <ChevronRight className="view-arrow" size={13} />
                       <b>{m.title}</b>
                       <small>
-                        {available
-                          ? m.description
-                          : "Chưa có hình ảnh"}
+                        {available ? m.description : "Chưa có hình ảnh"}
                       </small>
                       <span className="mode-line" />
                     </button>
@@ -845,6 +906,12 @@ export default function Explorer({
           </main>
         )}
       </div>
+      <DeviceComparison
+        items={comparison}
+        onRemove={(id) =>
+          setComparison((current) => current.filter((item) => item.id !== id))
+        }
+      />
       {notice && (
         <div className="toast" role="status">
           {notice}

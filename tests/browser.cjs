@@ -33,6 +33,7 @@ const assert = require("node:assert/strict");
     .getByRole("heading", { name: "CPU Socket", exact: true })
     .waitFor();
   await page.getByRole("button", { name: "Close component detail" }).click();
+  await page.getByRole('button',{name:'Explore CPU Socket',exact:true}).hover();
   await page.locator(".callout").filter({ hasText: "CPU Socket" }).click();
   await page
     .getByRole("heading", { name: "CPU Socket", exact: true })

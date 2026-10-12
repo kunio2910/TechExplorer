@@ -30,16 +30,24 @@ export type AssociatedComponent = {
   notes: string;
 };
 export type CatalogComponentType = "CPU" | "RAM" | "SSD" | "GPU" | "PSU";
-export type CatalogComponent = AssociatedComponent & {
-  type: CatalogComponentType;
-  brand: string;
-  imageUrl?: string;
-  gallery?: string[];
-  description: string;
-  spec: Record<string, string>;
-  status: "draft" | "published";
+export type CatalogMetadata = {
+  updatedAt?: string;
+  updatedBy?: string;
+  deletedAt?: string;
+  previousStatus?: "draft" | "published";
+  history?: { at: string; by: string; action: string }[];
 };
-export type Product = {
+export type CatalogComponent = AssociatedComponent &
+  CatalogMetadata & {
+    type: CatalogComponentType;
+    brand: string;
+    imageUrl?: string;
+    gallery?: string[];
+    description: string;
+    spec: Record<string, string>;
+    status: "draft" | "published";
+  };
+export type Product = CatalogMetadata & {
   id: string;
   slug: string;
   name: string;

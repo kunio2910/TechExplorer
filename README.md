@@ -44,6 +44,20 @@ The static `/admin/` page uses Firebase Authentication and Firestore. The curren
 
 ## Features
 
+### Improved discovery and administration
+
+- Homepage category cards and six most recently updated published devices.
+- Brand, socket, memory, capacity and PSU wattage filters; clear filters and return to the library without resetting selections.
+- Select two to four devices of the same type for comparison, with differing specification rows highlighted.
+- Mainboard hotspot labels appear on hover, focus or selection; a toggle shows all labels. Product images open a keyboard-accessible viewer (arrow keys and Escape).
+- Admin cards show cover images, status and update dates. CPU/RAM/SSD/GPU/PSU have specification templates and publication checklists. Publication validates required information, unique slugs and image loading.
+- Deleting a device moves it into the trash and removes it from the public catalog. Restore returns it as a draft; permanent deletion requires confirmation. Backups include trashed records.
+- Upload/drop JPG, PNG or WebP images (up to 15 MB each), compress before saving, reorder by dragging or arrow buttons, and select the cover. Uploaded images are stored as compressed image data in Firestore; each upload operation supports a gallery of up to eight images. URL fields remain available. Records exceeding 900 KB are rejected before writing.
+- The latest 20 save/trash/restore events record the editor and time. This is an activity log, not a version rollback system.
+- Newly created Firestore mainboards use `/?device=<slug>` links on Pages so reload works without creating a new static route.
+
+`node tests/admin-ui.cjs` runs admin and public UI integration against isolated in-memory authentication and Firestore adapters. It never modifies the live database.
+
 - Sci-fi three-column Explorer, responsive tablet navigation and mobile detail sheet.
 - Five accurate relative hotspots on a local WebP product image; click selection from either marker or callout, long connector lines, zoom/reset/90-degree rotate/fullscreen, SVG signal paths and reduced-motion support.
 - Data-driven overview/specification panels, CPU socket and RAM type checks with explanations and BIOS/QVL warning.

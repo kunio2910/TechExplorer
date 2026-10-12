@@ -27,6 +27,7 @@ jobs:
           node tests/serve-pages.cjs > /tmp/pages-test.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4173/TechExplorer/ > /dev/null && break || sleep 1; done
           node tests/pages.cjs
+          node tests/admin-ui.cjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

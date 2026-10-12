@@ -10,7 +10,7 @@ import {
 import { assetUrl, basePath } from "@/lib/runtime";
 import { auth } from "@/lib/firebase-client";
 import { componentGallery, productGallery } from "@/lib/gallery";
-import { parseBackup, type CatalogBackup } from '@/lib/backup';
+import { parseBackup, type CatalogBackup } from "@/lib/backup";
 import {
   deleteCatalogComponent,
   deleteProduct,
@@ -32,6 +32,17 @@ import type {
 import { CircleX, Copy as CopyIcon, Plus } from "lucide-react";
 import ComponentCanvas from "./ComponentCanvas";
 import ImageGallery from "./ImageGallery";
+import MediaEditor from "./MediaEditor";
+import ImageReferenceInput from "./ImageReferenceInput";
+import {
+  archive,
+  unarchive,
+  stamp,
+  specTemplates,
+  specLabel,
+  publishChecks,
+  type Device,
+} from "@/lib/catalog-tools";
 
 type AdminTab = "Mainboard" | CatalogComponentType;
 const tabs: AdminTab[] = ["Mainboard", "CPU", "RAM", "SSD", "GPU", "PSU"];
@@ -56,7 +67,7 @@ function blankProduct(): Product {
     category: "Mainboard",
     description: "",
     status: "draft",
-    spec: { Socket: "AM5", "Memory type": "DDR5" },
+    spec: { ...specTemplates.Mainboard },
     media: {},
     hotspots: [],
     components: [],
@@ -74,7 +85,7 @@ function blankComponent(type: CatalogComponentType): CatalogComponent {
     imageUrl: "",
     gallery: [],
     description: "",
-    spec: {},
+    spec: { ...specTemplates[type] },
     compatibility: "warning",
     notes: "",
     status: "draft",
@@ -123,15 +134,23 @@ export default function StaticAdmin({
     blankComponent("CPU"),
   );
   const [queryText, setQueryText] = useState("");
+  const [recordFilter, setRecordFilter] = useState("all");
+  const [showTrash, setShowTrash] = useState(false);
+  const [trash, setTrash] = useState<Device[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [backup, setBackup] = useState<CatalogBackup | null>(null);
-  const [restoreMode, setRestoreMode] = useState<'add' | 'update'>('add');
+  const [restoreMode, setRestoreMode] = useState<"add" | "update">("add");
   const [connected, setConnected] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [syncError, setSyncError] = useState(false);
-  const original = tab === 'Mainboard' ? products.find(p => p.id === product.id) : components.find(c => c.id === component.id);
-  const dirty = JSON.stringify(tab === 'Mainboard' ? product : component) !== JSON.stringify(original);
+  const original =
+    tab === "Mainboard"
+      ? products.find((p) => p.id === product.id)
+      : components.find((c) => c.id === component.id);
+  const dirty =
+    JSON.stringify(tab === "Mainboard" ? product : component) !==
+    JSON.stringify(original);
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
   const [draggingHotspot, setDraggingHotspot] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -140,61 +159,110 @@ export default function StaticAdmin({
   useEffect(() => {
     const online = () => setConnected(navigator.onLine);
     online();
-    window.addEventListener('online', online);
-    window.addEventListener('offline', online);
-    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', online); };
+    window.addEventListener("online", online);
+    window.addEventListener("offline", online);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", online);
+    };
   }, []);
   useEffect(() => {
-    const leave = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } };
-    window.addEventListener('beforeunload', leave);
-    return () => window.removeEventListener('beforeunload', leave);
+    const leave = (event: BeforeUnloadEvent) => {
+      if (dirty) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", leave);
+    return () => window.removeEventListener("beforeunload", leave);
   }, [dirty]);
 
   async function previewBackup(file: File) {
     try {
-      if (file.size > 10 * 1024 * 1024) throw new Error('File backup vượt quá 10 MB.');
+      if (file.size > 10 * 1024 * 1024)
+        throw new Error("File backup vượt quá 10 MB.");
       setBackup(parseBackup(JSON.parse(await file.text())));
-      setMessage('Đã kiểm tra file. Chọn cách khôi phục và xác nhận bên dưới.');
-    } catch (error) { setBackup(null); setMessage(error instanceof Error ? error.message : 'File JSON không hợp lệ.'); }
+      setMessage("Đã kiểm tra file. Chọn cách khôi phục và xác nhận bên dưới.");
+    } catch (error) {
+      setBackup(null);
+      setMessage(
+        error instanceof Error ? error.message : "File JSON không hợp lệ.",
+      );
+    }
   }
   async function applyBackup() {
     if (!backup) return;
-    if (dirty && !window.confirm('Bạn có thay đổi chưa lưu. Tiếp tục khôi phục?')) return;
+    if (
+      dirty &&
+      !window.confirm("Bạn có thay đổi chưa lưu. Tiếp tục khôi phục?")
+    )
+      return;
     setBusy(true);
     try {
-      const incoming = restoreMode === 'add' ? {
-        products: backup.products.filter(p => !products.some(x => x.id === p.id)),
-        components: backup.components.filter(c => !components.some(x => x.id === c.id)),
-      } : backup;
-      const merged = [...products.filter(p => !incoming.products.some(x => x.id === p.id)), ...incoming.products];
-      if (new Set(merged.map(p => p.slug)).size !== merged.length) throw new Error('Slug trùng với dữ liệu hiện có. Hãy sửa file trước khi nhập.');
+      const incoming =
+        restoreMode === "add"
+          ? {
+              products: backup.products.filter(
+                (p) =>
+                  !products.some((x) => x.id === p.id) &&
+                  !trash.some((x) => "media" in x && x.id === p.id),
+              ),
+              components: backup.components.filter(
+                (c) =>
+                  !components.some((x) => x.id === c.id) &&
+                  !trash.some((x) => !("media" in x) && x.id === c.id),
+              ),
+            }
+          : backup;
+      const merged = [
+        ...products,
+        ...trash.filter((x): x is Product => "media" in x),
+      ]
+        .filter((p) => !incoming.products.some((x) => x.id === p.id))
+        .concat(incoming.products);
+      if (new Set(merged.map((p) => p.slug)).size !== merged.length)
+        throw new Error(
+          "Slug trùng với dữ liệu hiện có. Hãy sửa file trước khi nhập.",
+        );
       await restoreCatalog(incoming);
       await reloadFromFirestore();
       setBackup(null);
-      setMessage(`Đã khôi phục ${incoming.products.length} mainboard và ${incoming.components.length} linh kiện.`);
-    } catch (error) { setMessage(error instanceof Error && !('code' in error) ? error.message : firestoreErrorMessage(error, 'khôi phục', auth.currentUser?.uid)); }
-    finally { setBusy(false); }
+      setMessage(
+        `Đã khôi phục ${incoming.products.length} mainboard và ${incoming.components.length} linh kiện.`,
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error && !("code" in error)
+          ? error.message
+          : firestoreErrorMessage(error, "khôi phục", auth.currentUser?.uid),
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   const filteredProducts = useMemo(
     () =>
-      products.filter((item) =>
-        `${item.name} ${item.brand} ${item.slug}`
-          .toLowerCase()
-          .includes(queryText.toLowerCase()),
+      products.filter(
+        (item) =>
+          (recordFilter === "all" || item.status === recordFilter) &&
+          `${item.name} ${item.brand} ${item.slug}`
+            .toLowerCase()
+            .includes(queryText.toLowerCase()),
       ),
-    [products, queryText],
+    [products, queryText, recordFilter],
   );
   const filteredComponents = useMemo(
     () =>
       components.filter(
         (item) =>
           item.type === tab &&
+          (recordFilter === "all" || item.status === recordFilter) &&
           `${item.name} ${item.brand} ${item.model}`
             .toLowerCase()
             .includes(queryText.toLowerCase()),
       ),
-    [components, queryText, tab],
+    [components, queryText, tab, recordFilter],
   );
   const activeHotspot = product.hotspots.find(
     (item) => item.id === selectedHotspot,
@@ -242,15 +310,31 @@ export default function StaticAdmin({
         loadAllProducts(),
         loadCatalogComponents(),
       ]);
-      setProducts(remoteProducts);
-        setProduct((current) =>
-          copy(
-            remoteProducts.find((item) => item.id === current.id) ??
-              remoteProducts[0] ?? blankProduct(),
-          ),
-        );
-      setComponents(remoteComponents);
-      setComponent(current => copy(remoteComponents.find(c => c.id === current.id) ?? remoteComponents.find(c => c.type === current.type) ?? blankComponent(current.type)));
+      setTrash(
+        [...remoteProducts, ...remoteComponents].filter(
+          (item) => item.deletedAt,
+        ),
+      );
+      const activeProducts = remoteProducts.filter((item) => !item.deletedAt);
+      const activeComponents = remoteComponents.filter(
+        (item) => !item.deletedAt,
+      );
+      setProducts(activeProducts);
+      setProduct((current) =>
+        copy(
+          activeProducts.find((item) => item.id === current.id) ??
+            activeProducts[0] ??
+            blankProduct(),
+        ),
+      );
+      setComponents(activeComponents);
+      setComponent((current) =>
+        copy(
+          activeComponents.find((c) => c.id === current.id) ??
+            activeComponents.find((c) => c.type === current.type) ??
+            blankComponent(current.type),
+        ),
+      );
       setLoaded(true);
       setMessage(
         remoteProducts.length
@@ -297,7 +381,9 @@ export default function StaticAdmin({
 
   function removeProductGalleryField(index: number) {
     updateProduct({
-      gallery: (product.gallery ?? []).filter((_, itemIndex) => itemIndex !== index),
+      gallery: (product.gallery ?? []).filter(
+        (_, itemIndex) => itemIndex !== index,
+      ),
     });
   }
 
@@ -323,11 +409,15 @@ export default function StaticAdmin({
     if (!window.confirm("Bạn có chắc muốn xóa “" + name + "” không?")) return;
     setBusy(true);
     try {
-      await deleteProduct(id);
+      const item = products.find((p) => p.id === id);
+      if (!item) return;
+      const removed = archive(item, user?.email ?? "Quản trị");
+      await saveProduct(removed);
+      setTrash((current) => [...current, removed]);
       const next = products.filter((item) => item.id !== id);
       setProducts(next);
       if (product.id === id) setProduct(copy(next[0] ?? blankProduct()));
-      setMessage("Đã xóa mainboard trên Firestore.");
+      setMessage("Đã chuyển mainboard vào thùng rác.");
     } catch (error) {
       setMessage(firestoreErrorMessage(error, "xóa", auth.currentUser?.uid));
     } finally {
@@ -339,7 +429,11 @@ export default function StaticAdmin({
     if (!window.confirm("Bạn có chắc muốn xóa “" + name + "” không?")) return;
     setBusy(true);
     try {
-      await deleteCatalogComponent(id);
+      const item = components.find((c) => c.id === id);
+      if (!item) return;
+      const removed = archive(item, user?.email ?? "Quản trị");
+      await saveCatalogComponent(removed);
+      setTrash((current) => [...current, removed]);
       const next = components.filter((item) => item.id !== id);
       setComponents(next);
       if (component.id === id) {
@@ -351,7 +445,7 @@ export default function StaticAdmin({
           ),
         );
       }
-      setMessage("Đã xóa linh kiện trên Firestore.");
+      setMessage("Đã chuyển linh kiện vào thùng rác.");
     } catch (error) {
       setMessage(firestoreErrorMessage(error, "xóa", auth.currentUser?.uid));
     } finally {
@@ -363,17 +457,26 @@ export default function StaticAdmin({
     setBusy(true);
     try {
       const duplicated = {
-        ...copy(item),
+        ...stamp(
+          { ...copy(item), history: [] },
+          user?.email ?? "Quản trị",
+          "Nhân đôi thiết bị",
+        ),
         id: makeId(),
-        status: 'draft' as const,
-        slug: duplicateSlug(item.slug, products),
+        status: "draft" as const,
+        slug: duplicateSlug(item.slug, [
+          ...products,
+          ...trash.filter((x): x is Product => "media" in x),
+        ]),
       };
       await saveProduct(duplicated);
       setProducts((current) => [...current, duplicated]);
       setProduct(copy(duplicated));
       setMessage(`Đã nhân đôi mainboard “${item.name}”.`);
     } catch (error) {
-      setMessage(firestoreErrorMessage(error, "nhân đôi", auth.currentUser?.uid));
+      setMessage(
+        firestoreErrorMessage(error, "nhân đôi", auth.currentUser?.uid),
+      );
     } finally {
       setBusy(false);
     }
@@ -382,13 +485,23 @@ export default function StaticAdmin({
   async function duplicateComponent(item: CatalogComponent) {
     setBusy(true);
     try {
-      const duplicated = { ...copy(item), id: makeId(), status: 'draft' as const };
+      const duplicated = {
+        ...stamp(
+          { ...copy(item), history: [] },
+          user?.email ?? "Quản trị",
+          "Nhân đôi thiết bị",
+        ),
+        id: makeId(),
+        status: "draft" as const,
+      };
       await saveCatalogComponent(duplicated);
       setComponents((current) => [...current, duplicated]);
       setComponent(copy(duplicated));
       setMessage(`Đã nhân đôi ${item.type} “${item.name}”.`);
     } catch (error) {
-      setMessage(firestoreErrorMessage(error, "nhân đôi", auth.currentUser?.uid));
+      setMessage(
+        firestoreErrorMessage(error, "nhân đôi", auth.currentUser?.uid),
+      );
     } finally {
       setBusy(false);
     }
@@ -397,8 +510,14 @@ export default function StaticAdmin({
   function downloadBackup() {
     const payload = {
       exportedAt: new Date().toISOString(),
-      products,
-      components,
+      products: [
+        ...products,
+        ...trash.filter((i): i is Product => "media" in i),
+      ],
+      components: [
+        ...components,
+        ...trash.filter((i): i is CatalogComponent => !("media" in i)),
+      ],
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
@@ -414,16 +533,71 @@ export default function StaticAdmin({
   }
 
   async function saveCurrent() {
-    if (!connected) { setMessage('Đang mất kết nối. Hãy kết nối mạng trước khi lưu.'); return; }
+    if (!connected) {
+      setMessage("Đang mất kết nối. Hãy kết nối mạng trước khi lưu.");
+      return;
+    }
     setBusy(true);
     try {
+      const draft = tab === "Mainboard" ? product : component;
+      if (
+        draft.status === "published" &&
+        publishChecks(draft, [
+          ...products,
+          ...trash.filter((i): i is Product => "media" in i),
+        ]).some((check) => !check.valid)
+      ) {
+        setMessage(
+          "Chưa thể xuất bản. Hãy hoàn thành các mục trong Kiểm tra xuất bản.",
+        );
+        return;
+      }
+      const urls =
+        tab === "Mainboard"
+          ? productGallery(product)
+          : componentGallery(component);
+      if (draft.status === "published")
+        for (const url of urls) {
+          await new Promise<void>((resolve, reject) => {
+            const img = new Image();
+            const timer = setTimeout(
+              () =>
+                reject(new Error("Ảnh tải quá lâu. Hãy kiểm tra đường dẫn.")),
+              8000,
+            );
+            img.onload = () => {
+              clearTimeout(timer);
+              resolve();
+            };
+            img.onerror = () => {
+              clearTimeout(timer);
+              reject(
+                new Error(
+                  "Không tải được ảnh. Hãy kiểm tra URL trước khi xuất bản.",
+                ),
+              );
+            };
+            img.src = assetUrl(url) ?? "";
+          });
+        }
       if (tab === "Mainboard") {
+        if (
+          [
+            ...products,
+            ...trash.filter((x): x is Product => "media" in x),
+          ].some((p) => p.id !== product.id && p.slug === product.slug)
+        ) {
+          setMessage(
+            "Đường dẫn đã tồn tại, kể cả trong thùng rác. Hãy chọn slug khác.",
+          );
+          return;
+        }
         if (!product.name.trim() || !product.slug.trim()) {
           setMessage("Vui lòng nhập tên và slug cho mainboard.");
           return;
         }
         const saved = {
-          ...product,
+          ...stamp(product, user?.email ?? "Quản trị"),
           gallery: (product.gallery ?? [])
             .map((url) => url.trim())
             .filter(Boolean),
@@ -442,7 +616,7 @@ export default function StaticAdmin({
           return;
         }
         const saved = {
-          ...component,
+          ...stamp(component, user?.email ?? "Quản trị"),
           type: tab,
           gallery: (component.gallery ?? [])
             .map((url) => url.trim())
@@ -458,14 +632,22 @@ export default function StaticAdmin({
         setMessage(`Đã lưu ${tab} lên Firestore.`);
       }
     } catch (error) {
-      setMessage(firestoreErrorMessage(error, "lưu", auth.currentUser?.uid));
+      setMessage(
+        error instanceof Error && !("code" in error)
+          ? error.message
+          : firestoreErrorMessage(error, "lưu", auth.currentUser?.uid),
+      );
     } finally {
       setBusy(false);
     }
   }
 
   async function seedFirestore() {
-    if (dirty && !window.confirm('Bạn có thay đổi chưa lưu. Tiếp tục đồng bộ dữ liệu mẫu?')) return;
+    if (
+      dirty &&
+      !window.confirm("Bạn có thay đổi chưa lưu. Tiếp tục đồng bộ dữ liệu mẫu?")
+    )
+      return;
     setBusy(true);
     try {
       const result = await seedProductsToFirestore(initialProducts);
@@ -490,7 +672,54 @@ export default function StaticAdmin({
     }
   }
 
+  async function trashAction(item: Device, permanent: boolean) {
+    if(dirty&&!window.confirm('Có thay đổi chưa lưu. Bỏ thay đổi để cập nhật dữ liệu từ thùng rác?')) return;
+    if (
+      permanent &&
+      !window.confirm(`Xóa vĩnh viễn “${item.name}”? Không thể hoàn tác.`)
+    )
+      return;
+    setBusy(true);
+    try {
+      if (permanent) {
+        if ("media" in item) await deleteProduct(item.id);
+        else await deleteCatalogComponent(item.id);
+      } else {
+        const restored = unarchive(item, user?.email ?? "Quản trị");
+        if ("media" in restored) await saveProduct(restored);
+        else await saveCatalogComponent(restored);
+      }
+      await reloadFromFirestore();
+      setMessage(
+        permanent ? "Đã xóa vĩnh viễn." : "Đã khôi phục thành bản nháp.",
+      );
+    } catch (error) {
+      setMessage(
+        firestoreErrorMessage(error, "khôi phục/xóa", auth.currentUser?.uid),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  function updateImages(images: string[]) {
+    if (tab === "Mainboard")
+      updateProduct({
+        media: {
+          ...product.media,
+          top: images[0] ?? "",
+          main: images[0] ?? "",
+        },
+        gallery: images.slice(1),
+      });
+    else
+      updateComponentDraft({
+        imageUrl: images[0] ?? "",
+        gallery: images.slice(1),
+      });
+  }
+
   function chooseTab(nextTab: AdminTab) {
+    setShowTrash(false);
     setTab(nextTab);
     setQueryText("");
     setSelectedHotspot(null);
@@ -637,12 +866,34 @@ export default function StaticAdmin({
     tab === "Mainboard" ? filteredProducts : filteredComponents;
 
   return (
-    <main className="admin-shell static-admin" onClickCapture={(event) => {
-      const target = event.target as HTMLElement;
-      if (dirty && target.closest('.admin-card, .admin-card-duplicate, .add-record, .admin-tabs button, .admin-header-actions a, .admin-header-actions button') && !window.confirm('Có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?')) {
-        event.preventDefault(); event.stopPropagation();
-      }
-    }}>
+    <main
+      className="admin-shell static-admin"
+      onClickCapture={(event) => {
+        const target = event.target as HTMLElement;
+        if (
+          busy &&
+          target.closest(
+            ".admin-card, .add-record, .admin-tabs button, .admin-header-actions a, .admin-header-actions button",
+          )
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        if (
+          dirty &&
+          target.closest(
+            ".admin-card, .admin-card-duplicate, .add-record, .admin-tabs button, .admin-header-actions a, .admin-header-actions button",
+          ) &&
+          !window.confirm(
+            "Có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?",
+          )
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
+    >
       <div className="admin-header">
         <div>
           <span className="eyebrow">TECH EXPLORER / FIRESTORE</span>
@@ -670,9 +921,46 @@ export default function StaticAdmin({
           ))}
         </nav>
         <div className="admin-toolbar-actions">
-          <span role="status">{!connected ? 'Mất kết nối' : syncError ? 'Lỗi đồng bộ' : busy ? 'Đang đồng bộ…' : !loaded ? 'Đang tải dữ liệu…' : dirty ? 'Có thay đổi chưa lưu' : 'Đã đồng bộ'}</span>
-          {syncError && <button disabled={busy} onClick={() => { if (!dirty || window.confirm('Bỏ thay đổi chưa lưu để tải lại dữ liệu?')) void reloadFromFirestore(); }}>Thử tải lại</button>}
-          <label className="backup-upload">Khôi phục JSON<input type="file" accept=".json,application/json" disabled={busy || !loaded} onChange={e => { const file = e.target.files?.[0]; if (file) void previewBackup(file); e.target.value = ''; }} /></label>
+          <span role="status">
+            {!connected
+              ? "Mất kết nối"
+              : syncError
+                ? "Lỗi đồng bộ"
+                : busy
+                  ? "Đang đồng bộ…"
+                  : !loaded
+                    ? "Đang tải dữ liệu…"
+                    : dirty
+                      ? "Có thay đổi chưa lưu"
+                      : "Đã đồng bộ"}
+          </span>
+          {syncError && (
+            <button
+              disabled={busy}
+              onClick={() => {
+                if (
+                  !dirty ||
+                  window.confirm("Bỏ thay đổi chưa lưu để tải lại dữ liệu?")
+                )
+                  void reloadFromFirestore();
+              }}
+            >
+              Thử tải lại
+            </button>
+          )}
+          <label className="backup-upload">
+            Khôi phục JSON
+            <input
+              type="file"
+              accept=".json,application/json"
+              disabled={busy || !loaded}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void previewBackup(file);
+                e.target.value = "";
+              }}
+            />
+          </label>
           <button disabled={busy} onClick={downloadBackup}>
             ↓ Backup JSON
           </button>
@@ -693,21 +981,95 @@ export default function StaticAdmin({
           {message}
         </div>
       )}
-      {backup && <section className="backup-preview">
-        <h2>Xem trước khôi phục</h2>
-        <p>{backup.products.length} mainboard · {backup.components.length} linh kiện</p>
-        <ul>{[...backup.products, ...backup.components].map((item, index) => <li key={index}>{item.name} · {statusLabel(item.status)}</li>)}</ul>
-        <label>Cách nhập<select value={restoreMode} onChange={e => setRestoreMode(e.target.value as 'add' | 'update')}><option value="add">Chỉ thêm ID mới, bỏ qua ID đã tồn tại</option><option value="update">Thêm mới và cập nhật ID đã tồn tại</option></select></label>
-        <p>Cập nhật sẽ ghi đè toàn bộ thông tin của sản phẩm có cùng ID.</p>
-        <button disabled={busy} onClick={() => void applyBackup()}>Xác nhận khôi phục</button>
-        <button disabled={busy} onClick={() => setBackup(null)}>Hủy</button>
-      </section>}
-      <div className="admin-workspace">
+      {backup && (
+        <section className="backup-preview">
+          <h2>Xem trước khôi phục</h2>
+          <p>
+            {backup.products.length} mainboard · {backup.components.length} linh
+            kiện
+          </p>
+          <ul>
+            {[...backup.products, ...backup.components].map((item, index) => (
+              <li key={index}>
+                {item.name} · {statusLabel(item.status)}
+              </li>
+            ))}
+          </ul>
+          <label>
+            Cách nhập
+            <select
+              value={restoreMode}
+              onChange={(e) =>
+                setRestoreMode(e.target.value as "add" | "update")
+              }
+            >
+              <option value="add">Chỉ thêm ID mới, bỏ qua ID đã tồn tại</option>
+              <option value="update">Thêm mới và cập nhật ID đã tồn tại</option>
+            </select>
+          </label>
+          <p>Cập nhật sẽ ghi đè toàn bộ thông tin của sản phẩm có cùng ID.</p>
+          <button disabled={busy} onClick={() => void applyBackup()}>
+            Xác nhận khôi phục
+          </button>
+          <button disabled={busy} onClick={() => setBackup(null)}>
+            Hủy
+          </button>
+        </section>
+      )}
+      {showTrash && (
+        <section className="backup-preview">
+          <div className="section-heading">
+            <h2>Thùng rác ({trash.length})</h2>
+            <button onClick={() => setShowTrash(false)}>Đóng</button>
+          </div>
+          {trash.length === 0 ? (
+            <p>Thùng rác trống.</p>
+          ) : (
+            trash.map((item) => (
+              <div key={item.id} className="trash-row">
+                <span>
+                  <strong>{item.name}</strong>
+                  <small>
+                    {item.deletedAt
+                      ? new Date(item.deletedAt).toLocaleString("vi-VN")
+                      : ""}
+                  </small>
+                </span>
+                <button
+                  disabled={busy}
+                  onClick={() => void trashAction(item, false)}
+                >
+                  Khôi phục
+                </button>
+                <button
+                  className="danger"
+                  disabled={busy}
+                  onClick={() => void trashAction(item, true)}
+                >
+                  Xóa vĩnh viễn
+                </button>
+              </div>
+            ))
+          )}
+        </section>
+      )}
+      <div className="admin-workspace" inert={busy}>
         <aside className="admin-list-panel">
           <div className="admin-list-heading">
             <h2>Danh sách {tab === "Mainboard" ? "mainboard" : tab}</h2>
             <span>{activeItems.length} mục</span>
           </div>
+          <label className="admin-status-filter">
+            Trạng thái
+            <select
+              value={recordFilter}
+              onChange={(e) => setRecordFilter(e.target.value)}
+            >
+              <option value="all">Tất cả</option>
+              <option value="published">Đã xuất bản</option>
+              <option value="draft">Bản nháp</option>
+            </select>
+          </label>
           <input
             aria-label="Tìm dữ liệu"
             placeholder="Tìm theo tên, hãng…"
@@ -723,16 +1085,28 @@ export default function StaticAdmin({
                       className={`admin-card ${product.id === item.id ? "selected" : ""}`}
                       onClick={() => setProduct(copy(item))}
                     >
+                      <img
+                        className="admin-card-image"
+                        src={assetUrl(item.media.top)}
+                        alt=""
+                      />
                       <strong>{item.name}</strong>
                       <span>
                         {item.brand} · {item.spec.Socket ?? "Chưa có socket"}
                       </span>
                       <em>{statusLabel(item.status)}</em>
+                      <small>
+                        Cập nhật:{" "}
+                        {item.updatedAt
+                          ? new Date(item.updatedAt).toLocaleDateString("vi-VN")
+                          : "Chưa có"}
+                      </small>
                     </button>
                     <button
                       type="button"
                       className="admin-card-duplicate"
                       aria-label={"Nhân đôi " + item.name}
+                      title="Nhân đôi thiết bị"
                       disabled={busy}
                       onClick={() => void duplicateProduct(item)}
                     >
@@ -742,6 +1116,7 @@ export default function StaticAdmin({
                       type="button"
                       className="admin-card-delete"
                       aria-label={"Xóa " + item.name}
+                      title="Chuyển vào thùng rác"
                       disabled={busy}
                       onClick={() => void removeProductById(item.id, item.name)}
                     >
@@ -756,16 +1131,29 @@ export default function StaticAdmin({
                       className={`admin-card ${component.id === item.id ? "selected" : ""}`}
                       onClick={() => setComponent(copy(item))}
                     >
+                      <img
+                        className="admin-card-image"
+                        src={assetUrl(item.imageUrl)}
+                        alt=""
+                      />
                       <strong>{item.name}</strong>
                       <span>
-                        {item.brand || "Chưa có hãng"} · {item.model || "Chưa có mã"}
+                        {item.brand || "Chưa có hãng"} ·{" "}
+                        {item.model || "Chưa có mã"}
                       </span>
                       <em>{statusLabel(item.status)}</em>
+                      <small>
+                        Cập nhật:{" "}
+                        {item.updatedAt
+                          ? new Date(item.updatedAt).toLocaleDateString("vi-VN")
+                          : "Chưa có"}
+                      </small>
                     </button>
                     <button
                       type="button"
                       className="admin-card-duplicate"
                       aria-label={"Nhân đôi " + item.name}
+                      title="Nhân đôi thiết bị"
                       disabled={busy}
                       onClick={() => void duplicateComponent(item)}
                     >
@@ -775,8 +1163,11 @@ export default function StaticAdmin({
                       type="button"
                       className="admin-card-delete"
                       aria-label={"Xóa " + item.name}
+                      title="Chuyển vào thùng rác"
                       disabled={busy}
-                      onClick={() => void removeComponentById(item.id, item.name)}
+                      onClick={() =>
+                        void removeComponentById(item.id, item.name)
+                      }
                     >
                       <CircleX size={19} />
                     </button>
@@ -797,6 +1188,12 @@ export default function StaticAdmin({
             }
           >
             ＋ Thêm {tab === "Mainboard" ? "mainboard" : tab}
+          </button>
+          <button
+            className="add-record"
+            onClick={() => setShowTrash((v) => !v)}
+          >
+            ♲ Thùng rác ({trash.length})
           </button>
         </aside>
 
@@ -862,14 +1259,20 @@ export default function StaticAdmin({
               <summary>Thông số kỹ thuật</summary>
               <div className="admin-collapsible-body">
                 <div className="admin-form-grid">
-                  {Object.entries(product.spec).map(([key, value]) => (
+                  {Object.entries({
+                    ...specTemplates.Mainboard,
+                    ...product.spec,
+                  }).map(([key, value]) => (
                     <label key={key}>
-                      {key}
+                      {specLabel(key)}
                       <input
                         value={value}
                         onChange={(event) =>
                           updateProduct({
-                            spec: { ...product.spec, [key]: event.target.value },
+                            spec: {
+                              ...product.spec,
+                              [key]: event.target.value,
+                            },
                           })
                         }
                       />
@@ -1008,7 +1411,7 @@ export default function StaticAdmin({
               <div className="admin-collapsible-body">
                 <label>
                   Link ảnh
-                  <input
+                  <ImageReferenceInput
                     value={product.media.top ?? ""}
                     placeholder="https://… hoặc /media/…"
                     onChange={(event) =>
@@ -1028,7 +1431,7 @@ export default function StaticAdmin({
                       <div className="admin-gallery-field" key={index}>
                         <label>
                           <span>Thumbnail {index + 1}</span>
-                          <input
+                          <ImageReferenceInput
                             type="url"
                             value={url}
                             placeholder="https://… hoặc /media/…"
@@ -1125,7 +1528,7 @@ export default function StaticAdmin({
               </label>
               <label className="wide">
                 Link ảnh linh kiện
-                <input
+                <ImageReferenceInput
                   type="url"
                   value={component.imageUrl ?? ""}
                   placeholder="https://… hoặc /media/…"
@@ -1140,7 +1543,7 @@ export default function StaticAdmin({
                     <div className="admin-gallery-field" key={index}>
                       <label>
                         <span>Thumbnail {index + 1}</span>
-                        <input
+                        <ImageReferenceInput
                           type="url"
                           value={url}
                           placeholder="https://… hoặc /media/…"
@@ -1187,33 +1590,43 @@ export default function StaticAdmin({
                 />
               </label>
             </div>
-            <h3>Thông số {tab}</h3>
-            <div className="admin-form-grid">
-              {Object.entries(component.spec).map(([key, value]) => (
-                <label key={key}>
-                  {key}
-                  <input
-                    value={value}
-                    onChange={(event) =>
+            <details className="admin-collapsible">
+              <summary>Thông số {tab}</summary>
+              <div className="admin-collapsible-body">
+                <div className="admin-form-grid">
+                  {Object.entries({
+                    ...specTemplates[tab],
+                    ...component.spec,
+                  }).map(([key, value]) => (
+                    <label key={key}>
+                      {specLabel(key)}
+                      <input
+                        value={value}
+                        onChange={(event) =>
+                          updateComponentDraft({
+                            spec: {
+                              ...component.spec,
+                              [key]: event.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    const key = window.prompt("Tên thông số mới");
+                    if (key?.trim())
                       updateComponentDraft({
-                        spec: { ...component.spec, [key]: event.target.value },
-                      })
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-            <button
-              onClick={() => {
-                const key = window.prompt("Tên thông số mới");
-                if (key?.trim())
-                  updateComponentDraft({
-                    spec: { ...component.spec, [key.trim()]: "" },
-                  });
-              }}
-            >
-              ＋ Thêm thông số
-            </button>
+                        spec: { ...component.spec, [key.trim()]: "" },
+                      });
+                  }}
+                >
+                  ＋ Thêm thông số
+                </button>
+              </div>
+            </details>
             <div className="admin-actions">
               <button
                 className="primary"
@@ -1244,7 +1657,7 @@ export default function StaticAdmin({
             </div>
             <label>
               Link ảnh mặt trước
-              <input
+              <ImageReferenceInput
                 value={product.media.top ?? ""}
                 placeholder="https://… hoặc /media/…"
                 onChange={(event) =>
@@ -1295,7 +1708,12 @@ export default function StaticAdmin({
                 </button>
               ))}
             </div>
-            <h3>Image gallery</h3>
+            <h3>Thư viện ảnh</h3>
+            <MediaEditor
+              images={productGallery(product)}
+              onChange={updateImages}
+              onBusy={setBusy}
+            />
             <ImageGallery
               images={productGallery(product)}
               alt="Ảnh mainboard xem trước"
@@ -1363,11 +1781,74 @@ export default function StaticAdmin({
               <span>{component.type} · không có hotspot</span>
             </div>
             <ComponentCanvas key={component.id} component={component} />
+            <MediaEditor
+              images={componentGallery(component)}
+              onChange={updateImages}
+              onBusy={setBusy}
+            />
             <p className="admin-local-note">
               Lưu thay đổi để cập nhật ảnh và thông tin linh kiện lên Firestore.
             </p>
           </section>
         )}
+        <aside className="admin-validation">
+          <h2>Kiểm tra xuất bản</h2>
+          {publishChecks(
+            tab === "Mainboard" ? product : component,
+            products,
+          ).map((check) => (
+            <div
+              className={check.valid ? "check-pass" : "check-missing"}
+              key={check.label}
+            >
+              {check.valid ? "✓" : "!"} {check.label}
+              {!check.valid && (
+                <button
+                  onClick={() => {
+                    const section = document.querySelector(".admin-form");
+                    section?.scrollIntoView({ behavior: "smooth" });
+                    section
+                      ?.querySelectorAll("details")
+                      .forEach((d) => (d.open = true));
+                    const target =
+                      check.field === "spec"
+                        ? section?.querySelector(".admin-collapsible input")
+                        : check.field === "image"
+                          ? document.querySelector(".media-dropzone input")
+                          : section?.querySelector("input");
+                    (target as HTMLElement | null)?.focus();
+                  }}
+                >
+                  Xem mục cần sửa →
+                </button>
+              )}
+            </div>
+          ))}
+          <h2>Lịch sử chỉnh sửa</h2>
+          {tab === "Mainboard" && !product.media.rear_io && (
+            <p className="muted">
+              Ảnh mặt sau chưa có (tùy chọn, không chặn xuất bản).
+            </p>
+          )}
+          {(tab === "Mainboard" ? product : component).history?.length ? (
+            <ol>
+              {[...((tab === "Mainboard" ? product : component).history ?? [])]
+                .reverse()
+                .map((entry, index) => (
+                  <li key={index}>
+                    <strong>{entry.action}</strong>
+                    <small>
+                      {new Date(entry.at).toLocaleString("vi-VN")} · {entry.by}
+                    </small>
+                  </li>
+                ))}
+            </ol>
+          ) : (
+            <p className="muted">
+              Chưa có lịch sử. Các lần lưu tiếp theo sẽ được ghi lại.
+            </p>
+          )}
+        </aside>
       </div>
     </main>
   );
