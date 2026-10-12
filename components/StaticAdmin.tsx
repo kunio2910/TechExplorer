@@ -10,6 +10,7 @@ import {
 import { assetUrl, basePath } from "@/lib/runtime";
 import { auth } from "@/lib/firebase-client";
 import { componentGallery, productGallery } from "@/lib/gallery";
+import { parseBackup, type CatalogBackup } from '@/lib/backup';
 import {
   deleteCatalogComponent,
   deleteProduct,
@@ -19,6 +20,7 @@ import {
   saveProduct,
   seedProductsToFirestore,
   firestoreErrorMessage,
+  restoreCatalog,
 } from "@/lib/firestore";
 import type {
   AssociatedComponent,
@@ -123,10 +125,56 @@ export default function StaticAdmin({
   const [queryText, setQueryText] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [backup, setBackup] = useState<CatalogBackup | null>(null);
+  const [restoreMode, setRestoreMode] = useState<'add' | 'update'>('add');
+  const [connected, setConnected] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [syncError, setSyncError] = useState(false);
+  const original = tab === 'Mainboard' ? products.find(p => p.id === product.id) : components.find(c => c.id === component.id);
+  const dirty = JSON.stringify(tab === 'Mainboard' ? product : component) !== JSON.stringify(original);
   const [selectedHotspot, setSelectedHotspot] = useState<string | null>(null);
   const [draggingHotspot, setDraggingHotspot] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const draggedRef = useRef(false);
+
+  useEffect(() => {
+    const online = () => setConnected(navigator.onLine);
+    online();
+    window.addEventListener('online', online);
+    window.addEventListener('offline', online);
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', online); };
+  }, []);
+  useEffect(() => {
+    const leave = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ''; } };
+    window.addEventListener('beforeunload', leave);
+    return () => window.removeEventListener('beforeunload', leave);
+  }, [dirty]);
+
+  async function previewBackup(file: File) {
+    try {
+      if (file.size > 10 * 1024 * 1024) throw new Error('File backup vượt quá 10 MB.');
+      setBackup(parseBackup(JSON.parse(await file.text())));
+      setMessage('Đã kiểm tra file. Chọn cách khôi phục và xác nhận bên dưới.');
+    } catch (error) { setBackup(null); setMessage(error instanceof Error ? error.message : 'File JSON không hợp lệ.'); }
+  }
+  async function applyBackup() {
+    if (!backup) return;
+    if (dirty && !window.confirm('Bạn có thay đổi chưa lưu. Tiếp tục khôi phục?')) return;
+    setBusy(true);
+    try {
+      const incoming = restoreMode === 'add' ? {
+        products: backup.products.filter(p => !products.some(x => x.id === p.id)),
+        components: backup.components.filter(c => !components.some(x => x.id === c.id)),
+      } : backup;
+      const merged = [...products.filter(p => !incoming.products.some(x => x.id === p.id)), ...incoming.products];
+      if (new Set(merged.map(p => p.slug)).size !== merged.length) throw new Error('Slug trùng với dữ liệu hiện có. Hãy sửa file trước khi nhập.');
+      await restoreCatalog(incoming);
+      await reloadFromFirestore();
+      setBackup(null);
+      setMessage(`Đã khôi phục ${incoming.products.length} mainboard và ${incoming.components.length} linh kiện.`);
+    } catch (error) { setMessage(error instanceof Error && !('code' in error) ? error.message : firestoreErrorMessage(error, 'khôi phục', auth.currentUser?.uid)); }
+    finally { setBusy(false); }
+  }
 
   const filteredProducts = useMemo(
     () =>
@@ -188,27 +236,29 @@ export default function StaticAdmin({
   }, [selectedHotspot, tab]);
 
   async function reloadFromFirestore() {
+    setSyncError(false);
     try {
       const [remoteProducts, remoteComponents] = await Promise.all([
         loadAllProducts(),
         loadCatalogComponents(),
       ]);
-      if (remoteProducts.length) {
-        setProducts(remoteProducts);
+      setProducts(remoteProducts);
         setProduct((current) =>
           copy(
             remoteProducts.find((item) => item.id === current.id) ??
-              remoteProducts[0],
+              remoteProducts[0] ?? blankProduct(),
           ),
         );
-      }
       setComponents(remoteComponents);
+      setComponent(current => copy(remoteComponents.find(c => c.id === current.id) ?? remoteComponents.find(c => c.type === current.type) ?? blankComponent(current.type)));
+      setLoaded(true);
       setMessage(
         remoteProducts.length
           ? `Đã tải ${remoteProducts.length} mainboard và ${remoteComponents.length} linh kiện.`
           : "Firestore chưa có dữ liệu. Bạn có thể đồng bộ dữ liệu mẫu.",
       );
     } catch (error) {
+      setSyncError(true);
       setMessage(firestoreErrorMessage(error, "đọc", auth.currentUser?.uid));
     }
   }
@@ -315,6 +365,7 @@ export default function StaticAdmin({
       const duplicated = {
         ...copy(item),
         id: makeId(),
+        status: 'draft' as const,
         slug: duplicateSlug(item.slug, products),
       };
       await saveProduct(duplicated);
@@ -331,7 +382,7 @@ export default function StaticAdmin({
   async function duplicateComponent(item: CatalogComponent) {
     setBusy(true);
     try {
-      const duplicated = { ...copy(item), id: makeId() };
+      const duplicated = { ...copy(item), id: makeId(), status: 'draft' as const };
       await saveCatalogComponent(duplicated);
       setComponents((current) => [...current, duplicated]);
       setComponent(copy(duplicated));
@@ -363,6 +414,7 @@ export default function StaticAdmin({
   }
 
   async function saveCurrent() {
+    if (!connected) { setMessage('Đang mất kết nối. Hãy kết nối mạng trước khi lưu.'); return; }
     setBusy(true);
     try {
       if (tab === "Mainboard") {
@@ -413,6 +465,7 @@ export default function StaticAdmin({
   }
 
   async function seedFirestore() {
+    if (dirty && !window.confirm('Bạn có thay đổi chưa lưu. Tiếp tục đồng bộ dữ liệu mẫu?')) return;
     setBusy(true);
     try {
       const result = await seedProductsToFirestore(initialProducts);
@@ -584,7 +637,12 @@ export default function StaticAdmin({
     tab === "Mainboard" ? filteredProducts : filteredComponents;
 
   return (
-    <main className="admin-shell static-admin">
+    <main className="admin-shell static-admin" onClickCapture={(event) => {
+      const target = event.target as HTMLElement;
+      if (dirty && target.closest('.admin-card, .admin-card-duplicate, .add-record, .admin-tabs button, .admin-header-actions a, .admin-header-actions button') && !window.confirm('Có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?')) {
+        event.preventDefault(); event.stopPropagation();
+      }
+    }}>
       <div className="admin-header">
         <div>
           <span className="eyebrow">TECH EXPLORER / FIRESTORE</span>
@@ -612,6 +670,9 @@ export default function StaticAdmin({
           ))}
         </nav>
         <div className="admin-toolbar-actions">
+          <span role="status">{!connected ? 'Mất kết nối' : syncError ? 'Lỗi đồng bộ' : busy ? 'Đang đồng bộ…' : !loaded ? 'Đang tải dữ liệu…' : dirty ? 'Có thay đổi chưa lưu' : 'Đã đồng bộ'}</span>
+          {syncError && <button disabled={busy} onClick={() => { if (!dirty || window.confirm('Bỏ thay đổi chưa lưu để tải lại dữ liệu?')) void reloadFromFirestore(); }}>Thử tải lại</button>}
+          <label className="backup-upload">Khôi phục JSON<input type="file" accept=".json,application/json" disabled={busy || !loaded} onChange={e => { const file = e.target.files?.[0]; if (file) void previewBackup(file); e.target.value = ''; }} /></label>
           <button disabled={busy} onClick={downloadBackup}>
             ↓ Backup JSON
           </button>
@@ -632,6 +693,15 @@ export default function StaticAdmin({
           {message}
         </div>
       )}
+      {backup && <section className="backup-preview">
+        <h2>Xem trước khôi phục</h2>
+        <p>{backup.products.length} mainboard · {backup.components.length} linh kiện</p>
+        <ul>{[...backup.products, ...backup.components].map((item, index) => <li key={index}>{item.name} · {statusLabel(item.status)}</li>)}</ul>
+        <label>Cách nhập<select value={restoreMode} onChange={e => setRestoreMode(e.target.value as 'add' | 'update')}><option value="add">Chỉ thêm ID mới, bỏ qua ID đã tồn tại</option><option value="update">Thêm mới và cập nhật ID đã tồn tại</option></select></label>
+        <p>Cập nhật sẽ ghi đè toàn bộ thông tin của sản phẩm có cùng ID.</p>
+        <button disabled={busy} onClick={() => void applyBackup()}>Xác nhận khôi phục</button>
+        <button disabled={busy} onClick={() => setBackup(null)}>Hủy</button>
+      </section>}
       <div className="admin-workspace">
         <aside className="admin-list-panel">
           <div className="admin-list-heading">

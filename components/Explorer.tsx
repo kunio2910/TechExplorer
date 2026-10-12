@@ -2,6 +2,7 @@
 import { assetUrl, basePath } from "@/lib/runtime";
 import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
+import { categoryLabel } from '@/lib/labels';
 import {
   Search,
   Cpu,
@@ -46,38 +47,38 @@ const categories = [
 const modes = [
   {
     id: "top",
-    title: "2D Explorer",
-    description: "Every component, connected.",
+    title: "Khám phá 2D",
+    description: "Kết nối từng linh kiện.",
     icon: Box,
   },
   {
     id: "exploded",
-    title: "Exploded View",
-    description: "See the internal structure.",
+    title: "Cấu trúc tách lớp",
+    description: "Xem cấu tạo bên trong.",
     icon: Layers,
   },
   {
     id: "xray",
-    title: "X-Ray View",
-    description: "Look beneath the surface.",
+    title: "Góc nhìn xuyên lớp",
+    description: "Khám phá bên dưới bề mặt.",
     icon: ScanLine,
   },
   {
     id: "signal",
-    title: "Signal Flow",
-    description: "Follow the data pathways.",
+    title: "Luồng tín hiệu",
+    description: "Theo dõi đường truyền dữ liệu.",
     icon: Workflow,
   },
   {
     id: "rear_io",
-    title: "Rear I/O",
-    description: "Explore your connections.",
+    title: "Cổng kết nối phía sau",
+    description: "Khám phá các cổng kết nối.",
     icon: Plug,
   },
   {
     id: "compatibility",
-    title: "Compatibility",
-    description: "Build with confidence.",
+    title: "Tương thích",
+    description: "Kiểm tra trước khi lắp máy.",
     icon: ShieldCheck,
   },
 ];
@@ -174,26 +175,22 @@ export default function Explorer({
 
         unsubscribeProducts = subscribeToPublishedProducts((remoteProducts) => {
           if (cancelled) return;
-          setCatalog(remoteProducts.length ? remoteProducts : products);
+          setCatalog(remoteProducts);
           setSelected((current) => {
             if (!current || remoteProducts.some((item) => item.slug === current)) {
               return current;
             }
             return initialSlug
-              ? remoteProducts[0]?.slug ?? products[0]?.slug
+              ? remoteProducts[0]?.slug
               : undefined;
           });
-        });
+        }, () => setNotice('Không thể đồng bộ danh sách mainboard. Vui lòng kiểm tra kết nối và tải lại trang.'));
         unsubscribeComponents = subscribeToPublishedComponents(
           (remoteComponents) => {
             if (cancelled) return;
-            const fallbackComponents = seedCatalogComponents(products);
-            const remoteIds = new Set(remoteComponents.map((item) => item.id));
-            setCatalogComponents([
-              ...fallbackComponents.filter((item) => !remoteIds.has(item.id)),
-              ...remoteComponents,
-            ]);
+            setCatalogComponents(remoteComponents);
           },
+          () => setNotice('Không thể đồng bộ danh sách linh kiện. Vui lòng kiểm tra kết nối và tải lại trang.'),
         );
       } catch {
         // Keep the bundled catalog available when Firestore is unavailable.
@@ -294,20 +291,20 @@ export default function Explorer({
     <div className="app-shell">
       <dialog ref={compareDialog} className="info-dialog">
         <div className="section-heading">
-          <h2>Compare mainboards</h2>
-          <button onClick={() => compareDialog.current?.close()}>Close</button>
+          <h2>So sánh mainboard</h2>
+          <button onClick={() => compareDialog.current?.close()}>Đóng</button>
         </div>
-        <p>Compare published products by their specifications.</p>
+        <p>So sánh các sản phẩm đã xuất bản theo thông số kỹ thuật.</p>
         {catalog.length < 2 && (
           <p className="muted">
-            Publish a second mainboard in Admin to compare models side by side.
+            Xuất bản thêm mainboard trong trang quản trị để so sánh.
           </p>
         )}
         <div className="compare-scroll">
           <table>
             <thead>
               <tr>
-                <th>Specification</th>
+                <th>Thông số</th>
                 {catalog.map((p) => (
                   <th key={p.id}>{p.name}</th>
                 ))}
@@ -330,9 +327,9 @@ export default function Explorer({
       </dialog>
       <dialog ref={technologyDialog} className="info-dialog">
         <div className="section-heading">
-          <h2>Technology, connected</h2>
+          <h2>Kết nối công nghệ</h2>
           <button onClick={() => technologyDialog.current?.close()}>
-            Close
+            Đóng
           </button>
         </div>
         {product?.hotspots.map((h) => (
@@ -350,7 +347,7 @@ export default function Explorer({
           <span>
             TECH
             <br />
-            EXPLORER<small>INSIDE THE TECHNOLOGY</small>
+            EXPLORER<small>KHÁM PHÁ CÔNG NGHỆ</small>
           </span>
         </Link>
         <nav aria-label="Main navigation">
@@ -365,51 +362,39 @@ export default function Explorer({
               setView("top");
               setTab("Overview");
             }}
-          >
-            Explore
-          </button>
+          >Khám phá</button>
           <button
             className={workspaceMode === "components" ? "nav-active" : ""}
             onClick={() => browseCategory("Mainboard")}
-          >
-            Components
-          </button>
+          >Linh kiện</button>
           <button
             onClick={() => {
               setWorkspaceMode("explorer");
               setTab("Compatibility");
             }}
-          >
-            PC Builder
-          </button>
-          <button onClick={() => compareDialog.current?.showModal()}>
-            Compare
-          </button>
+          >Xây dựng cấu hình</button>
+          <button onClick={() => compareDialog.current?.showModal()}>So sánh</button>
           <button
             onClick={() => {
               setExpert(false);
               setNotice(
-                "Beginner mode: select a component to learn how it works.",
+                "Chế độ cơ bản: chọn linh kiện để tìm hiểu cách hoạt động.",
               );
             }}
-          >
-            Learn
-          </button>
-          <button onClick={() => technologyDialog.current?.showModal()}>
-            Technology
-          </button>
+          >Tìm hiểu</button>
+          <button onClick={() => technologyDialog.current?.showModal()}>Công nghệ</button>
         </nav>
         <label className="search">
           <Search size={17} />
           <input
             aria-label="Search products"
-            placeholder="Search model, chipset, socket…"
+            placeholder="Tìm tên, chipset, socket…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
         <Link href="/admin" className="admin-link">
-          Admin <ArrowUpRight size={13} />
+          Quản trị <ArrowUpRight size={13} />
         </Link>
         <button
           className="mobile-menu icon-button"
@@ -423,7 +408,7 @@ export default function Explorer({
         <aside className={"sidebar " + (mobileMenu ? "visible" : "")}>
           <div className="sidebar-section">
             <div className="section-heading">
-              <span className="eyebrow">COMPONENTS</span>
+              <span className="eyebrow">LINH KIỆN</span>
               <span className="tiny">10</span>
             </div>
             {categories.map(([name, Icon]) => (
@@ -435,7 +420,7 @@ export default function Explorer({
                 onClick={() => browseCategory(name)}
               >
                 <Icon size={20} />
-                <span>{name}</span>
+                <span>{categoryLabel(name)}</span>
                 <ChevronRight size={14} />
               </button>
             ))}
@@ -443,7 +428,7 @@ export default function Explorer({
           {workspaceMode === "explorer" && (
             <div className="sidebar-section models">
               <div className="section-heading">
-                <span className="eyebrow">EXPLORE MODELS</span>
+                <span className="eyebrow">KHÁM PHÁ THIẾT BỊ</span>
                 <span className="tiny">{matches.length}</span>
               </div>
               {matches.map((p) => (
@@ -470,16 +455,16 @@ export default function Explorer({
                 </button>
               ))}
               {matches.length === 0 && (
-                <p className="muted">No models match “{query}”.</p>
+                <p className="muted">Không có thiết bị phù hợp “{query}”.</p>
               )}
             </div>
           )}
           <div className="sidebar-note">
-            <span className="live-dot" /> KNOWLEDGE, CONNECTED.
+            <span className="live-dot" /> KẾT NỐI TRI THỨC
             <p>
-              Understand your hardware.
+              Hiểu rõ phần cứng của bạn.
               <br />
-              Make your next build count.
+              Chọn cấu hình phù hợp với nhu cầu.
             </p>
           </div>
         </aside>
@@ -508,18 +493,18 @@ export default function Explorer({
               </div>
               <div className="explorer-footer">
                 <span>
-                  <i className="live-dot" /> SYSTEM ONLINE
+                  <i className="live-dot" /> HỆ THỐNG SẴN SÀNG
                 </span>
-                <span>SELECT A COMPONENT TO BEGIN</span>
+                <span>CHỌN LINH KIỆN ĐỂ BẮT ĐẦU</span>
               </div>
             </main>
             <aside className="detail-panel home-detail-panel">
               <div className="panel-content">
-                <span className="eyebrow">START HERE</span>
+                <span className="eyebrow">BẮT ĐẦU TẠI ĐÂY</span>
                 <h2>Chọn linh kiện để bắt đầu</h2>
                 <p>
                   Duyệt mainboard hoặc thư viện CPU, RAM, SSD, GPU và PSU từ
-                  menu Components.
+                  menu Linh kiện.
                 </p>
                 <button
                   className="home-cta"
@@ -535,7 +520,7 @@ export default function Explorer({
             <>
               <main className="explorer-main component-review">
                 <div className="breadcrumb">
-                  Components <ChevronRight size={11} /> {activeCategory}{" "}
+                  Linh kiện <ChevronRight size={11} /> {activeCategory}{" "}
                   <ChevronRight size={11} />{" "}
                   <span>{activeComponent.brand}</span>
                 </div>
@@ -555,9 +540,9 @@ export default function Explorer({
                 />
                 <div className="explorer-footer">
                   <span>
-                    <i className="live-dot" /> SYSTEM ONLINE
+                    <i className="live-dot" /> HỆ THỐNG SẴN SÀNG
                   </span>
-                  <span>COMPONENT PREVIEW · IMAGE ONLY</span>
+                  <span>XEM TRƯỚC HÌNH ẢNH LINH KIỆN</span>
                 </div>
               </main>
               <ComponentDetailPanel
@@ -570,22 +555,22 @@ export default function Explorer({
             <>
               <main className="component-browser">
                 <div className="breadcrumb">
-                  Components <ChevronRight size={11} />{" "}
+                  Linh kiện <ChevronRight size={11} />{" "}
                   <span>{activeCategory}</span>
                 </div>
                 <div className="browser-topline">
-                  <span className="eyebrow">COMPONENT LIBRARY</span>
+                  <span className="eyebrow">THƯ VIỆN LINH KIỆN</span>
                   <span className="tiny">
-                    {libraryCount} {libraryCount === 1 ? "DEVICE" : "DEVICES"}
+                    {libraryCount} {libraryCount === 1 ? "THIẾT BỊ" : "THIẾT BỊ"}
                   </span>
                 </div>
                 <div className="browser-heading">
                   <div>
-                    <h1>Explore {activeCategory}</h1>
-                    <p>Choose a device to open its interactive explorer.</p>
+                    <h1>Khám phá {activeCategory}</h1>
+                    <p>Chọn thiết bị để khám phá hình ảnh và thông số.</p>
                   </div>
                   <span className="catalog-status">
-                    <i className="live-dot" /> LIVE CATALOG
+                    <i className="live-dot" /> DANH MỤC TRỰC TUYẾN
                   </span>
                 </div>
                 <div
@@ -598,7 +583,7 @@ export default function Explorer({
                       className={activeCategory === name ? "active" : ""}
                       onClick={() => browseCategory(name)}
                     >
-                      {name}
+                      {categoryLabel(name)}
                     </button>
                   ))}
                 </div>
@@ -637,13 +622,13 @@ export default function Explorer({
                               <div className="device-card-meta">
                                 <span>{component.brand || component.type}</span>
                                 <span>
-                                  <i className="live-dot" /> PUBLISHED
+                                  <i className="live-dot" /> ĐÃ XUẤT BẢN
                                 </span>
                               </div>
                               <h2>{component.name}</h2>
                               <p>{component.model}</p>
                               <span className="device-card-cta">
-                                Open preview <ArrowRight size={14} />
+                                Xem hình ảnh <ArrowRight size={14} />
                               </span>
                             </div>
                           </button>
@@ -674,7 +659,7 @@ export default function Explorer({
                               <div className="device-card-meta">
                                 <span>{p.brand}</span>
                                 <span>
-                                  <i className="live-dot" /> PUBLISHED
+                                  <i className="live-dot" /> ĐÃ XUẤT BẢN
                                 </span>
                               </div>
                               <h2>{p.name}</h2>
@@ -685,7 +670,7 @@ export default function Explorer({
                                   .join("  ·  ")}
                               </p>
                               <span className="device-card-cta">
-                                Open explorer <ArrowRight size={14} />
+                                Khám phá thiết bị <ArrowRight size={14} />
                               </span>
                             </div>
                           </button>
@@ -694,64 +679,64 @@ export default function Explorer({
                 ) : (
                   <div className="empty-browser">
                     <PackageOpen size={30} />
-                    <span className="eyebrow">NO PUBLISHED DEVICES</span>
-                    <h2>{activeCategory} is ready for discovery.</h2>
+                    <span className="eyebrow">NO ĐÃ XUẤT BẢN DEVICES</span>
+                    <h2>{activeCategory} đang chờ bạn khám phá.</h2>
                     <p>
-                      Publish a device in the content studio to make it appear
-                      in this library.
+                      Xuất bản thiết bị trong trang quản trị để hiển thị
+                      trong thư viện này.
                     </p>
                     <Link href="/admin">
-                      Open content studio <ArrowUpRight size={14} />
+                      Mở trang quản trị <ArrowUpRight size={14} />
                     </Link>
                   </div>
                 )}
                 <div className="explorer-footer">
                   <span>
-                    <i className="live-dot" /> SYSTEM ONLINE
+                    <i className="live-dot" /> HỆ THỐNG SẴN SÀNG
                   </span>
-                  <span>SELECT A DEVICE TO CONTINUE</span>
+                  <span>CHỌN THIẾT BỊ ĐỂ TIẾP TỤC</span>
                 </div>
               </main>
               <aside className="detail-panel browse-guide">
                 <div className="panel-content">
                   <div className="guide-header">
-                    <span className="eyebrow">DISCOVERY PATH</span>
+                    <span className="eyebrow">HƯỚNG DẪN KHÁM PHÁ</span>
                     <span className="tiny">01 / 03</span>
                   </div>
                   <div className="guide-icon">
                     <MousePointer2 size={22} />
                   </div>
-                  <h2>Start with a device</h2>
+                  <h2>Bắt đầu với một thiết bị</h2>
                   <p>
-                    Browse the library in the middle panel, then open any device
-                    for the full interactive view.
+                    Duyệt thư viện ở giữa, sau đó chọn một thiết bị
+                    để xem chi tiết.
                   </p>
                   <div className="guide-preview">
-                    <span className="eyebrow">CURRENT CATEGORY</span>
+                    <span className="eyebrow">DANH MỤC HIỆN TẠI</span>
                     <strong>{activeCategory}</strong>
                     <span>
-                      {libraryCount} published{" "}
-                      {libraryCount === 1 ? "device" : "devices"}
+                      {libraryCount} đã xuất bản{" "}
+                      {libraryCount === 1 ? "thiết bị" : "thiết bị"}
                     </span>
                   </div>
                   <ol className="guide-steps">
                     <li className="current">
                       <b>01</b>
-                      <span>Browse a component category</span>
+                      <span>Chọn danh mục linh kiện</span>
                     </li>
                     <li>
                       <b>02</b>
-                      <span>Select a device card</span>
+                      <span>Chọn thẻ thiết bị</span>
                     </li>
                     <li>
                       <b>03</b>
-                      <span>Explore image and specifications</span>
+                      <span>Khám phá hình ảnh và thông số</span>
                     </li>
                   </ol>
                   <div className="guide-tip">
                     <SlidersHorizontal size={16} />
                     <span>
-                      Tip: use Search to filter by model, chipset or socket.
+                      Gợi ý: tìm theo tên, chipset hoặc socket.
                     </span>
                   </div>
                 </div>
@@ -767,7 +752,7 @@ export default function Explorer({
               </div>
               <div className="title-row">
                 <div>
-                  <span className="eyebrow">MAINBOARD EXPLORER</span>
+                  <span className="eyebrow">KHÁM PHÁ MAINBOARD</span>
                   <h1>{product.name}</h1>
                   <p>
                     {["Chipset", "Socket", "Memory type", "PCIe", "WiFi"]
@@ -781,9 +766,9 @@ export default function Explorer({
                   onClick={() => setExpert((v) => !v)}
                   aria-pressed={expert}
                 >
-                  <span>Beginner</span>
+                  <span>Cơ bản</span>
                   <span className={"toggle " + (expert ? "on" : "")} />
-                  <span>Expert</span>
+                  <span>Nâng cao</span>
                 </button>
               </div>
               <DeviceCanvas
@@ -798,8 +783,8 @@ export default function Explorer({
                 }}
               />
               <div className="mode-heading">
-                <span className="eyebrow">CHANGE YOUR PERSPECTIVE</span>
-                <span className="tiny">INTERACTIVE MODES</span>
+                <span className="eyebrow">CHỌN GÓC NHÌN</span>
+                <span className="tiny">CHẾ ĐỘ TƯƠNG TÁC</span>
               </div>
               <div className="view-switcher">
                 {modes.map((m) => {
@@ -831,7 +816,7 @@ export default function Explorer({
                       <small>
                         {available
                           ? m.description
-                          : "Coming soon · image unavailable"}
+                          : "Chưa có hình ảnh"}
                       </small>
                       <span className="mode-line" />
                     </button>
@@ -840,9 +825,9 @@ export default function Explorer({
               </div>
               <div className="explorer-footer">
                 <span>
-                  <i className="live-dot" /> SYSTEM ONLINE
+                  <i className="live-dot" /> HỆ THỐNG SẴN SÀNG
                 </span>
-                <span>2D INTERACTIVE · BUILT FOR DISCOVERY</span>
+                <span>TƯƠNG TÁC 2D · KHÁM PHÁ PHẦN CỨNG</span>
               </div>
             </main>
             <DetailPanel
@@ -855,8 +840,8 @@ export default function Explorer({
           </>
         ) : (
           <main className="empty">
-            <h1>No published products yet</h1>
-            <Link href="/admin">Create your first product</Link>
+            <h1>Chưa có sản phẩm đã xuất bản</h1>
+            <Link href="/admin">Tạo sản phẩm đầu tiên</Link>
           </main>
         )}
       </div>

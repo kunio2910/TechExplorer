@@ -63,7 +63,7 @@ export default function DeviceCanvas({
     <div className={"canvas " + (view === "signal" ? "signal" : "")}>
       <div className="canvas-meta">
         <span>
-          <i className="live-dot" /> INTERACTIVE EXPLORER
+          <i className="live-dot" /> KHÁM PHÁ TƯƠNG TÁC
         </span>
         <span>01 / {String(hotspots.length).padStart(2, "0")} NODES</span>
       </div>
@@ -94,7 +94,7 @@ export default function DeviceCanvas({
               draggable={false}
             />
           ) : (
-            <div className="image-placeholder">Product image unavailable</div>
+            <div className="image-placeholder">Không tải được ảnh sản phẩm</div>
           )}
           {view === "signal" && (
             <svg
@@ -135,7 +135,7 @@ export default function DeviceCanvas({
                 >
                   <b>{h.title}</b>
                   <small>
-                    {expert ? h.subtitle : "Click to explore"} <span>↗</span>
+                    {expert ? h.subtitle : "Bấm để khám phá"} <span>↗</span>
                   </small>
                 </span>
               </button>
@@ -176,7 +176,7 @@ export default function DeviceCanvas({
       </div>
       <div className="canvas-floor" />
       <div className="canvas-caption">
-        <Move size={13} /> Select a component to discover what connects it all.
+        <Move size={13} /> Chọn linh kiện để xem chi tiết.
       </div>
       <div className="zoom-bar">
         <button

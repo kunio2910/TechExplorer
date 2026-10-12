@@ -10,10 +10,10 @@ export default function CompatibilityPanel({
   const [ram, setRam] = useState("DDR5");
   return (
     <section className="compatibility">
-      <h3>Check your components</h3>
-      <p>Start with the connections that matter.</p>
+      <h3>Kiểm tra linh kiện</h3>
+      <p>Kiểm tra socket CPU và loại RAM trước khi lắp máy.</p>
       <label>
-        CPU socket
+        Socket CPU
         <select value={cpu} onChange={(e) => setCpu(e.target.value)}>
           <option>AM5</option>
           <option>AM4</option>
@@ -22,7 +22,7 @@ export default function CompatibilityPanel({
         </select>
       </label>
       <label>
-        Memory type
+        Loại RAM
         <select value={ram} onChange={(e) => setRam(e.target.value)}>
           <option>DDR5</option>
           <option>DDR4</option>
@@ -33,10 +33,10 @@ export default function CompatibilityPanel({
           <div key={i} className={"result " + r.status}>
             <b>
               {r.status === "compatible"
-                ? "✓ Compatible"
+                ? "✓ Tương thích"
                 : r.status === "warning"
-                  ? "! Check before building"
-                  : "× Not compatible"}
+                  ? "! Kiểm tra trước khi lắp máy"
+                  : "× Không tương thích"}
             </b>
             <p>{r.message}</p>
           </div>

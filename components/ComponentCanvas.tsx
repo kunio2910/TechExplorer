@@ -40,9 +40,9 @@ export default function ComponentCanvas({
     <div className="canvas component-canvas">
       <div className="canvas-meta">
         <span>
-          <i className="live-dot" /> COMPONENT PREVIEW
+          <i className="live-dot" /> XEM TRƯỚC LINH KIỆN
         </span>
-        <span>{component.type} · NO HOTSPOTS</span>
+        <span>{component.type} · KHÔNG CÓ HOTSPOT</span>
       </div>
       <div className="canvas-media-stack">
         <div

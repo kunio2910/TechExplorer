@@ -15,8 +15,8 @@ const assert = require("node:assert/strict");
     .getByRole("heading", { name: "Khám phá công nghệ", exact: true })
     .waitFor();
   assert.equal(await page.locator(".home-hero-image").count(), 1);
-  await page.getByRole("button", { name: "Components", exact: true }).click();
-  await page.getByRole("heading", { name: "Explore Mainboard" }).waitFor();
+  await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
+  await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
   await page
     .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
     .first()
@@ -46,15 +46,15 @@ const assert = require("node:assert/strict");
     .getAttribute("style");
   assert.notEqual(afterRotation, beforeRotation);
   await page
-    .getByRole("button", { name: "Compatibility", exact: true })
+    .getByRole("button", { name: "Tương thích", exact: true })
     .click();
   await page.locator(".compatibility select").first().selectOption("AM4");
   assert.equal(
-    await page.getByText("× Not compatible", { exact: true }).count(),
+    await page.getByText("× Không tương thích", { exact: true }).count(),
     1,
   );
   await page
-    .getByRole("button", { name: "Specifications", exact: true })
+    .getByRole("button", { name: "Thông số", exact: true })
     .click();
   assert.ok(
     await page
@@ -63,13 +63,13 @@ const assert = require("node:assert/strict");
       .isVisible(),
   );
   await page
-    .getByRole("button", { name: "Signal Flow Follow the data pathways." })
+    .getByRole("button", { name: "Luồng tín hiệu Theo dõi đường truyền dữ liệu." })
     .click();
   assert.equal(await page.locator(".signal-paths").count(), 1);
   await page.getByRole("button", { name: "Zoom in", exact: true }).click();
   await page.screenshot({ path: "test-results/desktop.png", fullPage: true });
-  await page.getByRole("button", { name: "Components", exact: true }).click();
-  await page.getByRole("heading", { name: "Explore Mainboard" }).waitFor();
+  await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
+  await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
   assert.ok((await page.locator(".device-card").count()) >= 1);
   await page
     .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
@@ -81,7 +81,7 @@ const assert = require("node:assert/strict");
   await page
     .getByRole("textbox", { name: "Search products" })
     .fill("does-not-exist");
-  assert.ok(await page.getByText(/No models match/).isVisible());
+  assert.ok(await page.getByText(/Không có thiết bị phù hợp/).isVisible());
   await page.setViewportSize({ width: 390, height: 844 });
   await page
     .getByRole("button", { name: "Explore Memory (RAM)", exact: true })

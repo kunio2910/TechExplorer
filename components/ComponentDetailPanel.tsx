@@ -23,12 +23,12 @@ export default function ComponentDetailPanel({
       <div className="panel-tabs">
         {["Overview", "Specifications", "Compatibility"].map((item) => (
           <button
-            key={item}
+            key={{ Overview: 'Tổng quan', Specifications: 'Thông số', Compatibility: 'Tương thích' }[item]}
             onClick={() => setTab(item)}
             aria-pressed={tab === item}
             className={tab === item ? "active" : ""}
           >
-            {item}
+            {{ Overview: 'Tổng quan', Specifications: 'Thông số', Compatibility: 'Tương thích' }[item]}
           </button>
         ))}
       </div>
@@ -37,7 +37,7 @@ export default function ComponentDetailPanel({
           <>
             <CompatibilityPanel spec={component.spec} />
             <section className="component-detail" aria-live="polite">
-              <span className="eyebrow">COMPATIBILITY NOTE</span>
+              <span className="eyebrow">GHI CHÚ TƯƠNG THÍCH</span>
               <p>{component.notes || "Chưa có ghi chú tương thích."}</p>
             </section>
           </>
@@ -83,7 +83,7 @@ export default function ComponentDetailPanel({
                 </div>
                 <section className="component-detail" aria-live="polite">
                   <div className="section-heading">
-                    <span className="eyebrow">COMPONENT INSIGHT</span>
+                    <span className="eyebrow">THÔNG TIN LINH KIỆN</span>
                     <span className={`status-dot ${component.compatibility}`} />
                   </div>
                   <h3>{component.name}</h3>
@@ -97,15 +97,15 @@ export default function ComponentDetailPanel({
             <div className="section-heading">
               <h3>
                 {tab === "Specifications"
-                  ? "Full specifications"
-                  : "Key specifications"}
+                  ? "Thông số đầy đủ"
+                  : "Thông số chính"}
               </h3>
               {tab === "Overview" && (
                 <button
                   className="text-button"
                   onClick={() => setTab("Specifications")}
                 >
-                  View all ↗
+                  Xem tất cả ↗
                 </button>
               )}
             </div>

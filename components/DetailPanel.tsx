@@ -54,12 +54,12 @@ export default function DetailPanel({
       <div className="panel-tabs">
         {["Overview", "Specifications", "Compatibility"].map((t) => (
           <button
-            key={t}
+            key={{ Overview: 'Tổng quan', Specifications: 'Thông số', Compatibility: 'Tương thích' }[t]}
             onClick={() => setTab(t)}
             aria-pressed={tab === t}
             className={tab === t ? "active" : ""}
           >
-            {t}
+            {{ Overview: 'Tổng quan', Specifications: 'Thông số', Compatibility: 'Tương thích' }[t]}
           </button>
         ))}
       </div>
@@ -79,7 +79,7 @@ export default function DetailPanel({
                     loading="lazy"
                   />
                   <div>
-                    <span className="eyebrow">BUILT TO EXPLORE</span>
+                    <span className="eyebrow">KHÁM PHÁ CHI TIẾT</span>
                     <p>{product.description}</p>
                   </div>
                 </div>
@@ -107,7 +107,7 @@ export default function DetailPanel({
                     aria-live="polite"
                   >
                     <div className="section-heading">
-                      <span className="eyebrow">COMPONENT INSIGHT</span>
+                      <span className="eyebrow">THÔNG TIN LINH KIỆN</span>
                       <button
                         aria-label="Close component detail"
                         onClick={onClose}
@@ -121,7 +121,7 @@ export default function DetailPanel({
                   </motion.section>
                 ) : (
                   <div className="component-hint">
-                    <Expand size={17} /> Click any glowing node to look closer.
+                    <Expand size={17} /> Chọn vòng tròn để xem chi tiết linh kiện.
                   </div>
                 )}
               </>
@@ -129,15 +129,15 @@ export default function DetailPanel({
             <div className="section-heading">
               <h3>
                 {tab === "Specifications"
-                  ? "Full specifications"
-                  : "Key specifications"}
+                  ? "Thông số đầy đủ"
+                  : "Thông số chính"}
               </h3>
               {tab === "Overview" && (
                 <button
                   className="text-button"
                   onClick={() => setTab("Specifications")}
                 >
-                  View all <ArrowUpRight size={14} />
+                  Xem tất cả <ArrowUpRight size={14} />
                 </button>
               )}
             </div>
@@ -154,9 +154,9 @@ export default function DetailPanel({
             {tab === "Overview" && product.components.length > 0 && (
               <section className="associated-list">
                 <div className="section-heading">
-                  <h3>Suggested components</h3>
+                  <h3>Linh kiện đề xuất</h3>
                   <span className="tiny">
-                    {product.components.length} PARTS
+                    {product.components.length} LINH KIỆN
                   </span>
                 </div>
                 {product.components.map((component) => (
@@ -169,7 +169,7 @@ export default function DetailPanel({
                       </small>
                     </div>
                     <span className="associated-status">
-                      {component.compatibility}
+                      {{compatible:'Tương thích',warning:'Cần kiểm tra',incompatible:'Không tương thích'}[component.compatibility]}
                     </span>
                   </div>
                 ))}
@@ -182,7 +182,7 @@ export default function DetailPanel({
                 target="_blank"
                 rel="noreferrer"
               >
-                Verify on manufacturer website ↗
+                Xem thông tin từ nhà sản xuất ↗
               </a>
             )}
           </>

@@ -7,9 +7,18 @@ import {
   query,
   setDoc,
   where,
+  writeBatch,
   type Unsubscribe,
 } from "firebase/firestore";
 import { firestore } from "./firebase-client";
+import type { CatalogBackup } from './backup';
+
+export async function restoreCatalog(backup: CatalogBackup) {
+  const batch = writeBatch(firestore);
+  for (const item of backup.products) batch.set(doc(firestore, 'products', item.id), clean(item));
+  for (const item of backup.components) batch.set(doc(firestore, 'components', item.id), clean(item));
+  await batch.commit();
+}
 import type {
   AssociatedComponent,
   CatalogComponent,
