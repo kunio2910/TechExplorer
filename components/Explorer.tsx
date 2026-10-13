@@ -106,6 +106,23 @@ const catalogTypeByCategory: Record<string, CatalogComponent["type"]> = {
   GPU: "GPU",
   "Power Supply": "PSU",
 };
+const quickStartSteps = [
+  ["01", "Chọn danh mục", "Chọn loại linh kiện bạn muốn khám phá", Box],
+  ["02", "Chọn thiết bị", "Duyệt và chọn một thiết bị cụ thể", MousePointer2],
+  ["03", "Xem ảnh và thông số", "Khám phá cấu tạo và thông số kỹ thuật", PackageOpen],
+] as const;
+
+function categoryIcon(name: string) {
+  if (name === "GPU") return Monitor;
+  if (name === "RAM") return MemoryStick;
+  if (name === "SSD") return HardDrive;
+  if (name === "Power Supply") return Zap;
+  if (name === "Cooling") return Fan;
+  if (name === "Peripherals") return Mouse;
+  if (name === "Networking") return Network;
+  return Cpu;
+}
+
 function componentTypeForCategory(
   category: AssociatedComponent["category"],
 ): CatalogComponent["type"] | null {
@@ -325,6 +342,20 @@ export default function Explorer({
     ? componentMatches.length
     : categoryProducts.length;
   const product = catalog.find((p) => p.slug === selected) ?? catalog[0];
+  const recentDevices = useMemo(
+    () =>
+      [...catalog, ...catalogComponents]
+        .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
+        .slice(0, 5),
+    [catalog, catalogComponents],
+  );
+  function categoryCount(name: string) {
+    if (name === "Mainboard") return catalog.length;
+    const type = catalogTypeByCategory[name];
+    return type
+      ? catalogComponents.filter((item) => item.type === type).length
+      : 0;
+  }
   function browseCategory(name: string) {
     if (name !== activeCategory) setFilters({});
     setActiveCategory(name);
@@ -365,6 +396,16 @@ export default function Explorer({
     setTab("Overview");
     setMobileMenu(false);
   }
+  function returnToHome() {
+    setWorkspaceMode("home");
+    setSelected(undefined);
+    setActiveCategory("");
+    setActive(null);
+    setSelectedComponentId(null);
+    setFilters({});
+    setMobileMenu(false);
+    history.replaceState(null, "", `${basePath}/`);
+  }
   return (
     <div className="app-shell">
       <dialog ref={technologyDialog} className="info-dialog">
@@ -400,7 +441,7 @@ export default function Explorer({
                 : ""
             }
             onClick={() => {
-              setWorkspaceMode(selected ? "explorer" : "home");
+              returnToHome();
               setView("top");
               setTab("Overview");
             }}
@@ -470,7 +511,13 @@ export default function Explorer({
         </button>
       </header>
       <div className="workspace">
-        <aside className={"sidebar " + (mobileMenu ? "visible" : "")}>
+        <aside
+          className={
+            "sidebar " +
+            (mobileMenu ? "visible " : "") +
+            (workspaceMode === "home" ? "home-sidebar" : "")
+          }
+        >
           {workspaceMode === "components" && !activeComponent && (
             <CatalogFilters
               items={
@@ -487,9 +534,13 @@ export default function Explorer({
           <div className="sidebar-section">
             <div className="section-heading">
               <span className="eyebrow">LINH KIỆN</span>
-              <span className="tiny">10</span>
+              <span className="tiny">
+                {workspaceMode === "home" ? 6 : categories.length}
+              </span>
             </div>
-            {categories.map(([name, Icon]) => (
+            {categories
+              .slice(0, workspaceMode === "home" ? 6 : categories.length)
+              .map(([name, Icon]) => (
               <button
                 key={name}
                 className={
@@ -499,9 +550,12 @@ export default function Explorer({
               >
                 <Icon size={20} />
                 <span>{categoryLabel(name)}</span>
+                {workspaceMode === "home" && (
+                  <span className="category-count">{categoryCount(name)}</span>
+                )}
                 <ChevronRight size={14} />
               </button>
-            ))}
+              ))}
           </div>
           {workspaceMode === "explorer" && (
             <div className="sidebar-section models">
@@ -552,73 +606,117 @@ export default function Explorer({
               <div className="breadcrumb">
                 <span>Tech Explorer</span> <ChevronRight size={11} /> Trang chủ
               </div>
-              <div className="home-hero">
-                <div>
-                  <span className="eyebrow">TECH EXPLORER</span>
-                  <h1>Khám phá công nghệ</h1>
-                  <p>
-                    Chọn một linh kiện ở bên trái để bắt đầu tìm hiểu cấu tạo,
-                    hình ảnh và thông số kỹ thuật.
-                  </p>
+              <section className="home-empty-state">
+                <div className="home-empty-heading">
+                  <div>
+                    <span className="eyebrow">TRUNG TÂM KHÁM PHÁ</span>
+                    <h2>Khám phá thế giới phần cứng máy tính</h2>
+                  </div>
+                  <span className="home-empty-status">
+                    <i className="live-dot" /> Chưa chọn thiết bị
+                  </span>
                 </div>
+                <div className="home-empty-visual">
                 <img
                   className="home-hero-image"
                   src={assetUrl("/media/explorer-home.svg")}
-                  alt="Minh họa Tech Explorer"
+                  alt="Minh họa trung tâm khám phá phần cứng"
                   width={900}
                   height={540}
                 />
-              </div>
-              <div className="home-category-grid">
-                {categories.slice(0, 6).map(([name, Icon]) => (
-                  <button key={name} onClick={() => browseCategory(name)}>
-                    <Icon size={32} />
-                    <strong>{categoryLabel(name)}</strong>
-                    <span>Khám phá →</span>
-                  </button>
-                ))}
-              </div>
-              <section className="recent-devices">
-                <h2>Thiết bị mới cập nhật</h2>
-                <div className="recent-device-grid">
-                  {[...catalog, ...catalogComponents]
-                    .sort((a, b) =>
-                      (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
-                    )
-                    .slice(0, 6)
-                    .map((item) => (
-                      <CatalogCard
-                        key={item.id}
-                        item={item}
-                        onOpen={() =>
-                          "media" in item ? choose(item) : chooseComponent(item)
-                        }
-                      />
-                    ))}
+                  <div className="home-empty-copy">
+                    <h1>Khám phá cấu tạo phần cứng</h1>
+                    <p>Chọn một danh mục hoặc tìm kiếm để bắt đầu</p>
+                    <button
+                      className="home-cta"
+                      onClick={() => browseCategory("Mainboard")}
+                    >
+                      <MousePointer2 size={16} /> Bắt đầu khám phá
+                      <ArrowRight size={15} />
+                    </button>
+                  </div>
                 </div>
               </section>
               <div className="explorer-footer">
                 <span>
                   <i className="live-dot" /> HỆ THỐNG SẴN SÀNG
                 </span>
-                <span>CHỌN LINH KIỆN ĐỂ BẮT ĐẦU</span>
+                <span>CHỌN DANH MỤC ĐỂ BẮT ĐẦU</span>
               </div>
             </main>
-            <aside className="detail-panel home-detail-panel">
-              <div className="panel-content">
-                <span className="eyebrow">BẮT ĐẦU TẠI ĐÂY</span>
-                <h2>Chọn linh kiện để bắt đầu</h2>
-                <p>
-                  Duyệt mainboard hoặc thư viện CPU, RAM, SSD, GPU và PSU từ
-                  menu Linh kiện.
-                </p>
-                <button
-                  className="home-cta"
-                  onClick={() => browseCategory("Mainboard")}
-                >
-                  Xem mainboard <ArrowRight size={15} />
-                </button>
-              </div>
+            <aside className="home-start-panel">
+              <section className="home-quick-start">
+                <div className="home-panel-heading">
+                  <h2>
+                    <Zap size={18} /> BẮT ĐẦU NHANH
+                  </h2>
+                </div>
+                <div className="home-quick-steps">
+                  {quickStartSteps.map(([number, title, description, Icon]) => (
+                    <div className="home-quick-step" key={number}>
+                      <span className="home-step-number">{number}</span>
+                      <div>
+                        <strong>{title}</strong>
+                        <p>{description}</p>
+                      </div>
+                      <span className="home-step-icon">
+                        <Icon size={18} />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+              <section className="home-latest-panel">
+                <div className="home-panel-heading">
+                  <h2>
+                    <Network size={18} /> Thiết bị mới cập nhật
+                  </h2>
+                  <button onClick={() => browseCategory("Mainboard")}>
+                    Xem tất cả <ArrowRight size={13} />
+                  </button>
+                </div>
+                <div className="home-latest-list">
+                  {recentDevices.length ? (
+                    recentDevices.map((item) => {
+                      const type =
+                        "media" in item
+                          ? item.category
+                          : item.type === "PSU"
+                            ? "Power Supply"
+                            : item.type;
+                      const Icon = categoryIcon(type);
+                      return (
+                        <button
+                          className="home-latest-row"
+                          key={item.id}
+                          onClick={() =>
+                            "media" in item
+                              ? choose(item)
+                              : chooseComponent(item)
+                          }
+                        >
+                          <span className="home-latest-icon">
+                            <Icon size={18} />
+                          </span>
+                          <span className="home-latest-name">
+                            <strong>{item.name}</strong>
+                            <small>{categoryLabel(type)}</small>
+                          </span>
+                          <time>
+                            {item.updatedAt
+                              ? new Date(item.updatedAt).toLocaleDateString(
+                                  "vi-VN",
+                                )
+                              : "Mới cập nhật"}
+                          </time>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <p className="muted">Chưa có thiết bị được cập nhật.</p>
+                  )}
+                </div>
+              </section>
             </aside>
           </>
         ) : workspaceMode === "components" ? (

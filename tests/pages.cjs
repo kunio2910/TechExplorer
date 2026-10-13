@@ -18,7 +18,7 @@ const assert = require("node:assert/strict");
   });
   await page.goto(url);
   await page
-    .getByRole("heading", { name: "Khám phá công nghệ", exact: true })
+    .getByRole("heading", { name: "Khám phá cấu tạo phần cứng", exact: true })
     .waitFor();
   assert.equal(await page.locator(".home-hero-image").count(), 1);
   await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
@@ -71,7 +71,7 @@ const assert = require("node:assert/strict");
     .waitFor();
   await page.getByRole("link", { name: "← Về trang Explorer" }).click();
   await page
-    .getByRole("heading", { name: "Khám phá công nghệ", exact: true })
+    .getByRole("heading", { name: "Khám phá cấu tạo phần cứng", exact: true })
     .waitFor();
   assert.deepEqual(errors, []);
   assert.deepEqual(failures, []);
