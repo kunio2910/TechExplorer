@@ -11,11 +11,19 @@ const assert = require("node:assert/strict");
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("http://localhost:3000");
-  await page
-    .getByRole("heading", { name: "Khám phá cấu tạo phần cứng", exact: true })
-    .waitFor();
+  await page.locator(".home-hero-image").waitFor();
   assert.equal(await page.locator(".home-hero-image").count(), 1);
   await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Chọn linh kiện để bắt đầu", exact: true })
+    .waitFor();
+  assert.ok((await page.locator(".component-suggestion-card").count()) > 0);
+  assert.equal(await page.locator(".category-count").count(), 0);
+  await page
+    .locator(".component-suggestion-card")
+    .filter({ hasText: "Mainboard" })
+    .first()
+    .click();
   await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
   await page
     .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
@@ -25,6 +33,7 @@ const assert = require("node:assert/strict");
     .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })
     .waitFor();
   assert.equal(await page.locator(".hotspot").count(), 5);
+  assert.equal(await page.locator(".expert-toggle").count(), 0);
   await page.screenshot({ path: "test-results/overview.png", fullPage: true });
   await page
     .getByRole("button", { name: "Explore CPU Socket", exact: true })
@@ -70,6 +79,14 @@ const assert = require("node:assert/strict");
   await page.getByRole("button", { name: "Zoom in", exact: true }).click();
   await page.screenshot({ path: "test-results/desktop.png", fullPage: true });
   await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Chọn linh kiện để bắt đầu", exact: true })
+    .waitFor();
+  await page
+    .locator(".component-suggestion-card")
+    .filter({ hasText: "Mainboard" })
+    .first()
+    .click();
   await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
   assert.ok((await page.locator(".device-card").count()) >= 1);
   await page

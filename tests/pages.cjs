@@ -17,9 +17,7 @@ const assert = require("node:assert/strict");
     if (r.status() >= 400) failures.push(r.url());
   });
   await page.goto(url);
-  await page
-    .getByRole("heading", { name: "Khám phá cấu tạo phần cứng", exact: true })
-    .waitFor();
+  await page.locator(".home-hero-image").waitFor();
   assert.equal(await page.locator(".home-hero-image").count(), 1);
   assert.match(
     await page.locator(".home-hero-image").getAttribute("src"),
@@ -33,11 +31,19 @@ const assert = require("node:assert/strict");
     0,
   );
   await page.reload();
-  await page
-    .getByRole("heading", { name: "Khám phá cấu tạo phần cứng", exact: true })
-    .waitFor();
+  await page.locator(".home-hero-image").waitFor();
   assert.equal(await page.locator(".home-hero-image").count(), 1);
   await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Chọn linh kiện để bắt đầu", exact: true })
+    .waitFor();
+  assert.ok((await page.locator(".component-suggestion-card").count()) > 0);
+  assert.equal(await page.locator(".category-count").count(), 0);
+  await page
+    .locator(".component-suggestion-card")
+    .filter({ hasText: "Mainboard" })
+    .first()
+    .click();
   await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
   await page
     .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
@@ -47,6 +53,7 @@ const assert = require("node:assert/strict");
     .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })
     .waitFor();
   assert.equal(await page.locator(".hotspot").count(), 5);
+  assert.equal(await page.locator(".expert-toggle").count(), 0);
   await page.locator(".board-image").evaluate(async (img) => {
     if (!img.complete)
       await new Promise((resolve, reject) => {
@@ -86,9 +93,7 @@ const assert = require("node:assert/strict");
     .getByText("Đăng nhập bằng tài khoản Firebase", { exact: false })
     .waitFor();
   await page.getByRole("link", { name: "← Về trang Explorer" }).click();
-  await page
-    .getByRole("heading", { name: "Khám phá cấu tạo phần cứng", exact: true })
-    .waitFor();
+  await page.locator(".home-hero-image").waitFor();
   assert.deepEqual(errors, []);
   assert.deepEqual(failures, []);
   await browser.close();

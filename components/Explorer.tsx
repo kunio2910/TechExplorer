@@ -184,7 +184,6 @@ export default function Explorer({
   );
   const [view, setView] = useState("top");
   const [tab, setTab] = useState("Overview");
-  const [expert, setExpert] = useState(true);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
   useEffect(() => {
@@ -361,6 +360,23 @@ export default function Explorer({
       ? catalogComponents.filter((item) => item.type === type).length
       : 0;
   }
+  const suggestionCategories = categories
+    .slice(0, 6)
+    .filter(([name]) => categoryCount(name) > 0);
+  const componentSuggestions = suggestionCategories.length
+    ? suggestionCategories
+    : categories.slice(0, 6);
+  function browseComponents() {
+    setWorkspaceMode("components");
+    setSelected(undefined);
+    setActiveCategory("");
+    setActive(null);
+    setSelectedComponentId(null);
+    setFilters({});
+    setTab("Overview");
+    setMobileMenu(false);
+    history.replaceState(null, "", `${basePath}/`);
+  }
   function browseCategory(name: string) {
     if (name !== activeCategory) setFilters({});
     setActiveCategory(name);
@@ -455,7 +471,7 @@ export default function Explorer({
           </button>
           <button
             className={workspaceMode === "components" ? "nav-active" : ""}
-            onClick={() => browseCategory("Mainboard")}
+            onClick={browseComponents}
           >
             Linh kiện
           </button>
@@ -483,10 +499,7 @@ export default function Explorer({
           </button>
           <button
             onClick={() => {
-              setExpert(false);
-              setNotice(
-                "Chế độ cơ bản: chọn linh kiện để tìm hiểu cách hoạt động.",
-              );
+              setNotice("Chế độ tương tác nâng cao đang được bật.");
             }}
           >
             Tìm hiểu
@@ -523,7 +536,7 @@ export default function Explorer({
             (workspaceMode === "home" ? "home-sidebar" : "")
           }
         >
-          {workspaceMode === "components" && !activeComponent && (
+          {workspaceMode === "components" && activeCategory && !activeComponent && (
             <CatalogFilters
               items={
                 catalogTypeByCategory[activeCategory]
@@ -555,9 +568,6 @@ export default function Explorer({
               >
                 <Icon size={20} />
                 <span>{categoryLabel(name)}</span>
-                {workspaceMode === "home" && (
-                  <span className="category-count">{categoryCount(name)}</span>
-                )}
                 <ChevronRight size={14} />
               </button>
               ))}
@@ -621,11 +631,10 @@ export default function Explorer({
                     height={720}
                   />
                   <div className="home-empty-copy">
-                    <h1>Khám phá cấu tạo phần cứng</h1>
                     <p>Chọn một danh mục hoặc tìm kiếm để bắt đầu</p>
                     <button
                       className="home-cta"
-                      onClick={() => browseCategory("Mainboard")}
+                      onClick={browseComponents}
                     >
                       <MousePointer2 size={16} /> Bắt đầu khám phá
                       <ArrowRight size={15} />
@@ -667,7 +676,7 @@ export default function Explorer({
                   <h2>
                     <Network size={18} /> Thiết bị mới cập nhật
                   </h2>
-                  <button onClick={() => browseCategory("Mainboard")}>
+                  <button onClick={browseComponents}>
                     Xem tất cả <ArrowRight size={13} />
                   </button>
                 </div>
@@ -716,7 +725,81 @@ export default function Explorer({
             </aside>
           </>
         ) : workspaceMode === "components" ? (
-          isCatalogComponent && activeComponent ? (
+          !activeCategory ? (
+            <>
+              <main className="component-browser component-welcome">
+                <div className="breadcrumb">
+                  <span>Tech Explorer</span> <ChevronRight size={11} /> Linh kiện
+                </div>
+                <section className="component-welcome-card">
+                  <div className="component-welcome-heading">
+                    <div>
+                      <span className="eyebrow">THƯ VIỆN LINH KIỆN</span>
+                      <h1>Chọn linh kiện để bắt đầu</h1>
+                      <p>
+                        Chọn một danh mục bên dưới để xem thiết bị, hình ảnh và
+                        thông số kỹ thuật.
+                      </p>
+                    </div>
+                    <span className="catalog-status">
+                      <i className="live-dot" /> SẴN SÀNG KHÁM PHÁ
+                    </span>
+                  </div>
+                  <div className="component-suggestion-grid">
+                    {componentSuggestions.map(([name, Icon]) => (
+                      <button
+                        key={name}
+                        className="component-suggestion-card"
+                        onClick={() => browseCategory(name)}
+                      >
+                        <span className="component-suggestion-icon">
+                          <Icon size={24} />
+                        </span>
+                        <span>
+                          <strong>{categoryLabel(name)}</strong>
+                          <small>Khám phá thiết bị</small>
+                        </span>
+                        <ArrowRight size={16} />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <div className="explorer-footer">
+                  <span>
+                    <i className="live-dot" /> HỆ THỐNG SẴN SÀNG
+                  </span>
+                  <span>CHỌN DANH MỤC ĐỂ TIẾP TỤC</span>
+                </div>
+              </main>
+              <aside className="detail-panel component-welcome-guide">
+                <div className="panel-content">
+                  <span className="eyebrow">HƯỚNG DẪN KHÁM PHÁ</span>
+                  <div className="guide-icon">
+                    <MousePointer2 size={22} />
+                  </div>
+                  <h2>Bắt đầu với một danh mục</h2>
+                  <p>
+                    Chọn một thẻ linh kiện ở giữa màn hình để xem danh sách
+                    thiết bị đang có.
+                  </p>
+                  <ol className="guide-steps">
+                    <li className="current">
+                      <b>01</b>
+                      <span>Chọn danh mục linh kiện</span>
+                    </li>
+                    <li>
+                      <b>02</b>
+                      <span>Chọn thẻ thiết bị</span>
+                    </li>
+                    <li>
+                      <b>03</b>
+                      <span>Khám phá hình ảnh và thông số</span>
+                    </li>
+                  </ol>
+                </div>
+              </aside>
+            </>
+          ) : isCatalogComponent && activeComponent ? (
             <>
               <main className="explorer-main component-review">
                 <div className="review-actions">
@@ -918,22 +1001,13 @@ export default function Explorer({
                       .join("  /  ")}
                   </p>
                 </div>
-                <button
-                  className="expert-toggle"
-                  onClick={() => setExpert((v) => !v)}
-                  aria-pressed={expert}
-                >
-                  <span>Cơ bản</span>
-                  <span className={"toggle " + (expert ? "on" : "")} />
-                  <span>Nâng cao</span>
-                </button>
               </div>
               <DeviceCanvas
                 key={product.id + view}
                 product={product}
                 active={active}
                 view={view}
-                expert={expert}
+                expert={true}
                 onSelect={(h) => {
                   setActive(h.id);
                   setTab("Overview");

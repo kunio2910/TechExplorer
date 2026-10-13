@@ -1325,19 +1325,6 @@ select {
 .home-sidebar .sidebar-note {
   display: none;
 }
-.category-count {
-  display: inline-grid;
-  min-width: 28px;
-  height: 23px;
-  margin-left: auto;
-  padding: 0 6px;
-  place-items: center;
-  color: #a9d9ee;
-  border: 1px solid #1f4b64;
-  border-radius: 999px;
-  background: #0c2a3c;
-  font-size: 10px;
-}
 .home-empty-state {
   min-width: 0;
 }
@@ -2865,6 +2852,105 @@ select {
 .component-browser {
   min-width: 0;
 }
+.component-welcome-card {
+  min-height: 635px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 50% 15%, #0b4058aa, transparent 52%),
+    linear-gradient(150deg, #0b2435, var(--bg));
+}
+.component-welcome-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.component-welcome-heading h1 {
+  margin: 8px 0 7px;
+  font-family: "Barlow Condensed", Arial, sans-serif;
+  font-size: clamp(34px, 5vw, 52px);
+  line-height: 0.95;
+}
+.component-welcome-heading p {
+  max-width: 460px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+.component-suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+.component-suggestion-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 18px;
+  gap: 12px;
+  align-items: center;
+  min-height: 102px;
+  padding: 15px;
+  text-align: left;
+  border: 1px solid #22526b;
+  border-radius: 8px;
+  background: #071b2b99;
+}
+.component-suggestion-card:hover,
+.component-suggestion-card:focus-visible {
+  border-color: var(--cyan);
+  background: #0c3045;
+  box-shadow: 0 0 24px #16c9f51c;
+}
+.component-suggestion-card > span:nth-child(2) {
+  min-width: 0;
+}
+.component-suggestion-card strong,
+.component-suggestion-card small {
+  display: block;
+}
+.component-suggestion-card strong {
+  color: var(--text);
+  font-size: 14px;
+}
+.component-suggestion-card small {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.component-suggestion-card > svg {
+  color: var(--cyan);
+}
+.component-suggestion-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  color: var(--cyan);
+  border: 1px solid #2a7898;
+  border-radius: 10px;
+  background: #09283b;
+}
+.component-welcome-guide {
+  min-height: 0;
+}
+.component-welcome-guide .panel-content {
+  padding: 22px 18px;
+}
+.component-welcome-guide h2 {
+  margin: 0 0 7px;
+  font-family: "Barlow Condensed", Arial, sans-serif;
+  font-size: 27px;
+}
+.component-welcome-guide p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
 .browser-topline,
 .guide-header {
   display: flex;
@@ -3178,6 +3264,31 @@ select {
 }
 
 @media (max-width: 700px) {
+  .component-welcome-card {
+    min-height: 0;
+    padding: 16px;
+  }
+  .component-welcome-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 18px;
+  }
+  .component-welcome-heading h1 {
+    font-size: 36px;
+  }
+  .component-suggestion-grid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    margin-top: 18px;
+  }
+  .component-suggestion-card {
+    min-height: 78px;
+    padding: 11px;
+  }
+  .component-welcome-guide {
+    margin-top: 20px;
+  }
   .browser-heading {
     align-items: flex-start;
     flex-direction: column;
