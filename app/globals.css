@@ -3008,3 +3008,603 @@ select {
 .admin-validation h2:not(:first-child) {
   margin-top: 20px;
 }
+
+/* Mobile ergonomics. Keep the desktop layout above unchanged. */
+@media (max-width: 700px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    height: 64px;
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .logo {
+    min-width: 0;
+    flex: 0 1 auto;
+    gap: 6px;
+    font-size: 16px;
+    letter-spacing: 0.6px;
+  }
+
+  .logo-mark {
+    font-size: 40px;
+  }
+
+  .logo-mark > span {
+    font-size: 22px;
+    margin-left: -8px;
+  }
+
+  .logo small {
+    margin-top: 5px;
+    font-size: 5px;
+    letter-spacing: 1px;
+  }
+
+  .search {
+    flex: 1 1 110px;
+    min-width: 0;
+    width: auto;
+    padding: 7px 8px;
+  }
+
+  .search input {
+    min-width: 0;
+    font-size: 12px;
+  }
+
+  .mobile-menu {
+    flex: 0 0 34px;
+    justify-content: center;
+    min-width: 34px;
+    min-height: 38px;
+  }
+
+  .workspace {
+    padding: 12px 10px 24px;
+  }
+
+  .sidebar.visible {
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-height: calc(100svh - 82px);
+    padding: 8px;
+    overflow-y: auto;
+    border: 1px solid #2a5870;
+    border-radius: 10px;
+    background: #071522f7;
+    backdrop-filter: blur(12px);
+  }
+
+  .sidebar.visible .sidebar-section {
+    margin-bottom: 8px;
+  }
+
+  .sidebar.visible .category {
+    min-height: 44px;
+  }
+
+  .home-hero {
+    min-height: 0;
+    gap: 14px;
+    padding: 12px 0 4px;
+  }
+
+  .home-hero h1 {
+    max-width: none;
+    font-size: clamp(36px, 12vw, 52px);
+    line-height: 0.98;
+  }
+
+  .home-hero p {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .home-hero-image {
+    max-height: 210px;
+  }
+
+  .home-category-grid {
+    gap: 9px;
+    margin: 18px 0;
+  }
+
+  .home-category-grid button {
+    min-height: 112px;
+    padding: 13px;
+  }
+
+  .recent-devices {
+    margin: 22px 0;
+  }
+
+  .recent-device-grid {
+    gap: 10px;
+  }
+
+  .device-card-shell .device-card,
+  .device-grid .device-card {
+    grid-template-columns: 108px minmax(0, 1fr);
+  }
+
+  .device-card-media {
+    min-height: 168px;
+  }
+
+  .device-card-media img {
+    width: 82%;
+    height: 135px;
+  }
+
+  .device-card-body {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .device-card-meta {
+    font-size: 8px;
+  }
+
+  .device-card h2 {
+    min-height: 0;
+    margin: 8px 0 6px;
+    font-size: 17px;
+    line-height: 1.12;
+  }
+
+  .device-card p,
+  .device-key-spec {
+    min-height: 0;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .device-card-cta {
+    margin-top: 12px;
+    padding-top: 9px;
+    font-size: 11px;
+  }
+
+  .compare-card-action {
+    min-height: 44px;
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  .mobile-filters .catalog-filters {
+    margin: 0 0 14px;
+    padding: 12px;
+  }
+
+  .mobile-filters .catalog-filters label {
+    flex-basis: calc(50% - 6px);
+    min-width: 0;
+  }
+
+  .catalog-filters select,
+  .catalog-filters button,
+  .category-pills button {
+    min-height: 42px;
+  }
+
+  .browser-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 15px;
+  }
+
+  .browser-heading h1 {
+    font-size: clamp(31px, 9vw, 42px);
+  }
+
+  .category-pills {
+    gap: 6px;
+    padding-bottom: 10px;
+  }
+
+  .category-pills button {
+    padding: 9px 13px;
+    font-size: 11px;
+  }
+
+  .review-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .review-actions button {
+    min-height: 44px;
+    padding: 9px 8px;
+    font-size: 12px;
+  }
+
+  .title-row h1 {
+    font-size: clamp(24px, 8vw, 32px);
+    line-height: 1.08;
+  }
+
+  .title-row p {
+    line-height: 1.45;
+  }
+
+  .canvas {
+    height: 620px;
+  }
+
+  .canvas-media-stack {
+    gap: 34px;
+  }
+
+  .image-stage {
+    width: min(70%, 325px);
+  }
+
+  .component-canvas .component-image-stage {
+    width: min(76%, 330px);
+  }
+
+  /* Keep hotspot explanations inside the narrow canvas when labels are shown. */
+  .canvas .hotspot .callout,
+  .canvas .hotspot .callout.right {
+    top: calc(100% + 9px);
+    right: auto;
+    left: 50%;
+    width: min(174px, calc(100vw - 48px));
+    max-width: calc(100vw - 48px);
+    min-width: 0;
+    padding: 9px 10px;
+    transform: translateX(-50%);
+  }
+
+  .canvas .hotspot .callout:after,
+  .canvas .hotspot .callout.right:after {
+    top: -10px;
+    right: auto;
+    left: 50%;
+    width: 1px;
+    height: 10px;
+  }
+
+  /* Several labels share the same vertical space on a phone. Reveal the
+     selected label so no explanation sits on top of another one. */
+  .canvas:not(.hide-callouts) .hotspot .callout {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  .canvas:not(.hide-callouts) .hotspot:hover .callout,
+  .canvas:not(.hide-callouts) .hotspot:focus-visible .callout,
+  .canvas:not(.hide-callouts) .hotspot.selected .callout {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .zoom-bar {
+    gap: 4px;
+    padding: 3px 5px;
+  }
+
+  .zoom-bar button {
+    min-width: 34px;
+    min-height: 34px;
+  }
+
+  .device-gallery,
+  .component-gallery {
+    width: 96%;
+  }
+
+  .device-gallery-thumbnails,
+  .component-gallery-thumbnails {
+    justify-content: center;
+  }
+
+  .device-gallery-thumbnails button,
+  .component-gallery-thumbnails button {
+    flex: 0 0 50px;
+    width: 50px;
+    height: 44px;
+  }
+
+  .detail-panel {
+    margin-top: 14px;
+  }
+
+  .detail-panel.sheet-open {
+    max-height: 72svh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .sheet-open .panel-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--panel);
+  }
+
+  .panel-tabs button {
+    min-height: 48px;
+    padding: 12px 4px;
+  }
+
+  .panel-content {
+    padding: 15px 13px;
+  }
+
+  .spec-table > div {
+    grid-template-columns: 42% 58%;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .spec-table dd {
+    overflow-wrap: anywhere;
+  }
+
+  /* A flow tray cannot cover cards while a phone is being scrolled. */
+  .comparison-tray {
+    position: static;
+    margin: 12px 10px 16px;
+    padding: 10px;
+    border: 1px solid var(--cyan);
+    border-radius: 9px;
+    flex-wrap: wrap;
+  }
+
+  .comparison-tray > div {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .comparison-tray > button,
+  .comparison-tray > div button {
+    min-height: 42px;
+  }
+
+  .app-shell:has(.comparison-tray) {
+    padding-bottom: 0;
+  }
+
+  .static-admin {
+    padding: 16px 10px 30px;
+  }
+
+  .admin-header {
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .admin-header h1 {
+    font-size: 27px;
+    line-height: 1;
+  }
+
+  .admin-title-note {
+    line-height: 1.45;
+  }
+
+  .admin-header-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .admin-user {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-header-actions button,
+  .admin-header-actions a {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .admin-toolbar {
+    position: sticky;
+    top: 8px;
+    z-index: 30;
+    gap: 8px;
+    padding: 7px;
+    margin-bottom: 12px;
+  }
+
+  .admin-tabs {
+    flex: 1 1 100%;
+    width: 100%;
+    gap: 4px;
+    padding-bottom: 2px;
+  }
+
+  .admin-tabs button {
+    min-height: 42px;
+    padding: 8px 13px;
+  }
+
+  .admin-toolbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    margin-left: 0;
+    gap: 7px;
+  }
+
+  .admin-toolbar-actions > span {
+    grid-column: 1 / -1;
+    padding: 3px 2px;
+    line-height: 1.35;
+  }
+
+  .admin-toolbar-actions > button,
+  .admin-toolbar-actions .backup-upload {
+    width: 100%;
+    min-height: 45px;
+    padding: 8px 7px;
+    text-align: center;
+  }
+
+  .backup-upload {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .backup-upload input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .admin-message {
+    margin-bottom: 12px;
+    padding: 11px;
+    line-height: 1.45;
+  }
+
+  .admin-workspace {
+    display: block;
+  }
+
+  .admin-list-panel,
+  .admin-form,
+  .admin-preview {
+    margin-bottom: 12px;
+    padding: 13px;
+  }
+
+  .admin-list-heading h2,
+  .admin-section-heading h2 {
+    font-size: 17px;
+  }
+
+  .admin-cards {
+    max-height: 300px;
+  }
+
+  .admin-card {
+    min-height: 76px;
+    padding: 10px;
+  }
+
+  .admin-card-duplicate,
+  .admin-card-delete {
+    flex-basis: 38px;
+    width: 38px;
+    min-height: 44px;
+  }
+
+  .static-admin input,
+  .static-admin textarea,
+  .static-admin select {
+    font-size: 16px;
+  }
+
+  .admin-collapsible > summary {
+    min-height: 48px;
+    padding: 12px;
+  }
+
+  .admin-form-grid,
+  .editor-fields,
+  .admin-gallery-fields {
+    gap: 12px;
+  }
+
+  .editor-wrap {
+    padding: 12px;
+  }
+
+  .editor-board,
+  .editor-board img {
+    min-height: 360px;
+  }
+
+  .editor-node {
+    width: 36px;
+    height: 36px;
+    font-size: 11px;
+  }
+
+  .admin-component-preview .component-canvas,
+  .admin-component-preview .canvas:has(.component-gallery) {
+    height: 560px;
+    min-height: 560px;
+  }
+
+  .admin-validation {
+    margin-bottom: 12px;
+    padding: 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .header {
+    gap: 5px;
+    padding-inline: 7px;
+  }
+
+  .logo {
+    font-size: 14px;
+  }
+
+  .logo-mark {
+    font-size: 35px;
+  }
+
+  .search input {
+    font-size: 11px;
+  }
+
+  .workspace {
+    padding-inline: 8px;
+  }
+
+  .home-category-grid button {
+    min-height: 104px;
+    padding: 11px;
+  }
+
+  .device-card-shell .device-card,
+  .device-grid .device-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .device-card-media {
+    min-height: 152px;
+  }
+
+  .device-card-media img {
+    height: 118px;
+  }
+
+  .device-card h2 {
+    font-size: 16px;
+  }
+
+  .admin-toolbar-actions > button,
+  .admin-toolbar-actions .backup-upload {
+    font-size: 12px;
+  }
+}
