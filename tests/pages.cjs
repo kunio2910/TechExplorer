@@ -21,6 +21,22 @@ const assert = require("node:assert/strict");
     .getByRole("heading", { name: "Khám phá cấu tạo phần cứng", exact: true })
     .waitFor();
   assert.equal(await page.locator(".home-hero-image").count(), 1);
+  assert.match(
+    await page.locator(".home-hero-image").getAttribute("src"),
+    /explorer-home-empty\.svg$/,
+  );
+  assert.equal(
+    await page.getByRole("heading", {
+      name: "ASUS ROG STRIX B850-F GAMING WIFI",
+      exact: true,
+    }).count(),
+    0,
+  );
+  await page.reload();
+  await page
+    .getByRole("heading", { name: "Khám phá cấu tạo phần cứng", exact: true })
+    .waitFor();
+  assert.equal(await page.locator(".home-hero-image").count(), 1);
   await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
   await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
   await page

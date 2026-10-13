@@ -341,7 +341,12 @@ export default function Explorer({
   const libraryCount = isCatalogComponent
     ? componentMatches.length
     : categoryProducts.length;
-  const product = catalog.find((p) => p.slug === selected) ?? catalog[0];
+  // Keep the home screen truly unselected after a refresh. Falling back to the
+  // first catalog item here made the central panel look like a random
+  // mainboard even when no device was selected.
+  const product = selected
+    ? catalog.find((p) => p.slug === selected)
+    : undefined;
   const recentDevices = useMemo(
     () =>
       [...catalog, ...catalogComponents]
@@ -607,23 +612,14 @@ export default function Explorer({
                 <span>Tech Explorer</span> <ChevronRight size={11} /> Trang chủ
               </div>
               <section className="home-empty-state">
-                <div className="home-empty-heading">
-                  <div>
-                    <span className="eyebrow">TRUNG TÂM KHÁM PHÁ</span>
-                    <h2>Khám phá thế giới phần cứng máy tính</h2>
-                  </div>
-                  <span className="home-empty-status">
-                    <i className="live-dot" /> Chưa chọn thiết bị
-                  </span>
-                </div>
                 <div className="home-empty-visual">
-                <img
-                  className="home-hero-image"
-                  src={assetUrl("/media/explorer-home.svg")}
-                  alt="Minh họa trung tâm khám phá phần cứng"
-                  width={900}
-                  height={540}
-                />
+                  <img
+                    className="home-hero-image"
+                    src={assetUrl("/media/explorer-home-empty.svg")}
+                    alt="Minh họa trung tâm khám phá phần cứng"
+                    width={1200}
+                    height={720}
+                  />
                   <div className="home-empty-copy">
                     <h1>Khám phá cấu tạo phần cứng</h1>
                     <p>Chọn một danh mục hoặc tìm kiếm để bắt đầu</p>

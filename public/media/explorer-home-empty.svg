@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Khám phá cấu tạo phần cứng</title>
+  <desc id="desc">Minh họa chip xử lý phát sáng ở trung tâm với các biểu tượng linh kiện xung quanh</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#061421"/>
+      <stop offset=".52" stop-color="#082438"/>
+      <stop offset="1" stop-color="#04101b"/>
+    </linearGradient>
+    <linearGradient id="board" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#21ddff"/>
+      <stop offset=".45" stop-color="#0a88b7"/>
+      <stop offset="1" stop-color="#07385c"/>
+    </linearGradient>
+    <linearGradient id="chipTop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#c8f7ff"/>
+      <stop offset=".28" stop-color="#4fd9f5"/>
+      <stop offset=".7" stop-color="#126a92"/>
+      <stop offset="1" stop-color="#0b3655"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#88eaff"/>
+      <stop offset=".42" stop-color="#237da4"/>
+      <stop offset="1" stop-color="#092c48"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#2aa3c5" stroke-opacity=".16"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="720" rx="22" fill="url(#background)"/>
+  <rect width="1200" height="720" rx="22" fill="url(#grid)"/>
+  <ellipse cx="600" cy="344" rx="270" ry="184" fill="#08bfe9" opacity=".12" filter="url(#softGlow)"/>
+
+  <g fill="none" stroke="#36d9fb" stroke-linecap="round" stroke-width="3" opacity=".82">
+    <path d="M88 162h158v70h122M103 550h158v-68h126"/>
+    <path d="M1112 164H954v70H832M1100 548H942v-72H818"/>
+    <path d="M600 42v82M600 596v82M254 78l74 74M946 78l-74 74"/>
+  </g>
+  <g fill="#4ee5ff">
+    <circle cx="88" cy="162" r="5"/><circle cx="103" cy="550" r="5"/>
+    <circle cx="1112" cy="164" r="5"/><circle cx="1100" cy="548" r="5"/>
+    <circle cx="600" cy="42" r="5"/><circle cx="600" cy="678" r="5"/>
+    <circle cx="254" cy="78" r="5"/><circle cx="946" cy="78" r="5"/>
+  </g>
+
+  <g transform="translate(600 350)" filter="url(#glow)">
+    <path d="M-196-70 0-170 196-70v174L0 204l-196-100z" fill="#061725" stroke="#0d7099" stroke-width="4"/>
+    <path d="M-196-70 0 30 196-70 0-170z" fill="url(#board)" stroke="#4de8ff" stroke-width="4"/>
+    <path d="M-196 104 0 204v-42L-196 62zM196 104 0 204v-42l196-100z" fill="#062a44" stroke="#0b6289" stroke-width="3"/>
+    <path d="M-135-48 0 22 135-48 0-117z" fill="#0a263b" stroke="#a7f6ff" stroke-opacity=".72" stroke-width="4"/>
+    <path d="M-118-46 0 14 118-46 0-105z" fill="url(#metal)" stroke="#5beaff" stroke-width="3"/>
+    <path d="M-91-45 0 1 91-45 0-90z" fill="url(#chipTop)" stroke="#d0fbff" stroke-opacity=".78" stroke-width="2"/>
+    <path d="M-56-45 0-17 56-45 0-73z" fill="#b9f5ff" opacity=".26"/>
+    <path d="M-29-58 0-44 29-58 0-73z" fill="#e1fdff" opacity=".42"/>
+    <g stroke="#7deeff" stroke-width="4" stroke-linecap="round">
+      <path d="M-151-30h-60M-160-8h-74M-165 14h-54M151-30h60M160-8h74M165 14h54"/>
+      <path d="M-72-112v-58M-48-124v-78M-24-133v-52M72-112v-58M48-124v-78M24-133v-52"/>
+      <path d="M-72 111v58M-48 123v78M-24 132v52M72 111v58M48 123v78M24 132v52"/>
+    </g>
+    <g fill="#d9fcff">
+      <circle cx="-211" cy="-30" r="5"/><circle cx="-234" cy="-8" r="5"/><circle cx="-219" cy="14" r="5"/>
+      <circle cx="211" cy="-30" r="5"/><circle cx="234" cy="-8" r="5"/><circle cx="219" cy="14" r="5"/>
+      <circle cx="-72" cy="-170" r="5"/><circle cx="-48" cy="-202" r="5"/><circle cx="24" cy="-185" r="5"/>
+      <circle cx="72" cy="-170" r="5"/><circle cx="48" cy="-202" r="5"/><circle cx="-24" cy="-185" r="5"/>
+    </g>
+  </g>
+
+  <g fill="#07273a" stroke="#24c5ed" stroke-width="2">
+    <rect x="98" y="78" width="138" height="112" rx="16"/>
+    <rect x="964" y="82" width="138" height="112" rx="16"/>
+    <rect x="78" y="414" width="158" height="112" rx="16"/>
+    <rect x="964" y="414" width="158" height="112" rx="16"/>
+  </g>
+  <g fill="none" stroke="#6eeaff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="138" y="106" width="58" height="55" rx="7"/>
+    <path d="M129 119h-14M129 137h-14M129 155h-14M205 119h14M205 137h14M205 155h14M151 97V84M169 97V84M187 97V84M151 170v13M169 170v13M187 170v13"/>
+    <rect x="1002" y="117" width="62" height="39" rx="7"/><circle cx="1021" cy="137" r="10"/><circle cx="1045" cy="137" r="10"/>
+    <path d="M1015 137h12M1039 137h12M1021 127v20M1045 127v20"/>
+    <path d="M101 454h110v36H101zM113 446v-13M133 446v-13M153 446v-13M173 446v-13M193 446v-13M113 503v13M133 503v13M153 503v13M173 503v13M193 503v13"/>
+    <rect x="1000" y="447" width="86" height="52" rx="7"/><path d="M1014 462h42M1014 484h25M1064 462h8M1046 484h26"/>
+  </g>
+  <g fill="#63e8ff" font-family="Arial, sans-serif" font-size="14" letter-spacing="3" text-anchor="middle">
+    <text x="167" y="212">CPU</text><text x="1033" y="215">GPU</text><text x="157" y="550">RAM</text><text x="1043" y="550">SSD</text>
+  </g>
+</svg>
