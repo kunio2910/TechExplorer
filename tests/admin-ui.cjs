@@ -162,6 +162,14 @@ const assert = require("node:assert/strict");
       .locator(".header nav")
       .getByRole("button", { name: "Linh kiện", exact: true })
       .click();
+    await page
+      .getByRole("heading", { name: "Chọn linh kiện để bắt đầu", exact: true })
+      .waitFor();
+    await page
+      .locator(".component-suggestion-card")
+      .filter({ hasText: "Mainboard" })
+      .first()
+      .click();
     await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
     await page.getByRole("button", { name: "Open MSI QA" }).waitFor();
     await page
