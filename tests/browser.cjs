@@ -12,7 +12,7 @@ const assert = require("node:assert/strict");
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("http://localhost:3000");
   await page
-    .getByRole("heading", { name: "Khám phá công nghệ", exact: true })
+    .getByRole("heading", { name: "Khám phá cấu tạo phần cứng", exact: true })
     .waitFor();
   assert.equal(await page.locator(".home-hero-image").count(), 1);
   await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
