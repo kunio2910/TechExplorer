@@ -13,10 +13,12 @@ const assert = require("node:assert/strict");
     "@/lib/firestore": `const q=()=>window.qa;const save=(list,item)=>{const i=list.findIndex(x=>x.id===item.id);if(i<0)list.push(structuredClone(item));else list[i]=structuredClone(item);};export const loadAllProducts=async()=>structuredClone(q().products);export const loadCatalogComponents=async()=>structuredClone(q().components);export const saveProduct=async item=>save(q().products,item);export const saveCatalogComponent=async item=>save(q().components,item);export const deleteProduct=async id=>{q().products=q().products.filter(x=>x.id!==id);};export const deleteCatalogComponent=async id=>{q().components=q().components.filter(x=>x.id!==id);};export const seedProductsToFirestore=async()=>({products:1,components:5});export const restoreCatalog=async b=>{b.products.forEach(saveProduct);b.components.forEach(saveCatalogComponent);};export const firestoreErrorMessage=(e)=>e.message;`,
   };
   mocks["@/lib/firestore"] +=
+    `export const saveVersionedDevice=async(item,original)=>{window.qa.versions??=[];if(original)window.qa.versions.push({id:String(window.qa.versions.length),savedAt:original.updatedAt||new Date().toISOString(),by:'QA',snapshot:structuredClone(original)});window.qa.versions.push({id:String(window.qa.versions.length),savedAt:item.updatedAt||new Date().toISOString(),by:'QA',snapshot:structuredClone(item)});return 'media'in item?saveProduct(item):saveCatalogComponent(item);};export const loadDeviceVersions=async(group,id)=>(window.qa.versions||[]).filter(x=>x.snapshot.id===id);`;
+  mocks["@/lib/firestore"] +=
     `export const subscribeToPublishedProducts=(cb)=>{const timer=setTimeout(()=>cb(structuredClone(q().products.filter(p=>p.status==='published'&&!p.deletedAt))),0);return()=>clearTimeout(timer);};export const subscribeToPublishedComponents=(cb)=>{const timer=setTimeout(()=>cb(structuredClone(q().components.filter(p=>p.status==='published'&&!p.deletedAt))),0);return()=>clearTimeout(timer);};`;
   const output = await build({
     stdin: {
-      contents: `import React from 'react';import{createRoot}from'react-dom/client';import Admin from './components/StaticAdmin';import Explorer from './components/Explorer';import{seedProducts}from'./lib/seed';const explorer=location.pathname==='/explorer';window.qa={products:structuredClone(seedProducts),components:['CPU','RAM','SSD','GPU','PSU'].map(type=>({id:type,type,category:type==='SSD'?'Storage':type,name:type+' QA',brand:'QA',model:'',imageUrl:'/media/mainboard.webp',gallery:[],description:'Fixture',spec:{Socket:'AM5'},status:explorer?'published':'draft',compatibility:'warning',notes:''}))};if(explorer){window.qa.products[0].gallery=['/media/explorer-home.svg'];window.qa.products.push({...structuredClone(seedProducts[0]),id:'second',slug:'second',name:'MSI QA',brand:'MSI',spec:{...seedProducts[0].spec,Socket:'AM4'}});}createRoot(document.getElementById('root')).render(explorer?<Explorer products={seedProducts}/>:<Admin initialProducts={seedProducts}/>);`,
+      contents: `import React from 'react';import{createRoot}from'react-dom/client';import Admin from './components/StaticAdmin';import Explorer from './components/Explorer';import{seedProducts}from'./lib/seed';const explorer=location.pathname==='/explorer'||new URLSearchParams(location.search).has('screen');window.qa={products:structuredClone(seedProducts),components:['CPU','RAM','SSD','GPU','PSU'].map(type=>({id:type,type,category:type==='SSD'?'Storage':type,name:type+' QA',brand:'QA',model:'',imageUrl:'/media/mainboard.webp',gallery:[],description:'Fixture',spec:{Socket:'AM5'},status:explorer?'published':'draft',compatibility:'warning',notes:''}))};if(explorer){window.qa.products[0].gallery=['/media/explorer-home.svg'];window.qa.products.push({...structuredClone(seedProducts[0]),id:'second',slug:'second',name:'MSI QA',brand:'MSI',spec:{...seedProducts[0].spec,Socket:'AM4'}});}createRoot(document.getElementById('root')).render(explorer?<Explorer products={seedProducts}/>:<Admin initialProducts={seedProducts}/>);`,
       resolveDir: process.cwd(),
       loader: "tsx",
     },
@@ -56,7 +58,10 @@ const assert = require("node:assert/strict");
   );
   const server = http.createServer(async (req, res) => {
     try {
-      if (req.url === "/" || req.url === "/explorer") {
+      if (
+        new URL(req.url, "http://127.0.0.1").pathname === "/" ||
+        new URL(req.url, "http://127.0.0.1").pathname === "/explorer"
+      ) {
         res.setHeader("Content-Type", "text/html");
         res.end(
           '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script src="/qa.js"></script></body></html>',
@@ -171,7 +176,7 @@ const assert = require("node:assert/strict");
       .first()
       .click();
     await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
-    await page.getByRole("button", { name: "Open MSI QA" }).waitFor();
+    await page.getByRole("button", { name: "Xem chi tiết MSI QA" }).waitFor();
     await page
       .locator(".sidebar")
       .getByLabel("Hãng", { exact: true })
@@ -198,7 +203,9 @@ const assert = require("node:assert/strict");
       .getByRole("button", { name: "Đóng", exact: true })
       .click();
     await page
-      .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
+      .getByRole("button", {
+        name: "Xem chi tiết ASUS ROG STRIX B850-F GAMING WIFI",
+      })
       .click();
     assert.equal(await page.locator(".callout").first().isVisible(), false);
     await page
@@ -230,9 +237,230 @@ const assert = require("node:assert/strict");
       path: "test-results/explorer-improved-mobile.png",
       fullPage: true,
     });
+    // New workflows: favorites, history, state links, builder and knowledge.
+    await page.setViewportSize({ width: 1440, height: 1050 });
+    await page.locator(".favorite-card-action").first().click();
+    await page
+      .locator(".header nav")
+      .getByRole("button", { name: "Đã lưu", exact: true })
+      .click();
+    await page.getByRole("heading", { name: "Thiết bị của bạn" }).waitFor();
+    assert.equal(await page.locator(".device-card").count(), 1);
+    await page
+      .getByRole("button", { name: "Đã xem gần đây", exact: true })
+      .click();
+    assert.ok((await page.locator(".device-card").count()) >= 1);
+    await page.locator(".device-card").first().click();
+    await page.getByRole("button", { name: "Thông số", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Chia sẻ màn hình", exact: true })
+      .click();
+    const stateLink = await page
+      .getByLabel("Link chia sẻ", { exact: true })
+      .inputValue();
+    assert.ok(stateLink.includes("tab=Specifications"));
+    await page.reload();
+    await page.getByRole("button", { name: "Thông số", exact: true }).waitFor();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Thông số", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    await page
+      .locator(".header nav")
+      .getByRole("button", { name: "Xây dựng cấu hình", exact: true })
+      .click();
+    await page
+      .getByRole("heading", { name: "Xây dựng cấu hình PC", exact: true })
+      .waitFor();
+    await page.goBack();
+    await page.getByRole("button", { name: "Thông số", exact: true }).waitFor();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Thông số", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    await page.goForward();
+    await page
+      .getByRole("heading", { name: "Xây dựng cấu hình PC", exact: true })
+      .waitFor();
+    const boardSlot = page.locator(".build-slot").first();
+    await boardSlot
+      .getByRole("button", { name: "＋ Chọn thiết bị", exact: true })
+      .click();
+    await page
+      .locator(".build-options")
+      .getByRole("button", { name: /ASUS ROG/ })
+      .click();
+    await page.getByLabel("Tên cấu hình", { exact: true }).fill("PC QA đã lưu");
+    await page
+      .getByRole("button", { name: "Lưu cấu hình", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Chia sẻ cấu hình", exact: true })
+      .click();
+    const buildLink = await page
+      .getByLabel("Link cấu hình", { exact: true })
+      .inputValue();
+    const shared = await browser.newPage();
+    await shared.goto(buildLink);
+    await shared
+      .getByRole("heading", { name: "Xây dựng cấu hình PC", exact: true })
+      .waitFor();
+    assert.equal(
+      await shared.getByLabel("Tên cấu hình", { exact: true }).inputValue(),
+      "PC QA đã lưu",
+    );
+    assert.ok(
+      await shared
+        .locator(".build-slot")
+        .first()
+        .getByText("ASUS ROG STRIX B850-F GAMING WIFI", { exact: true })
+        .isVisible(),
+    );
+    await shared
+      .locator(".build-slot")
+      .first()
+      .getByRole("button", { name: "Bỏ chọn", exact: true })
+      .click();
+    await shared
+      .getByRole("button", { name: "Chia sẻ cấu hình", exact: true })
+      .click();
+    const emptyShared = new URL(
+      await shared.getByLabel("Link cấu hình", { exact: true }).inputValue(),
+    );
+    assert.deepEqual(
+      JSON.parse(emptyShared.searchParams.get("build")).parts,
+      {},
+    );
+    await shared.close();
+    await page.reload();
+    await page
+      .getByRole("heading", { name: "Xây dựng cấu hình PC", exact: true })
+      .waitFor();
+    assert.equal(
+      await page.getByLabel("Tên cấu hình", { exact: true }).inputValue(),
+      "PC QA đã lưu",
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await page.screenshot({
+      path: "test-results/builder-mobile.png",
+      fullPage: true,
+    });
+    await page
+      .locator(".feature-mobile-nav")
+      .getByRole("button", { name: "Kiến thức", exact: true })
+      .click();
+    await page.getByRole("heading", { name: "Trung tâm kiến thức" }).waitFor();
+    await page.getByLabel("Tìm thuật ngữ hoặc chủ đề").fill("VRM");
+    assert.equal(await page.locator(".knowledge-grid article").count(), 1);
+    await page.setViewportSize({ width: 1440, height: 1050 });
+    await page
+      .locator(".header nav")
+      .getByRole("button", { name: "Linh kiện", exact: true })
+      .click();
+    await page
+      .locator(".component-suggestion-card")
+      .filter({ hasText: "CPU" })
+      .first()
+      .click();
+    await page
+      .getByRole("button", { name: "Xem chi tiết CPU QA", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Thông số", exact: true }).click();
+    assert.ok(page.url().includes("component=CPU"));
+    await page.reload();
+    await page.getByRole("heading", { name: "CPU QA", exact: true }).waitFor();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Thông số", exact: true })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    // Independent admin session tests cloud versions and browser draft recovery.
+    const admin = await browser.newPage({
+      viewport: { width: 1440, height: 1050 },
+    });
+    admin.on("dialog", (d) => d.accept());
+    admin.on("pageerror", (e) => errors.push(e.message));
+    await admin.goto("http://127.0.0.1:4180/");
+    await admin.getByRole("heading", { name: "Quản lý phần cứng" }).waitFor();
+    await admin.getByText("Linh kiện đi kèm", { exact: true }).click();
+    await admin
+      .getByLabel("Thêm từ thư viện linh kiện", { exact: true })
+      .selectOption("CPU");
+    await admin
+      .getByLabel("Tên sản phẩm", { exact: true })
+      .fill("Mainboard QA liên kết");
+    await admin
+      .locator(".admin-form-grid select")
+      .first()
+      .selectOption("draft");
+    await admin.getByRole("button", { name: /Lưu lên Firestore/ }).click();
+    await admin
+      .getByText("Đã lưu mainboard lên Firestore.", { exact: true })
+      .waitFor();
+    assert.equal(
+      await admin.evaluate(
+        () => window.qa.products[0].components.at(-1).catalogId,
+      ),
+      "CPU",
+    );
+    await admin
+      .locator(".admin-versions")
+      .getByRole("button", { name: "Xem phiên bản đã lưu", exact: true })
+      .click();
+    await admin.locator(".version-row").first().click();
+    await admin
+      .getByRole("button", {
+        name: "Phục hồi phiên bản thành bản nháp",
+        exact: true,
+      })
+      .click();
+    assert.equal(
+      await admin.getByLabel("Tên sản phẩm", { exact: true }).inputValue(),
+      "ASUS ROG STRIX B850-F GAMING WIFI",
+    );
+    await admin
+      .locator(".admin-tabs")
+      .getByRole("button", { name: "RAM", exact: true })
+      .click();
+    await admin.getByText("Thông số RAM", { exact: true }).click();
+    await admin.getByLabel("Dung lượng (GB)", { exact: true }).fill("32gb");
+    await admin.getByLabel("Dung lượng (GB)", { exact: true }).blur();
+    assert.equal(
+      await admin.getByLabel("Dung lượng (GB)", { exact: true }).inputValue(),
+      "32 GB",
+    );
+    await admin
+      .getByLabel("Tên linh kiện", { exact: true })
+      .fill("RAM khôi phục QA");
+    await admin
+      .locator(".admin-recovery")
+      .getByText("Đã tự lưu bản nháp trên trình duyệt.", { exact: true })
+      .waitFor();
+    await admin.reload();
+    await admin
+      .getByRole("button", { name: "Khôi phục bản nháp RAM", exact: true })
+      .waitFor();
+    await admin
+      .getByRole("button", { name: "Khôi phục bản nháp RAM", exact: true })
+      .click();
+    assert.equal(
+      await admin.getByLabel("Tên linh kiện", { exact: true }).inputValue(),
+      "RAM khôi phục QA",
+    );
+    await admin.close();
     assert.deepEqual(errors, []);
     console.log(
-      "UI passed: draft duplication, trash/restore, uploads, cover selection, history, filters, comparisons, lightbox, navigation and mobile.",
+      "UI passed: admin linking, draft recovery, version restore, normalized specs, personal library, shared state, PC builds, knowledge, history navigation and responsive layouts.",
     );
   } finally {
     await browser?.close();

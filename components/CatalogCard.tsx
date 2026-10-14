@@ -6,18 +6,22 @@ export default function CatalogCard({
   onOpen,
   onCompare,
   selected = false,
+  onFavorite,
+  favorite = false,
 }: {
   item: Device;
   onOpen: () => void;
   onCompare?: () => void;
   selected?: boolean;
+  onFavorite?: () => void;
+  favorite?: boolean;
 }) {
   const image = "media" in item ? item.media.top : item.imageUrl;
   return (
     <article className="device-card-shell">
       <button
         className="device-card"
-        aria-label={`Open ${item.name}`}
+        aria-label={`Xem chi tiết ${item.name}`}
         onClick={onOpen}
       >
         <div className="device-card-media">
@@ -44,6 +48,16 @@ export default function CatalogCard({
           <span className="device-card-cta">Xem chi tiết →</span>
         </div>
       </button>
+      {onFavorite && (
+        <button
+          className="favorite-card-action"
+          aria-label={`${favorite ? "Bỏ yêu thích" : "Yêu thích"} ${item.name}`}
+          aria-pressed={favorite}
+          onClick={onFavorite}
+        >
+          {favorite ? "♥" : "♡"}
+        </button>
+      )}
       {onCompare && (
         <button
           className="compare-card-action"

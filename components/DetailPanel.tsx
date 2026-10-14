@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Product, Hotspot } from "@/lib/types";
 import CompatibilityPanel from "./CompatibilityPanel";
+import { specLabel } from "@/lib/catalog-tools";
+import { categoryLabel } from "@/lib/labels";
 const specKeys = [
   "Chipset",
   "Socket",
@@ -41,12 +43,14 @@ export default function DetailPanel({
   tab,
   setTab,
   onClose,
+  onOpenLinked,
 }: {
   product: Product;
   active: Hotspot | undefined;
   tab: string;
   setTab: (t: string) => void;
   onClose: () => void;
+  onOpenLinked?: (id: string) => void;
 }) {
   const reduced = useReducedMotion();
   return (
@@ -54,12 +58,24 @@ export default function DetailPanel({
       <div className="panel-tabs">
         {["Overview", "Specifications", "Compatibility"].map((t) => (
           <button
-            key={{ Overview: 'Tổng quan', Specifications: 'Thông số', Compatibility: 'Tương thích' }[t]}
+            key={
+              {
+                Overview: "Tổng quan",
+                Specifications: "Thông số",
+                Compatibility: "Tương thích",
+              }[t]
+            }
             onClick={() => setTab(t)}
             aria-pressed={tab === t}
             className={tab === t ? "active" : ""}
           >
-            {{ Overview: 'Tổng quan', Specifications: 'Thông số', Compatibility: 'Tương thích' }[t]}
+            {
+              {
+                Overview: "Tổng quan",
+                Specifications: "Thông số",
+                Compatibility: "Tương thích",
+              }[t]
+            }
           </button>
         ))}
       </div>
@@ -92,7 +108,7 @@ export default function DetailPanel({
                           <Icon size={21} />
                         </span>
                         <b>{product.spec[k] || "—"}</b>
-                        <small>{k}</small>
+                        <small>{specLabel(k)}</small>
                       </div>
                     );
                   })}
@@ -109,7 +125,7 @@ export default function DetailPanel({
                     <div className="section-heading">
                       <span className="eyebrow">THÔNG TIN LINH KIỆN</span>
                       <button
-                        aria-label="Close component detail"
+                        aria-label="Đóng chi tiết linh kiện"
                         onClick={onClose}
                       >
                         <X size={16} />
@@ -121,7 +137,8 @@ export default function DetailPanel({
                   </motion.section>
                 ) : (
                   <div className="component-hint">
-                    <Expand size={17} /> Chọn vòng tròn để xem chi tiết linh kiện.
+                    <Expand size={17} /> Chọn vòng tròn để xem chi tiết linh
+                    kiện.
                   </div>
                 )}
               </>
@@ -146,7 +163,7 @@ export default function DetailPanel({
                 .filter((_, i) => tab === "Specifications" || i < 10)
                 .map(([key, value]) => (
                   <div key={key}>
-                    <dt>{key}</dt>
+                    <dt>{specLabel(key)}</dt>
                     <dd>{value}</dd>
                   </div>
                 ))}
@@ -165,11 +182,25 @@ export default function DetailPanel({
                     <div>
                       <b>{component.name}</b>
                       <small>
-                        {component.category} · {component.model}
+                        {categoryLabel(component.category)} · {component.model}
                       </small>
+                      {component.catalogId && onOpenLinked && (
+                        <button
+                          className="text-button"
+                          onClick={() => onOpenLinked(component.catalogId!)}
+                        >
+                          Xem linh kiện trong thư viện ↗
+                        </button>
+                      )}
                     </div>
                     <span className="associated-status">
-                      {{compatible:'Tương thích',warning:'Cần kiểm tra',incompatible:'Không tương thích'}[component.compatibility]}
+                      {
+                        {
+                          compatible: "Tương thích",
+                          warning: "Cần kiểm tra",
+                          incompatible: "Không tương thích",
+                        }[component.compatibility]
+                      }
                     </span>
                   </div>
                 ))}

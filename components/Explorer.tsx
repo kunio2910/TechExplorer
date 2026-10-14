@@ -35,6 +35,17 @@ import ComponentDetailPanel from "./ComponentDetailPanel";
 import CatalogCard from "./CatalogCard";
 import CatalogFilters from "./CatalogFilters";
 import DeviceComparison from "./DeviceComparison";
+import PcBuilder from "./PcBuilder";
+import KnowledgeCenter from "./KnowledgeCenter";
+import usePersonalLibrary, { deviceKey } from "./usePersonalLibrary";
+import { linkedProduct } from "@/lib/linked-components";
+import { localizeDevice } from "@/lib/vietnamese";
+import { normalizeSpecs } from "@/lib/spec-units";
+import {
+  explorerUrl,
+  parseExplorerState,
+  type ExplorerScreen,
+} from "@/lib/explorer-state";
 import {
   filterDevices,
   deviceType,
@@ -109,7 +120,12 @@ const catalogTypeByCategory: Record<string, CatalogComponent["type"]> = {
 const quickStartSteps = [
   ["01", "Chọn danh mục", "Chọn loại linh kiện bạn muốn khám phá", Box],
   ["02", "Chọn thiết bị", "Duyệt và chọn một thiết bị cụ thể", MousePointer2],
-  ["03", "Xem ảnh và thông số", "Khám phá cấu tạo và thông số kỹ thuật", PackageOpen],
+  [
+    "03",
+    "Xem ảnh và thông số",
+    "Khám phá cấu tạo và thông số kỹ thuật",
+    PackageOpen,
+  ],
 ] as const;
 
 function categoryIcon(name: string) {
@@ -166,19 +182,23 @@ export default function Explorer({
   initialSlug?: string;
 }) {
   const technologyDialog = useRef<HTMLDialogElement>(null);
-  const [catalog, setCatalog] = useState(products);
+  const [catalog, setCatalog] = useState(() =>
+    products.map((item) =>
+      localizeDevice({ ...item, spec: normalizeSpecs(item.spec) }),
+    ),
+  );
   const [selected, setSelected] = useState(initialSlug);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<string | null>(null);
-  const [workspaceMode, setWorkspaceMode] = useState<
-    "home" | "explorer" | "components"
-  >(initialSlug ? "explorer" : "home");
+  const [workspaceMode, setWorkspaceMode] = useState<ExplorerScreen>(
+    initialSlug ? "explorer" : "home",
+  );
   const [activeCategory, setActiveCategory] = useState(
     initialSlug ? "Mainboard" : "",
   );
   const [catalogComponents, setCatalogComponents] = useState<
     CatalogComponent[]
-  >(() => seedCatalogComponents(products));
+  >(() => seedCatalogComponents(products.map(localizeDevice)));
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(
     null,
   );
@@ -186,15 +206,75 @@ export default function Explorer({
   const [tab, setTab] = useState("Overview");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
-  useEffect(() => {
-    const slug = new URLSearchParams(window.location.search).get("device");
-    if (slug) {
-      setSelected(slug);
-      setActiveCategory("Mainboard");
-      setWorkspaceMode("explorer");
-    }
-  }, []);
+  const personal = usePersonalLibrary();
+  const [personalTab, setPersonalTab] = useState("favorites");
+  const [shareLink, setShareLink] = useState("");
+  const [routeReady, setRouteReady] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
+  const lastRoute = useRef("");
+  const route = {
+    screen: workspaceMode,
+    device: selected,
+    component: selectedComponentId ?? undefined,
+    category: activeCategory,
+    tab,
+    hotspot: active ?? undefined,
+    view,
+    query,
+    filters,
+  };
+  useEffect(() => {
+    const restore = () => {
+      const url = new URL(location.href);
+      const pathSlug = url.pathname.includes("/explore/")
+        ? url.pathname.split("/").filter(Boolean).at(-1)
+        : undefined;
+      const state = parseExplorerState(url, pathSlug);
+      lastRoute.current = explorerUrl(state, basePath);
+      setWorkspaceMode(state.screen);
+      setSelected(state.device);
+      setSelectedComponentId(state.component ?? null);
+      setActiveCategory(state.category);
+      setActive(state.hotspot ?? null);
+      setView(state.view);
+      setTab(state.tab);
+      setQuery(state.query);
+      setFilters(state.filters ?? {});
+      setShareLink("");
+      setRouteReady(true);
+    };
+    restore();
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
+  useEffect(() => {
+    if (!routeReady) return;
+    const url = explorerUrl(route, basePath);
+    if (url === lastRoute.current) return;
+    const previous = new URL(lastRoute.current, location.origin);
+    // Navigation is reversible; typing into search only updates the current entry.
+    const next = new URL(url, location.origin);
+    const withoutQuery = (u: URL) => {
+      u.searchParams.delete("q");
+      return u.search;
+    };
+    if (withoutQuery(previous) === withoutQuery(next))
+      history.replaceState(null, "", url);
+    else history.pushState(null, "", url);
+    lastRoute.current = url;
+    setShareLink("");
+  }, [
+    workspaceMode,
+    selected,
+    selectedComponentId,
+    activeCategory,
+    tab,
+    active,
+    view,
+    query,
+    filters,
+    routeReady,
+  ]);
   const [comparison, setComparison] = useState<Device[]>([]);
   useEffect(() => {
     setComparison((current) =>
@@ -244,16 +324,11 @@ export default function Explorer({
         unsubscribeProducts = subscribeToPublishedProducts(
           (remoteProducts) => {
             if (cancelled) return;
-            setCatalog(remoteProducts);
-            setSelected((current) => {
-              if (
-                !current ||
-                remoteProducts.some((item) => item.slug === current)
-              ) {
-                return current;
-              }
-              return initialSlug ? remoteProducts[0]?.slug : undefined;
-            });
+            setCatalog(
+              remoteProducts.map((item) =>
+                localizeDevice({ ...item, spec: normalizeSpecs(item.spec) }),
+              ),
+            );
           },
           () =>
             setNotice(
@@ -263,7 +338,11 @@ export default function Explorer({
         unsubscribeComponents = subscribeToPublishedComponents(
           (remoteComponents) => {
             if (cancelled) return;
-            setCatalogComponents(remoteComponents);
+            setCatalogComponents(
+              remoteComponents.map((item) =>
+                localizeDevice({ ...item, spec: normalizeSpecs(item.spec) }),
+              ),
+            );
           },
           () =>
             setNotice(
@@ -343,9 +422,42 @@ export default function Explorer({
   // Keep the home screen truly unselected after a refresh. Falling back to the
   // first catalog item here made the central panel look like a random
   // mainboard even when no device was selected.
-  const product = selected
+  const rawProduct = selected
     ? catalog.find((p) => p.slug === selected)
     : undefined;
+  const product = rawProduct
+    ? linkedProduct(rawProduct, catalogComponents)
+    : undefined;
+  const allDevices: Device[] = [...catalog, ...catalogComponents];
+  const currentDevice =
+    workspaceMode === "explorer"
+      ? product
+      : workspaceMode === "components"
+        ? activeComponent
+        : undefined;
+  useEffect(() => {
+    if (personal.ready && currentDevice) personal.recordView(currentDevice);
+  }, [
+    personal.ready,
+    currentDevice?.id,
+    currentDevice && deviceType(currentDevice),
+  ]);
+  function openDevice(item: Device) {
+    if ("media" in item) choose(item);
+    else chooseComponent(item);
+  }
+  function openWorkspace(screen: ExplorerScreen) {
+    setWorkspaceMode(screen);
+    setMobileMenu(false);
+  }
+  function shareState() {
+    const url = `${location.origin}${explorerUrl(route, basePath)}`;
+    setShareLink(url);
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => setNotice("Đã sao chép link chia sẻ."))
+      .catch(() => setNotice("Hãy sao chép link trong ô chia sẻ."));
+  }
   const recentDevices = useMemo(
     () =>
       [...catalog, ...catalogComponents]
@@ -375,7 +487,6 @@ export default function Explorer({
     setFilters({});
     setTab("Overview");
     setMobileMenu(false);
-    history.replaceState(null, "", `${basePath}/`);
   }
   function browseCategory(name: string) {
     if (name !== activeCategory) setFilters({});
@@ -395,15 +506,6 @@ export default function Explorer({
     setSelectedComponentId(null);
     setView("top");
     setTab("Overview");
-    const categorySlug = p.category.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    const bundled = products.some((item) => item.slug === p.slug);
-    history.replaceState(
-      null,
-      "",
-      bundled
-        ? `${basePath}/explore/${categorySlug}/${p.slug}/`
-        : `${basePath}/?device=${encodeURIComponent(p.slug)}`,
-    );
     setMobileMenu(false);
   }
   function chooseComponent(component: CatalogComponent) {
@@ -425,7 +527,6 @@ export default function Explorer({
     setSelectedComponentId(null);
     setFilters({});
     setMobileMenu(false);
-    history.replaceState(null, "", `${basePath}/`);
   }
   return (
     <div className="app-shell">
@@ -476,10 +577,8 @@ export default function Explorer({
             Linh kiện
           </button>
           <button
-            onClick={() => {
-              setWorkspaceMode("explorer");
-              setTab("Compatibility");
-            }}
+            className={workspaceMode === "builder" ? "nav-active" : ""}
+            onClick={() => openWorkspace("builder")}
           >
             Xây dựng cấu hình
           </button>
@@ -498,20 +597,25 @@ export default function Explorer({
             So sánh
           </button>
           <button
-            onClick={() => {
-              setNotice("Chế độ tương tác nâng cao đang được bật.");
-            }}
+            className={workspaceMode === "learn" ? "nav-active" : ""}
+            onClick={() => openWorkspace("learn")}
           >
             Tìm hiểu
           </button>
           <button onClick={() => technologyDialog.current?.showModal()}>
             Công nghệ
           </button>
+          <button
+            className={workspaceMode === "saved" ? "nav-active" : ""}
+            onClick={() => openWorkspace("saved")}
+          >
+            Đã lưu
+          </button>
         </nav>
         <label className="search">
           <Search size={17} />
           <input
-            aria-label="Search products"
+            aria-label="Tìm thiết bị"
             placeholder="Tìm tên, chipset, socket…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -522,12 +626,48 @@ export default function Explorer({
         </Link>
         <button
           className="mobile-menu icon-button"
-          aria-label="Toggle component menu"
+          aria-label="Mở menu linh kiện"
           onClick={() => setMobileMenu((v) => !v)}
         >
           <Menu size={20} />
         </button>
       </header>
+      <div className="workspace-feature-bar">
+        <div className="feature-mobile-nav">
+          <button onClick={browseComponents}>Linh kiện</button>
+          <button onClick={() => openWorkspace("builder")}>Cấu hình PC</button>
+          <button onClick={() => openWorkspace("learn")}>Kiến thức</button>
+          <button onClick={() => openWorkspace("saved")}>Đã lưu</button>
+        </div>
+        <div className="feature-actions">
+          {currentDevice && (
+            <button
+              aria-pressed={personal.library.favorites.includes(
+                deviceKey(currentDevice),
+              )}
+              onClick={() => personal.toggleFavorite(currentDevice)}
+            >
+              {personal.library.favorites.includes(deviceKey(currentDevice))
+                ? "♥ Đã yêu thích"
+                : "♡ Yêu thích"}
+            </button>
+          )}
+          {workspaceMode !== "builder" && (
+            <button onClick={shareState}>Chia sẻ màn hình</button>
+          )}
+        </div>
+        {shareLink && (
+          <label>
+            Link chia sẻ
+            <input
+              readOnly
+              value={shareLink}
+              onFocus={(e) => e.target.select()}
+            />
+          </label>
+        )}
+        {personal.storageError && <p role="status">{personal.storageError}</p>}
+      </div>
       <div className="workspace">
         <aside
           className={
@@ -536,19 +676,21 @@ export default function Explorer({
             (workspaceMode === "home" ? "home-sidebar" : "")
           }
         >
-          {workspaceMode === "components" && activeCategory && !activeComponent && (
-            <CatalogFilters
-              items={
-                catalogTypeByCategory[activeCategory]
-                  ? catalogComponents.filter(
-                      (c) => c.type === catalogTypeByCategory[activeCategory],
-                    )
-                  : catalog.filter((p) => p.category === activeCategory)
-              }
-              value={filters}
-              onChange={setFilters}
-            />
-          )}
+          {workspaceMode === "components" &&
+            activeCategory &&
+            !activeComponent && (
+              <CatalogFilters
+                items={
+                  catalogTypeByCategory[activeCategory]
+                    ? catalogComponents.filter(
+                        (c) => c.type === catalogTypeByCategory[activeCategory],
+                      )
+                    : catalog.filter((p) => p.category === activeCategory)
+                }
+                value={filters}
+                onChange={setFilters}
+              />
+            )}
           <div className="sidebar-section">
             <div className="section-heading">
               <span className="eyebrow">LINH KIỆN</span>
@@ -559,17 +701,17 @@ export default function Explorer({
             {categories
               .slice(0, workspaceMode === "home" ? 6 : categories.length)
               .map(([name, Icon]) => (
-              <button
-                key={name}
-                className={
-                  "category " + (activeCategory === name ? "selected" : "")
-                }
-                onClick={() => browseCategory(name)}
-              >
-                <Icon size={20} />
-                <span>{categoryLabel(name)}</span>
-                <ChevronRight size={14} />
-              </button>
+                <button
+                  key={name}
+                  className={
+                    "category " + (activeCategory === name ? "selected" : "")
+                  }
+                  onClick={() => browseCategory(name)}
+                >
+                  <Icon size={20} />
+                  <span>{categoryLabel(name)}</span>
+                  <ChevronRight size={14} />
+                </button>
               ))}
           </div>
           {workspaceMode === "explorer" && (
@@ -632,10 +774,7 @@ export default function Explorer({
                   />
                   <div className="home-empty-copy">
                     <p>Chọn một danh mục hoặc tìm kiếm để bắt đầu</p>
-                    <button
-                      className="home-cta"
-                      onClick={browseComponents}
-                    >
+                    <button className="home-cta" onClick={browseComponents}>
                       <MousePointer2 size={16} /> Bắt đầu khám phá
                       <ArrowRight size={15} />
                     </button>
@@ -724,12 +863,82 @@ export default function Explorer({
               </section>
             </aside>
           </>
+        ) : workspaceMode === "builder" ? (
+          <PcBuilder
+            devices={allDevices}
+            onOpen={openDevice}
+            onNotice={setNotice}
+          />
+        ) : workspaceMode === "learn" ? (
+          <KnowledgeCenter />
+        ) : workspaceMode === "saved" ? (
+          <main className="feature-workspace">
+            <span className="eyebrow">THƯ VIỆN CÁ NHÂN</span>
+            <h1>Thiết bị của bạn</h1>
+            <p>Yêu thích và lịch sử được lưu trên trình duyệt này.</p>
+            <div className="feature-toolbar">
+              <button
+                aria-pressed={personalTab === "favorites"}
+                onClick={() => setPersonalTab("favorites")}
+              >
+                Yêu thích
+              </button>
+              <button
+                aria-pressed={personalTab === "recent"}
+                onClick={() => setPersonalTab("recent")}
+              >
+                Đã xem gần đây
+              </button>
+              {personalTab === "recent" && (
+                <button
+                  onClick={() => {
+                    if (confirm("Xóa lịch sử đã xem trên trình duyệt này?"))
+                      personal.clearHistory();
+                  }}
+                >
+                  Xóa lịch sử
+                </button>
+              )}
+            </div>
+            <div className="device-grid">
+              {(personalTab === "favorites"
+                ? personal.library.favorites
+                : personal.library.recent.map((x) => x.key)
+              ).map((key) => {
+                const item = allDevices.find((x) => deviceKey(x) === key);
+                return item ? (
+                  <CatalogCard
+                    key={key}
+                    item={item}
+                    onOpen={() => openDevice(item)}
+                    onFavorite={() => personal.toggleFavorite(item)}
+                    favorite={personal.library.favorites.includes(key)}
+                  />
+                ) : (
+                  <article className="feature-card" key={key}>
+                    <p>Thiết bị không còn được xuất bản.</p>
+                    {personalTab === "favorites" && (
+                      <button onClick={() => personal.removeFavorite(key)}>
+                        Bỏ yêu thích
+                      </button>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+            {!(
+              personalTab === "favorites"
+                ? personal.library.favorites
+                : personal.library.recent
+            ).length && <p>Chưa có thiết bị trong danh sách này.</p>}
+          </main>
         ) : workspaceMode === "components" ? (
           !activeCategory ? (
             <>
               <main className="component-browser component-welcome">
                 <div className="breadcrumb">
-                  <span>Tech Explorer</span> <ChevronRight size={11} /> Linh kiện
+                  <span>Tech Explorer</span> <ChevronRight size={11} /> Linh
+                  kiện
                 </div>
                 <section className="component-welcome-card">
                   <div className="component-welcome-heading">
@@ -817,7 +1026,9 @@ export default function Explorer({
                 </div>
                 <div className="title-row">
                   <div>
-                    <span className="eyebrow">{activeCategory} EXPLORER</span>
+                    <span className="eyebrow">
+                      KHÁM PHÁ {categoryLabel(activeCategory)}
+                    </span>
                     <h1>{activeComponent.name}</h1>
                     <p>
                       {activeComponent.brand || activeCategory} ·{" "}
@@ -902,6 +1113,10 @@ export default function Explorer({
                       <CatalogCard
                         key={item.id}
                         item={item}
+                        onFavorite={() => personal.toggleFavorite(item)}
+                        favorite={personal.library.favorites.includes(
+                          deviceKey(item),
+                        )}
                         onOpen={() =>
                           "media" in item ? choose(item) : chooseComponent(item)
                         }
@@ -987,7 +1202,7 @@ export default function Explorer({
                 </button>
               </div>
               <div className="breadcrumb">
-                Components <ChevronRight size={11} /> Mainboard{" "}
+                Linh kiện <ChevronRight size={11} /> Mainboard{" "}
                 <ChevronRight size={11} /> <span>{product.brand}</span>
               </div>
               <div className="title-row">
@@ -1061,6 +1276,10 @@ export default function Explorer({
             </main>
             <DetailPanel
               product={product}
+              onOpenLinked={(id) => {
+                const item = catalogComponents.find((x) => x.id === id);
+                if (item) chooseComponent(item);
+              }}
               active={product.hotspots.find((h) => h.id === active)}
               tab={tab}
               setTab={setTab}

@@ -22,6 +22,7 @@ export type Hotspot = {
 };
 export type AssociatedComponent = {
   id: string;
+  catalogId?: string;
   category:
     "CPU" | "RAM" | "GPU" | "Storage" | "PSU" | "Cooling" | "Case" | "Other";
   name: string;

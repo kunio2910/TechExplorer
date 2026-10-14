@@ -21,7 +21,13 @@ import {
   seedProductsToFirestore,
   firestoreErrorMessage,
   restoreCatalog,
+  saveVersionedDevice,
 } from "@/lib/firestore";
+import AdminRecovery from "./AdminRecovery";
+import AdminVersions from "./AdminVersions";
+import { linkComponent } from "@/lib/linked-components";
+import { normalizeSpecs, normalizeSpecValue } from "@/lib/spec-units";
+import { categoryLabel } from "@/lib/labels";
 import type {
   AssociatedComponent,
   CatalogComponent,
@@ -598,11 +604,37 @@ export default function StaticAdmin({
         }
         const saved = {
           ...stamp(product, user?.email ?? "Quản trị"),
+          spec: normalizeSpecs(product.spec),
+          components: product.components.map((entry) =>
+            entry.catalogId
+              ? entry
+              : components.some(
+                    (x) => x.id === entry.id && x.category === entry.category,
+                  )
+                ? { ...entry, catalogId: entry.id }
+                : entry,
+          ),
           gallery: (product.gallery ?? [])
             .map((url) => url.trim())
             .filter(Boolean),
         };
-        await saveProduct(saved);
+        if (
+          saved.status === "published" &&
+          saved.components.some(
+            (entry) =>
+              entry.catalogId &&
+              !components.some(
+                (x) =>
+                  x.id === entry.catalogId &&
+                  x.status === "published" &&
+                  !x.deletedAt,
+              ),
+          )
+        )
+          throw Error(
+            "Linh kiện liên kết chưa xuất bản hoặc đã bị xóa. Hãy xuất bản linh kiện đó hoặc bỏ liên kết trước khi xuất bản mainboard.",
+          );
+        await saveVersionedDevice(saved, original);
         setProducts((current) =>
           current.some((item) => item.id === saved.id)
             ? current.map((item) => (item.id === saved.id ? saved : item))
@@ -617,12 +649,13 @@ export default function StaticAdmin({
         }
         const saved = {
           ...stamp(component, user?.email ?? "Quản trị"),
+          spec: normalizeSpecs(component.spec),
           type: tab,
           gallery: (component.gallery ?? [])
             .map((url) => url.trim())
             .filter(Boolean),
         };
-        await saveCatalogComponent(saved);
+        await saveVersionedDevice(saved, original);
         setComponents((current) =>
           current.some((item) => item.id === saved.id)
             ? current.map((item) => (item.id === saved.id ? saved : item))
@@ -673,7 +706,13 @@ export default function StaticAdmin({
   }
 
   async function trashAction(item: Device, permanent: boolean) {
-    if(dirty&&!window.confirm('Có thay đổi chưa lưu. Bỏ thay đổi để cập nhật dữ liệu từ thùng rác?')) return;
+    if (
+      dirty &&
+      !window.confirm(
+        "Có thay đổi chưa lưu. Bỏ thay đổi để cập nhật dữ liệu từ thùng rác?",
+      )
+    )
+      return;
     if (
       permanent &&
       !window.confirm(`Xóa vĩnh viễn “${item.name}”? Không thể hoàn tác.`)
@@ -981,6 +1020,21 @@ export default function StaticAdmin({
           {message}
         </div>
       )}
+      {loaded && user && (
+        <AdminRecovery
+          uid={user.uid}
+          disabled={busy}
+          item={tab === "Mainboard" ? product : component}
+          dirty={dirty}
+          onRecover={(item) => {
+            setTab("media" in item ? "Mainboard" : item.type);
+            if ("media" in item) setProduct(copy(item));
+            else setComponent(copy(item));
+            setShowTrash(false);
+            setSelectedHotspot(null);
+          }}
+        />
+      )}
       {backup && (
         <section className="backup-preview">
           <h2>Xem trước khôi phục</h2>
@@ -1267,6 +1321,17 @@ export default function StaticAdmin({
                       {specLabel(key)}
                       <input
                         value={value}
+                        onBlur={(event) =>
+                          updateProduct({
+                            spec: {
+                              ...product.spec,
+                              [key]: normalizeSpecValue(
+                                key,
+                                event.target.value,
+                              ),
+                            },
+                          })
+                        }
                         onChange={(event) =>
                           updateProduct({
                             spec: {
@@ -1295,10 +1360,50 @@ export default function StaticAdmin({
             <details className="admin-collapsible">
               <summary>Linh kiện đi kèm</summary>
               <div className="admin-collapsible-body">
+                <label>
+                  Thêm từ thư viện linh kiện
+                  <select
+                    aria-label="Thêm từ thư viện linh kiện"
+                    value=""
+                    onChange={(event) => {
+                      const source = components.find(
+                        (x) => x.id === event.target.value,
+                      );
+                      if (source)
+                        updateProduct({
+                          components: [
+                            ...product.components,
+                            linkComponent(source),
+                          ],
+                        });
+                    }}
+                  >
+                    <option value="">Chọn linh kiện đã lưu…</option>
+                    {components
+                      .filter(
+                        (x) =>
+                          !x.deletedAt &&
+                          !product.components.some(
+                            (entry) =>
+                              entry.catalogId === x.id || entry.id === x.id,
+                          ),
+                      )
+                      .map((source) => (
+                        <option key={source.id} value={source.id}>
+                          {source.type} · {source.name} ·{" "}
+                          {statusLabel(source.status)}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <p className="muted">
+                  Thông tin của linh kiện liên kết được lấy từ thư viện. Xuất
+                  bản linh kiện trước khi xuất bản mainboard có liên kết đó.
+                </p>
                 {product.components.map((item) => (
                   <div className="associated-component" key={item.id}>
                     <div className="associated-component-heading">
-                      <strong>{item.category}</strong>
+                      <strong>{categoryLabel(item.category)}</strong>
                       <button
                         className="danger"
                         onClick={() =>
@@ -1322,6 +1427,7 @@ export default function StaticAdmin({
                               entry.id === item.id
                                 ? {
                                     ...entry,
+                                    catalogId: undefined,
                                     category: event.target
                                       .value as AssociatedComponent["category"],
                                   }
@@ -1340,14 +1446,64 @@ export default function StaticAdmin({
                           "Case",
                           "Other",
                         ].map((value) => (
-                          <option key={value}>{value}</option>
+                          <option key={value} value={value}>
+                            {categoryLabel(value)}
+                          </option>
                         ))}
+                      </select>
+                    </label>
+                    <label>
+                      Liên kết thư viện
+                      <select
+                        aria-label={`Liên kết thư viện ${item.id}`}
+                        value={item.catalogId ?? ""}
+                        onChange={(event) => {
+                          const source = components.find(
+                            (x) => x.id === event.target.value,
+                          );
+                          updateProduct({
+                            components: product.components.map((entry) =>
+                              entry.id !== item.id
+                                ? entry
+                                : source
+                                  ? {
+                                      ...entry,
+                                      catalogId: source.id,
+                                      category: source.category,
+                                      name: source.name,
+                                      model: source.model,
+                                    }
+                                  : { ...entry, catalogId: undefined },
+                            ),
+                          });
+                        }}
+                      >
+                        <option value="">Nhập thông tin riêng</option>
+                        {components
+                          .filter(
+                            (x) => x.category === item.category && !x.deletedAt,
+                          )
+                          .map((source) => (
+                            <option key={source.id} value={source.id}>
+                              {source.name} · {statusLabel(source.status)}
+                            </option>
+                          ))}
+                        {item.catalogId &&
+                          !components.some((x) => x.id === item.catalogId) && (
+                            <option value={item.catalogId}>
+                              Liên kết không còn khả dụng
+                            </option>
+                          )}
                       </select>
                     </label>
                     <label>
                       Tên
                       <input
-                        value={item.name}
+                        value={
+                          components.find((x) => x.id === item.catalogId)
+                            ?.name ?? item.name
+                        }
+                        readOnly={!!item.catalogId}
                         onChange={(event) =>
                           updateProduct({
                             components: product.components.map((entry) =>
@@ -1362,7 +1518,11 @@ export default function StaticAdmin({
                     <label>
                       Mã sản phẩm
                       <input
-                        value={item.model}
+                        value={
+                          components.find((x) => x.id === item.catalogId)
+                            ?.model ?? item.model
+                        }
+                        readOnly={!!item.catalogId}
                         onChange={(event) =>
                           updateProduct({
                             components: product.components.map((entry) =>
@@ -1602,6 +1762,17 @@ export default function StaticAdmin({
                       {specLabel(key)}
                       <input
                         value={value}
+                        onBlur={(event) =>
+                          updateComponentDraft({
+                            spec: {
+                              ...component.spec,
+                              [key]: normalizeSpecValue(
+                                key,
+                                event.target.value,
+                              ),
+                            },
+                          })
+                        }
                         onChange={(event) =>
                           updateComponentDraft({
                             spec: {
@@ -1825,6 +1996,24 @@ export default function StaticAdmin({
             </div>
           ))}
           <h2>Lịch sử chỉnh sửa</h2>
+          {loaded && (
+            <AdminVersions
+              key={(tab === "Mainboard" ? product : component).id}
+              item={tab === "Mainboard" ? product : component}
+              onRestore={(item) => {
+                if (
+                  dirty &&
+                  !confirm("Có thay đổi chưa lưu. Thay bằng phiên bản đã chọn?")
+                )
+                  return;
+                if ("media" in item) setProduct(copy(item));
+                else setComponent(copy(item));
+                setMessage(
+                  "Đã phục hồi thành bản nháp. Hãy kiểm tra và lưu lên Firestore.",
+                );
+              }}
+            />
+          )}
           {tab === "Mainboard" && !product.media.rear_io && (
             <p className="muted">
               Ảnh mặt sau chưa có (tùy chọn, không chặn xuất bản).

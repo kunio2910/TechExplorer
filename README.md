@@ -67,6 +67,22 @@ The static `/admin/` page uses Firebase Authentication and Firestore. The curren
 
 ## Verification
 
+### Workspace khám phá và cấu hình PC
+
+- Linh kiện đi kèm có thể tham chiếu `catalogId` tới thư viện. Explorer dùng tên/model mới nhất và ẩn liên kết đến linh kiện không còn xuất bản; các mục nhập riêng trước đây vẫn hoạt động.
+- Chia sẻ trạng thái qua query parameters: thiết bị, danh mục, tab, hotspot, góc nhìn, từ khóa và bộ lọc. Back/Forward và reload khôi phục lựa chọn. Các link này hoạt động trên GitHub Pages, kể cả linh kiện tạo sau lần build.
+- Workspace **Xây dựng cấu hình** chọn Mainboard/CPU/RAM/SSD/GPU/PSU từ catalog, số bộ RAM và số SSD. Hỗ trợ đặt tên, lưu nhiều cấu hình, bản nháp, nhân đôi, JSON và link chia sẻ. Cấu hình, yêu thích và lịch sử đã xem lưu trên trình duyệt, chưa đồng bộ giữa máy hoặc tài khoản.
+- Kiểm tra socket, chuẩn RAM, tổng dung lượng/số khe, số cổng SSD và công suất nguồn tham khảo. Dữ liệu thiếu được ghi là cần kiểm tra; BIOS, QVL, kích thước vỏ/tản nhiệt và đầu cấp nguồn chưa được tự động xác minh.
+- **Tìm hiểu** mở trung tâm kiến thức có tìm kiếm thuật ngữ. Mô tả seed và các nhãn đã được Việt hóa; bản seed tiếng Anh từng lưu trên Firestore được chuyển cách hiển thị qua bảng dịch chính xác, không dịch lại nội dung tự viết.
+- Thông số dung lượng/công suất/xung/tốc độ được chuẩn hóa khi rời ô nhập và khi lưu. Ví dụ `32gb` → `32 GB`; chữ `Gb` trong tốc độ mạng không bị đổi thành `GB`.
+
+### Khôi phục dữ liệu quản trị
+
+- Bản nháp tự lưu trong IndexedDB theo UID và thiết bị sau 500 ms, giữ cả ảnh tải lên. Sau reload, chọn **Khôi phục bản nháp** để tiếp tục; bản nháp không tự xuất bản lên Firestore.
+- **Lưu lên Firestore** dùng transaction để lưu bản ghi và bản chụp trong `products/{id}/versions` hoặc `components/{id}/versions`. Nếu dữ liệu đã thay đổi từ nơi khác, thao tác từ chối ghi đè và giữ bản nháp.
+- Bảng phiên bản đọc 20 bản gần nhất khi được yêu cầu. Phục hồi đưa nội dung về form ở trạng thái draft, cần kiểm tra và lưu lại. Xóa vĩnh viễn thiết bị xóa cả subcollection phiên bản. Backup JSON hiện chứa catalog hiện tại và thùng rác, không chứa kho phiên bản hoặc bản nháp trên trình duyệt.
+- **Phải deploy Rules mới trước khi phát hành website:** `npx firebase-tools deploy --only firestore:rules --project techexplorer-38d83`. Các phiên bản chỉ cho quản trị viên đọc/ghi. Nếu CLI chưa đăng nhập, chạy `npx firebase-tools login` bằng tài khoản có quyền project.
+
 ```sh
 npm run typecheck
 npm test
