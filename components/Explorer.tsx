@@ -208,7 +208,6 @@ export default function Explorer({
   const [notice, setNotice] = useState("");
   const personal = usePersonalLibrary();
   const [personalTab, setPersonalTab] = useState("favorites");
-  const [shareLink, setShareLink] = useState("");
   const [routeReady, setRouteReady] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const lastRoute = useRef("");
@@ -240,7 +239,6 @@ export default function Explorer({
       setTab(state.tab);
       setQuery(state.query);
       setFilters(state.filters ?? {});
-      setShareLink("");
       setRouteReady(true);
     };
     restore();
@@ -262,7 +260,6 @@ export default function Explorer({
       history.replaceState(null, "", url);
     else history.pushState(null, "", url);
     lastRoute.current = url;
-    setShareLink("");
   }, [
     workspaceMode,
     selected,
@@ -450,14 +447,6 @@ export default function Explorer({
     setWorkspaceMode(screen);
     setMobileMenu(false);
   }
-  function shareState() {
-    const url = `${location.origin}${explorerUrl(route, basePath)}`;
-    setShareLink(url);
-    navigator.clipboard
-      ?.writeText(url)
-      .then(() => setNotice("Đã sao chép link chia sẻ."))
-      .catch(() => setNotice("Hãy sao chép link trong ô chia sẻ."));
-  }
   const recentDevices = useMemo(
     () =>
       [...catalog, ...catalogComponents]
@@ -639,33 +628,6 @@ export default function Explorer({
           <button onClick={() => openWorkspace("learn")}>Kiến thức</button>
           <button onClick={() => openWorkspace("saved")}>Đã lưu</button>
         </div>
-        <div className="feature-actions">
-          {currentDevice && (
-            <button
-              aria-pressed={personal.library.favorites.includes(
-                deviceKey(currentDevice),
-              )}
-              onClick={() => personal.toggleFavorite(currentDevice)}
-            >
-              {personal.library.favorites.includes(deviceKey(currentDevice))
-                ? "♥ Đã yêu thích"
-                : "♡ Yêu thích"}
-            </button>
-          )}
-          {workspaceMode !== "builder" && (
-            <button onClick={shareState}>Chia sẻ màn hình</button>
-          )}
-        </div>
-        {shareLink && (
-          <label>
-            Link chia sẻ
-            <input
-              readOnly
-              value={shareLink}
-              onFocus={(e) => e.target.select()}
-            />
-          </label>
-        )}
         {personal.storageError && <p role="status">{personal.storageError}</p>}
       </div>
       <div className="workspace">
@@ -1013,11 +975,25 @@ export default function Explorer({
               <main className="explorer-main component-review">
                 <div className="review-actions">
                   <button onClick={backToLibrary}>← Quay lại danh sách</button>
-                  <button onClick={() => toggleComparison(activeComponent)}>
-                    {comparison.some((i) => i.id === activeComponent.id)
-                      ? "Bỏ khỏi so sánh"
-                      : "＋ Thêm vào so sánh"}
-                  </button>
+                  <div className="review-action-stack">
+                    <button onClick={() => toggleComparison(activeComponent)}>
+                      {comparison.some((i) => i.id === activeComponent.id)
+                        ? "Bỏ khỏi so sánh"
+                        : "＋ Thêm vào so sánh"}
+                    </button>
+                    <button
+                      aria-pressed={personal.library.favorites.includes(
+                        deviceKey(activeComponent),
+                      )}
+                      onClick={() => personal.toggleFavorite(activeComponent)}
+                    >
+                      {personal.library.favorites.includes(
+                        deviceKey(activeComponent),
+                      )
+                        ? "♥ Đã yêu thích"
+                        : "♡ Yêu thích"}
+                    </button>
+                  </div>
                 </div>
                 <div className="breadcrumb">
                   Linh kiện <ChevronRight size={11} /> {activeCategory}{" "}
@@ -1195,11 +1171,23 @@ export default function Explorer({
             <main className="explorer-main">
               <div className="review-actions">
                 <button onClick={backToLibrary}>← Quay lại danh sách</button>
-                <button onClick={() => toggleComparison(product)}>
-                  {comparison.some((i) => i.id === product.id)
-                    ? "Bỏ khỏi so sánh"
-                    : "＋ Thêm vào so sánh"}
-                </button>
+                <div className="review-action-stack">
+                  <button onClick={() => toggleComparison(product)}>
+                    {comparison.some((i) => i.id === product.id)
+                      ? "Bỏ khỏi so sánh"
+                      : "＋ Thêm vào so sánh"}
+                  </button>
+                  <button
+                    aria-pressed={personal.library.favorites.includes(
+                      deviceKey(product),
+                    )}
+                    onClick={() => personal.toggleFavorite(product)}
+                  >
+                    {personal.library.favorites.includes(deviceKey(product))
+                      ? "♥ Đã yêu thích"
+                      : "♡ Yêu thích"}
+                  </button>
+                </div>
               </div>
               <div className="breadcrumb">
                 Linh kiện <ChevronRight size={11} /> Mainboard{" "}

@@ -109,6 +109,13 @@
 .review-actions button {
   padding: 9px 12px;
 }
+.review-action-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 166px;
+}
 .comparison-tray {
   position: fixed;
   bottom: 0;
@@ -142,8 +149,19 @@
 .app-shell:has(.comparison-tray) {
   padding-bottom: 85px;
 }
-.comparison-dialog {
-  width: min(1100px, 95vw);
+.info-dialog.comparison-dialog {
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  margin: 0;
+  padding: clamp(18px, 3vw, 42px);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg);
+}
+.info-dialog.comparison-dialog::backdrop {
+  background: #020a12;
 }
 .comparison-dialog th img {
   display: block;
@@ -406,6 +424,9 @@
   .review-actions button {
     font-size: 12px;
     padding: 8px;
+  }
+  .review-action-stack {
+    min-width: 150px;
   }
   .trash-row {
     flex-wrap: wrap;
@@ -3922,8 +3943,12 @@ select {
 
   .review-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 8px;
+  }
+
+  .review-action-stack {
+    min-width: 0;
   }
 
   .review-actions button {

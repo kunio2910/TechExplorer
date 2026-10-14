@@ -198,6 +198,10 @@ const assert = require("node:assert/strict");
     assert.ok(
       (await page.locator(".comparison-dialog .different").count()) > 0,
     );
+    const comparisonBounds = await page.locator(".comparison-dialog").boundingBox();
+    assert.ok(comparisonBounds);
+    assert.ok(Math.abs(comparisonBounds.width - 1440) <= 2);
+    assert.ok(Math.abs(comparisonBounds.height - 1050) <= 2);
     await page
       .locator(".comparison-dialog")
       .getByRole("button", { name: "Đóng", exact: true })
@@ -252,13 +256,10 @@ const assert = require("node:assert/strict");
     assert.ok((await page.locator(".device-card").count()) >= 1);
     await page.locator(".device-card").first().click();
     await page.getByRole("button", { name: "Thông số", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Chia sẻ màn hình", exact: true })
-      .click();
-    const stateLink = await page
-      .getByLabel("Link chia sẻ", { exact: true })
-      .inputValue();
-    assert.ok(stateLink.includes("tab=Specifications"));
+    assert.equal(
+      await page.getByRole("button", { name: "Chia sẻ màn hình", exact: true }).count(),
+      0,
+    );
     await page.reload();
     await page.getByRole("button", { name: "Thông số", exact: true }).waitFor();
     assert.equal(
