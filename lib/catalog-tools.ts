@@ -4,6 +4,7 @@ import type {
   CatalogComponentType,
   CatalogMetadata,
 } from "./types";
+import { normalizeSpecValue } from "./spec-units";
 export type Device = Product | CatalogComponent;
 export const specTemplates: Record<string, Record<string, string>> = {
   Mainboard: {
@@ -34,6 +35,16 @@ export const specTemplates: Record<string, Record<string, string>> = {
 };
 export const specLabel = (key: string) =>
   ({
+    Chipset: "Chipset (bộ điều khiển)",
+    Socket: "Đế CPU (Socket)",
+    "Memory slots": "Số khe RAM (DIMM)",
+    "Memory speed": "Tốc độ RAM",
+    PCIe: "Khe mở rộng (PCIe)",
+    WiFi: "Kết nối Wi-Fi",
+    LAN: "Mạng có dây (LAN)",
+    Audio: "Âm thanh",
+    Bluetooth: "Bluetooth",
+    SATA: "Cổng lưu trữ (SATA)",
     "Memory type": "Chuẩn RAM / bộ nhớ",
     "Form factor": "Kích thước",
     "Max memory": "RAM tối đa (GB)",
@@ -139,7 +150,11 @@ export function filterDevices<T extends Device>(
   return items.filter((item) =>
     Object.entries(filters).every(
       ([key, value]) =>
-        !value || (key === "brand" ? item.brand : item.spec[key]) === value,
+        !value ||
+        (key === "brand"
+          ? item.brand === value
+          : normalizeSpecValue(key, item.spec[key] ?? "") ===
+            normalizeSpecValue(key, value)),
     ),
   );
 }

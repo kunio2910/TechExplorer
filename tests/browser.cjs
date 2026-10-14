@@ -26,7 +26,9 @@ const assert = require("node:assert/strict");
     .click();
   await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
   await page
-    .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
+    .getByRole("button", {
+      name: "Xem chi tiết ASUS ROG STRIX B850-F GAMING WIFI",
+    })
     .first()
     .click();
   await page
@@ -36,36 +38,39 @@ const assert = require("node:assert/strict");
   assert.equal(await page.locator(".expert-toggle").count(), 0);
   await page.screenshot({ path: "test-results/overview.png", fullPage: true });
   await page
-    .getByRole("button", { name: "Explore CPU Socket", exact: true })
+    .getByRole("button", { name: "Khám phá Đế CPU (CPU Socket)", exact: true })
     .click();
   await page
-    .getByRole("heading", { name: "CPU Socket", exact: true })
+    .getByRole("heading", { name: "Đế CPU (CPU Socket)", exact: true })
     .waitFor();
-  await page.getByRole("button", { name: "Close component detail" }).click();
-  await page.getByRole('button',{name:'Explore CPU Socket',exact:true}).hover();
-  await page.locator(".callout").filter({ hasText: "CPU Socket" }).click();
+  await page.getByRole("button", { name: "Đóng chi tiết linh kiện" }).click();
   await page
-    .getByRole("heading", { name: "CPU Socket", exact: true })
+    .getByRole("button", { name: "Khám phá Đế CPU (CPU Socket)", exact: true })
+    .hover();
+  await page
+    .locator(".callout")
+    .filter({ hasText: "Đế CPU (CPU Socket)" })
+    .click();
+  await page
+    .getByRole("heading", { name: "Đế CPU (CPU Socket)", exact: true })
     .waitFor();
   const beforeRotation = await page
     .locator(".image-stage")
     .getAttribute("style");
-  await page.getByRole("button", { name: "Rotate view", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Xoay hình ảnh", exact: true })
+    .click();
   const afterRotation = await page
     .locator(".image-stage")
     .getAttribute("style");
   assert.notEqual(afterRotation, beforeRotation);
-  await page
-    .getByRole("button", { name: "Tương thích", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Tương thích", exact: true }).click();
   await page.locator(".compatibility select").first().selectOption("AM4");
   assert.equal(
     await page.getByText("× Không tương thích", { exact: true }).count(),
     1,
   );
-  await page
-    .getByRole("button", { name: "Thông số", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Thông số", exact: true }).click();
   assert.ok(
     await page
       .locator(".detail-panel")
@@ -73,10 +78,12 @@ const assert = require("node:assert/strict");
       .isVisible(),
   );
   await page
-    .getByRole("button", { name: "Luồng tín hiệu Theo dõi đường truyền dữ liệu." })
+    .getByRole("button", {
+      name: "Luồng tín hiệu Theo dõi đường truyền dữ liệu.",
+    })
     .click();
   assert.equal(await page.locator(".signal-paths").count(), 1);
-  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await page.getByRole("button", { name: "Phóng to", exact: true }).click();
   await page.screenshot({ path: "test-results/desktop.png", fullPage: true });
   await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
   await page
@@ -90,19 +97,21 @@ const assert = require("node:assert/strict");
   await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
   assert.ok((await page.locator(".device-card").count()) >= 1);
   await page
-    .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
+    .getByRole("button", {
+      name: "Xem chi tiết ASUS ROG STRIX B850-F GAMING WIFI",
+    })
     .first()
     .click();
   await page
     .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })
     .waitFor();
   await page
-    .getByRole("textbox", { name: "Search products" })
+    .getByRole("textbox", { name: "Tìm thiết bị" })
     .fill("does-not-exist");
   assert.ok(await page.getByText(/Không có thiết bị phù hợp/).isVisible());
   await page.setViewportSize({ width: 390, height: 844 });
   await page
-    .getByRole("button", { name: "Explore Memory (RAM)", exact: true })
+    .getByRole("button", { name: "Khám phá Bộ nhớ trong (RAM)", exact: true })
     .click();
   assert.ok(await page.locator(".component-detail").isVisible());
   assert.equal(await page.locator(".component-canvas .hotspot").count(), 0);

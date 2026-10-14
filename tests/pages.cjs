@@ -24,10 +24,12 @@ const assert = require("node:assert/strict");
     /explorer-home-empty\.svg$/,
   );
   assert.equal(
-    await page.getByRole("heading", {
-      name: "ASUS ROG STRIX B850-F GAMING WIFI",
-      exact: true,
-    }).count(),
+    await page
+      .getByRole("heading", {
+        name: "ASUS ROG STRIX B850-F GAMING WIFI",
+        exact: true,
+      })
+      .count(),
     0,
   );
   await page.reload();
@@ -46,7 +48,9 @@ const assert = require("node:assert/strict");
     .click();
   await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
   await page
-    .getByRole("button", { name: "Open ASUS ROG STRIX B850-F GAMING WIFI" })
+    .getByRole("button", {
+      name: "Xem chi tiết ASUS ROG STRIX B850-F GAMING WIFI",
+    })
     .first()
     .click();
   await page
@@ -63,14 +67,12 @@ const assert = require("node:assert/strict");
     if (img.naturalWidth === 0) throw Error("Image missing");
   });
   await page
-    .getByRole("button", { name: "Explore CPU Socket", exact: true })
+    .getByRole("button", { name: "Khám phá Đế CPU (CPU Socket)", exact: true })
     .click();
   await page
-    .getByRole("heading", { name: "CPU Socket", exact: true })
+    .getByRole("heading", { name: "Đế CPU (CPU Socket)", exact: true })
     .waitFor();
-  await page
-    .getByRole("button", { name: "Tương thích", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Tương thích", exact: true }).click();
   await page.locator(".compatibility select").first().selectOption("AM4");
   assert.ok(
     await page.getByText("× Không tương thích", { exact: true }).isVisible(),
@@ -82,7 +84,7 @@ const assert = require("node:assert/strict");
       name: "ASUS ROG STRIX B850-F GAMING WIFI ASUS · AM5",
     })
     .click();
-  assert.ok(page.url().includes("/TechExplorer/explore/mainboard/"));
+  assert.ok(page.url().includes("device=asus-rog-strix-b850-f-gaming-wifi"));
   await page.reload();
   await page
     .getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI" })

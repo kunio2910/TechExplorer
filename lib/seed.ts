@@ -1,5 +1,6 @@
 import { Product } from "./types";
-export const seedProducts: Product[] = [
+import { localizeDevice } from "./vietnamese";
+const originalSeedProducts: Product[] = [
   {
     id: "mb_asus_b850f",
     slug: "asus-rog-strix-b850-f-gaming-wifi",
@@ -113,3 +114,4 @@ export const seedProducts: Product[] = [
     ],
   },
 ];
+export const seedProducts = originalSeedProducts.map(localizeDevice);

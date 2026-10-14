@@ -89,7 +89,7 @@ export default function DeviceCanvas({
         <span>
           <i className="live-dot" /> KHÁM PHÁ TƯƠNG TÁC
         </span>
-        <span>01 / {String(hotspots.length).padStart(2, "0")} NODES</span>
+        <span>{String(hotspots.length).padStart(2, "0")} ĐIỂM CHÚ THÍCH</span>
       </div>
       <div className="orbital orbital-one" />
       <div className="orbital orbital-two" />
@@ -149,7 +149,7 @@ export default function DeviceCanvas({
                 style={{ left: `${h.x}%`, top: `${h.y}%` }}
                 onClick={() => onSelect(h)}
                 aria-pressed={active === h.id}
-                aria-label={`Explore ${h.title}`}
+                aria-label={`Khám phá ${h.title}`}
               >
                 <span className="marker">
                   {String(index + 1).padStart(2, "0")}
@@ -167,7 +167,7 @@ export default function DeviceCanvas({
             ))}
         </div>
         {view === "top" && gallery.length > 1 && (
-          <div className="device-gallery" aria-label="Image gallery">
+          <div className="device-gallery" aria-label="Thư viện ảnh">
             <button
               aria-label="Ảnh mainboard trước"
               onClick={() =>
@@ -207,30 +207,30 @@ export default function DeviceCanvas({
       </div>
       <div className="zoom-bar">
         <button
-          aria-label="Zoom out"
+          aria-label="Thu nhỏ"
           onClick={() => setZoom((z) => Math.max(0.8, z - 0.1))}
         >
           <Minus size={16} />
         </button>
         <span>{Math.round(zoom * 100)}%</span>
         <button
-          aria-label="Zoom in"
+          aria-label="Phóng to"
           onClick={() => setZoom((z) => Math.min(1.5, z + 0.1))}
         >
           <Plus size={16} />
         </button>
         <span className="divider" />
-        <button aria-label="Reset zoom" onClick={() => setZoom(1)}>
+        <button aria-label="Đặt lại thu phóng" onClick={() => setZoom(1)}>
           <RotateCcw size={15} />
         </button>
         <button
-          aria-label="Rotate view"
+          aria-label="Xoay hình ảnh"
           onClick={() => setRotation((angle) => (angle + 90) % 360)}
         >
           <RotateCw size={15} />
         </button>
         <button
-          aria-label="Focus canvas"
+          aria-label="Toàn màn hình"
           onClick={(e) =>
             e.currentTarget.closest(".canvas")?.requestFullscreen?.()
           }

@@ -65,6 +65,10 @@ export function parseBackup(input: unknown): CatalogBackup {
         (c) =>
           object(c) &&
           text(c, ["id", "category", "name", "model", "notes"]) &&
+          (c.catalogId === undefined ||
+            (typeof c.catalogId === "string" &&
+              !!c.catalogId &&
+              !c.catalogId.includes("/"))) &&
           ["compatible", "warning", "incompatible"].includes(
             String(c.compatibility),
           ),
