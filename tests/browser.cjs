@@ -13,7 +13,10 @@ const assert = require("node:assert/strict");
   await page.goto("http://localhost:3000");
   await page.locator(".home-hero-image").waitFor();
   assert.equal(await page.locator(".home-hero-image").count(), 1);
-  await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
+  await page
+    .locator(".header nav")
+    .getByRole("button", { name: "Linh kiện", exact: true })
+    .click();
   await page
     .getByRole("heading", { name: "Chọn linh kiện để bắt đầu", exact: true })
     .waitFor();
@@ -36,6 +39,14 @@ const assert = require("node:assert/strict");
     .waitFor();
   assert.equal(await page.locator(".hotspot").count(), 5);
   assert.equal(await page.locator(".expert-toggle").count(), 0);
+  assert.equal(
+    await page.locator(".review-actions").getByText(/Yêu thích/).count(),
+    0,
+  );
+  assert.equal(
+    await page.locator(".explorer-main .breadcrumb button").count(),
+    3,
+  );
   await page.screenshot({ path: "test-results/overview.png", fullPage: true });
   await page
     .getByRole("button", { name: "Khám phá Đế CPU (CPU Socket)", exact: true })
@@ -57,14 +68,20 @@ const assert = require("node:assert/strict");
   const beforeRotation = await page
     .locator(".image-stage")
     .getAttribute("style");
+  await page.getByRole("button", { name: "Xoay trái", exact: true }).click();
+  const afterLeftRotation = await page
+    .locator(".image-stage")
+    .getAttribute("style");
+  assert.notEqual(afterLeftRotation, beforeRotation);
   await page
     .getByRole("button", { name: "Xoay hình ảnh", exact: true })
     .click();
   const afterRotation = await page
     .locator(".image-stage")
     .getAttribute("style");
-  assert.notEqual(afterRotation, beforeRotation);
+  assert.notEqual(afterRotation, afterLeftRotation);
   await page.getByRole("button", { name: "Tương thích", exact: true }).click();
+  await page.getByRole("heading", { name: "SSD tương thích", exact: true }).waitFor();
   await page.locator(".compatibility select").first().selectOption("AM4");
   assert.equal(
     await page.getByText("× Không tương thích", { exact: true }).count(),
@@ -85,7 +102,10 @@ const assert = require("node:assert/strict");
   assert.equal(await page.locator(".signal-paths").count(), 1);
   await page.getByRole("button", { name: "Phóng to", exact: true }).click();
   await page.screenshot({ path: "test-results/desktop.png", fullPage: true });
-  await page.getByRole("button", { name: "Linh kiện", exact: true }).click();
+  await page
+    .locator(".header nav")
+    .getByRole("button", { name: "Linh kiện", exact: true })
+    .click();
   await page
     .getByRole("heading", { name: "Chọn linh kiện để bắt đầu", exact: true })
     .waitFor();

@@ -81,7 +81,12 @@ export default function DetailPanel({
       </div>
       <div className="panel-content">
         {tab === "Compatibility" ? (
-          <CompatibilityPanel spec={product.spec} />
+          <CompatibilityPanel
+            spec={product.spec}
+            ssdComponents={product.components.filter(
+              (component) => component.category === "Storage",
+            )}
+          />
         ) : (
           <>
             {tab === "Overview" && (

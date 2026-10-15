@@ -486,6 +486,10 @@ export default function Explorer({
     setTab("Overview");
     setMobileMenu(false);
   }
+  function browseBrand(brand: string, category: string) {
+    browseCategory(category);
+    setFilters(brand ? { brand } : {});
+  }
   function choose(p: Product) {
     browseScroll.current = window.scrollY;
     setActiveCategory(p.category);
@@ -974,31 +978,35 @@ export default function Explorer({
             <>
               <main className="explorer-main component-review">
                 <div className="review-actions">
-                  <button onClick={backToLibrary}>← Quay lại danh sách</button>
-                  <div className="review-action-stack">
-                    <button onClick={() => toggleComparison(activeComponent)}>
-                      {comparison.some((i) => i.id === activeComponent.id)
-                        ? "Bỏ khỏi so sánh"
-                        : "＋ Thêm vào so sánh"}
-                    </button>
-                    <button
-                      aria-pressed={personal.library.favorites.includes(
-                        deviceKey(activeComponent),
-                      )}
-                      onClick={() => personal.toggleFavorite(activeComponent)}
-                    >
-                      {personal.library.favorites.includes(
-                        deviceKey(activeComponent),
-                      )
-                        ? "♥ Đã yêu thích"
-                        : "♡ Yêu thích"}
-                    </button>
-                  </div>
+                  <button className="back-link" onClick={backToLibrary}>
+                    ← Quay lại danh sách
+                  </button>
+                  <button onClick={() => toggleComparison(activeComponent)}>
+                    {comparison.some((i) => i.id === activeComponent.id)
+                      ? "Bỏ khỏi so sánh"
+                      : "＋ Thêm vào so sánh"}
+                  </button>
                 </div>
                 <div className="breadcrumb">
-                  Linh kiện <ChevronRight size={11} /> {activeCategory}{" "}
-                  <ChevronRight size={11} />{" "}
-                  <span>{activeComponent.brand}</span>
+                  <button type="button" onClick={browseComponents}>
+                    Linh kiện
+                  </button>
+                  <ChevronRight size={11} />
+                  <button
+                    type="button"
+                    onClick={() => browseCategory(activeCategory)}
+                  >
+                    {activeCategory}
+                  </button>
+                  <ChevronRight size={11} />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      browseBrand(activeComponent.brand, activeCategory)
+                    }
+                  >
+                    {activeComponent.brand}
+                  </button>
                 </div>
                 <div className="title-row">
                   <div>
@@ -1006,10 +1014,6 @@ export default function Explorer({
                       KHÁM PHÁ {categoryLabel(activeCategory)}
                     </span>
                     <h1>{activeComponent.name}</h1>
-                    <p>
-                      {activeComponent.brand || activeCategory} ·{" "}
-                      {activeComponent.model}
-                    </p>
                   </div>
                 </div>
                 <ComponentCanvas
@@ -1170,39 +1174,35 @@ export default function Explorer({
           <>
             <main className="explorer-main">
               <div className="review-actions">
-                <button onClick={backToLibrary}>← Quay lại danh sách</button>
-                <div className="review-action-stack">
-                  <button onClick={() => toggleComparison(product)}>
-                    {comparison.some((i) => i.id === product.id)
-                      ? "Bỏ khỏi so sánh"
-                      : "＋ Thêm vào so sánh"}
-                  </button>
-                  <button
-                    aria-pressed={personal.library.favorites.includes(
-                      deviceKey(product),
-                    )}
-                    onClick={() => personal.toggleFavorite(product)}
-                  >
-                    {personal.library.favorites.includes(deviceKey(product))
-                      ? "♥ Đã yêu thích"
-                      : "♡ Yêu thích"}
-                  </button>
-                </div>
+                <button className="back-link" onClick={backToLibrary}>
+                  ← Quay lại danh sách
+                </button>
+                <button onClick={() => toggleComparison(product)}>
+                  {comparison.some((i) => i.id === product.id)
+                    ? "Bỏ khỏi so sánh"
+                    : "＋ Thêm vào so sánh"}
+                </button>
               </div>
               <div className="breadcrumb">
-                Linh kiện <ChevronRight size={11} /> Mainboard{" "}
-                <ChevronRight size={11} /> <span>{product.brand}</span>
+                <button type="button" onClick={browseComponents}>
+                  Linh kiện
+                </button>
+                <ChevronRight size={11} />
+                <button type="button" onClick={() => browseCategory("Mainboard")}>
+                  Mainboard
+                </button>
+                <ChevronRight size={11} />
+                <button
+                  type="button"
+                  onClick={() => browseBrand(product.brand, "Mainboard")}
+                >
+                  {product.brand}
+                </button>
               </div>
               <div className="title-row">
                 <div>
                   <span className="eyebrow">KHÁM PHÁ MAINBOARD</span>
                   <h1>{product.name}</h1>
-                  <p>
-                    {["Chipset", "Socket", "Memory type", "PCIe", "WiFi"]
-                      .map((k) => product.spec[k])
-                      .filter(Boolean)
-                      .join("  /  ")}
-                  </p>
                 </div>
               </div>
               <DeviceCanvas

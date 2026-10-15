@@ -10,6 +10,7 @@ import {
   Minus,
   Move,
   Plus,
+  RefreshCcw,
   RotateCcw,
   RotateCw,
 } from "lucide-react";
@@ -140,10 +141,18 @@ export default function ComponentCanvas({
         </button>
         <span className="divider" />
         <button aria-label="Đặt lại thu phóng" onClick={() => setZoom(1)}>
+          <RefreshCcw size={15} />
+        </button>
+        <button
+          aria-label="Xoay trái"
+          title="Xoay trái"
+          onClick={() => setRotation((angle) => (angle - 90 + 360) % 360)}
+        >
           <RotateCcw size={15} />
         </button>
         <button
           aria-label="Xoay ảnh linh kiện"
+          title="Xoay phải"
           onClick={() => setRotation((angle) => (angle + 90) % 360)}
         >
           <RotateCw size={15} />

@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  RefreshCcw,
   Minus,
   RotateCcw,
   RotateCw,
@@ -221,10 +222,18 @@ export default function DeviceCanvas({
         </button>
         <span className="divider" />
         <button aria-label="Đặt lại thu phóng" onClick={() => setZoom(1)}>
+          <RefreshCcw size={15} />
+        </button>
+        <button
+          aria-label="Xoay trái"
+          title="Xoay trái"
+          onClick={() => setRotation((angle) => (angle - 90 + 360) % 360)}
+        >
           <RotateCcw size={15} />
         </button>
         <button
           aria-label="Xoay hình ảnh"
+          title="Xoay phải"
           onClick={() => setRotation((angle) => (angle + 90) % 360)}
         >
           <RotateCw size={15} />
