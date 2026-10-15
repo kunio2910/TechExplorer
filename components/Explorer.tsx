@@ -978,9 +978,6 @@ export default function Explorer({
             <>
               <main className="explorer-main component-review">
                 <div className="review-actions">
-                  <button className="back-link" onClick={backToLibrary}>
-                    ← Quay lại danh sách
-                  </button>
                   <button onClick={() => toggleComparison(activeComponent)}>
                     {comparison.some((i) => i.id === activeComponent.id)
                       ? "Bỏ khỏi so sánh"
@@ -1010,9 +1007,6 @@ export default function Explorer({
                 </div>
                 <div className="title-row">
                   <div>
-                    <span className="eyebrow">
-                      KHÁM PHÁ {categoryLabel(activeCategory)}
-                    </span>
                     <h1>{activeComponent.name}</h1>
                   </div>
                 </div>
@@ -1174,9 +1168,6 @@ export default function Explorer({
           <>
             <main className="explorer-main">
               <div className="review-actions">
-                <button className="back-link" onClick={backToLibrary}>
-                  ← Quay lại danh sách
-                </button>
                 <button onClick={() => toggleComparison(product)}>
                   {comparison.some((i) => i.id === product.id)
                     ? "Bỏ khỏi so sánh"
@@ -1201,7 +1192,6 @@ export default function Explorer({
               </div>
               <div className="title-row">
                 <div>
-                  <span className="eyebrow">KHÁM PHÁ MAINBOARD</span>
                   <h1>{product.name}</h1>
                 </div>
               </div>

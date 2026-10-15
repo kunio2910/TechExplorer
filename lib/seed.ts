@@ -48,6 +48,7 @@ const originalSeedProducts: Product[] = [
       "Memory speed": "8000+ MT/s (OC)",
       PCIe: "PCIe 5.0 x16",
       "M.2 slots": "4",
+      "SSD type": "M.2 NVMe, M.2 SATA, SATA",
       SATA: "2 × 6 Gb/s",
       LAN: "2.5Gb Ethernet",
       WiFi: "Wi-Fi 7",

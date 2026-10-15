@@ -81,7 +81,7 @@ const assert = require("node:assert/strict");
     .getAttribute("style");
   assert.notEqual(afterRotation, afterLeftRotation);
   await page.getByRole("button", { name: "Tương thích", exact: true }).click();
-  await page.getByRole("heading", { name: "SSD tương thích", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Loại SSD", exact: true }).waitFor();
   await page.locator(".compatibility select").first().selectOption("AM4");
   assert.equal(
     await page.getByText("× Không tương thích", { exact: true }).count(),

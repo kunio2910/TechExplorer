@@ -102,23 +102,12 @@
 }
 .review-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
   margin-bottom: 16px;
 }
 .review-actions button {
   padding: 9px 12px;
-}
-.review-actions .back-link {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  padding: 4px 0;
-}
-.review-actions .back-link:hover {
-  border-color: transparent;
-  color: var(--cyan);
 }
 .comparison-tray {
   position: fixed;
@@ -169,8 +158,8 @@
 }
 .comparison-dialog th img {
   display: block;
-  width: 100px;
-  height: 90px;
+  width: 200px;
+  height: 180px;
   object-fit: contain;
   margin: 0 auto 12px;
 }
@@ -178,7 +167,7 @@
   background: #16415155;
 }
 .comparison-dialog td {
-  min-width: 160px;
+  min-width: 220px;
 }
 .comparison-dialog table {
   width: 100%;
@@ -4022,8 +4011,8 @@ select {
   }
 
   .review-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    display: flex;
+    justify-content: flex-end;
     gap: 8px;
   }
 
@@ -4036,10 +4025,9 @@ select {
     padding: 9px 8px;
     font-size: 12px;
   }
-  .review-actions .back-link {
-    min-height: 0;
-    align-self: center;
-    padding: 2px 0;
+  .comparison-dialog th img {
+    width: 160px;
+    height: 144px;
   }
 
   .title-row h1 {

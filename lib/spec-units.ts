@@ -51,6 +51,19 @@ export function normalizeSpecs(spec: Record<string, string>) {
     ]),
   );
 }
+
+/** Split an editable spec into selectable values while accepting common separators. */
+export function specOptions(
+  value: string | undefined,
+  fallback: string[] = [],
+): string[] {
+  const values = (value ?? "")
+    .split(/[,;|\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const unique = [...new Set(values)];
+  return unique.length ? unique : [...new Set(fallback)];
+}
 /** Return a number in the requested unit only when the complete value is parseable. */
 export function specNumber(
   key: string,
