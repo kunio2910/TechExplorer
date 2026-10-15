@@ -469,6 +469,9 @@ const assert = require("node:assert/strict");
       .getByRole("button", { name: "Nhập JSON/CSV", exact: true })
       .click();
     await admin
+      .getByRole("tab", { name: "Nhập file JSON/CSV", exact: true })
+      .click();
+    await admin
       .getByLabel("File dữ liệu sản phẩm", { exact: true })
       .setInputFiles({
         name: "ram.json",
@@ -495,6 +498,9 @@ const assert = require("node:assert/strict");
     );
     await admin
       .getByRole("button", { name: "Nhập JSON/CSV", exact: true })
+      .click();
+    await admin
+      .getByRole("tab", { name: "Nhập file JSON/CSV", exact: true })
       .click();
     await admin
       .getByLabel("File dữ liệu sản phẩm", { exact: true })
