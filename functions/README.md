@@ -13,8 +13,13 @@ Chạy terminal tại thư mục gốc TechExplorer:
 npm install --prefix functions
 npm test --prefix functions
 npx firebase-tools login
-npx firebase-tools deploy --only functions:importProduct --project techexplorer-38d83
+npx firebase-tools deploy --only functions:product-import:importProduct --project techexplorer-38d83
 ```
+
+`product-import` là tên codebase trong `firebase.json`; khi triển khai riêng
+function `importProduct`, Firebase CLI cần nhận đủ dạng
+`functions:<codebase>:<function>`. Có thể triển khai toàn bộ codebase bằng
+`npx firebase-tools deploy --only functions:product-import --project techexplorer-38d83`.
 
 Project phải được chủ tài khoản bật gói Blaze trước khi deploy Cloud Functions.
 Không có thao tác tự nâng gói hoặc thêm thanh toán trong mã nguồn.
