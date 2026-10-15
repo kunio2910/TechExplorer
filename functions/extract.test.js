@@ -41,3 +41,29 @@ test("all six types accept labelled specs; malformed JSON falls back to metadata
     assert.equal(data.fields.find((f) => f.key === "name").value, "QA");
   }
 });
+
+test("ASUS-style section headings are mapped to mainboard fields", () => {
+  const html = `<h1>ROG MAXIMUS Z890 HERO BTF</h1>
+    <h2>CPU</h2><p>Support Intel Core Ultra Processors, LGA1851</p>
+    <h2>Chipset</h2><p>Intel Z890 Chipset</p>
+    <h2>Memory</h2><p>4 x DIMM slots, max. 256GB, DDR5</p>
+    <h2>Storage</h2><p>Supports up to 6 x M.2 slots with PCIe mode and 4 x SATA 6Gb/s ports</p>
+    <h2>Form Factor</h2><p>ATX Form Factor</p>`;
+  const result = extractProduct(
+    html,
+    "https://rog.asus.com/motherboards/rog-maximus/rog-maximus-z890-hero-btf/spec/",
+    "Mainboard",
+  );
+  const fields = Object.fromEntries(
+    result.fields.map((field) => [field.key, field.value]),
+  );
+  assert.equal(fields["spec.Socket"], "LGA1851");
+  assert.equal(fields["spec.Chipset"], "Intel Z890 Chipset");
+  assert.equal(fields["spec.Memory type"], "DDR5");
+  assert.equal(fields["spec.Max memory"], "256GB");
+  assert.equal(fields["spec.Memory slots"], "4 x DIMM slots");
+  assert.equal(fields["spec.M.2 slots"], "6 x M.2 slots");
+  assert.equal(fields["spec.SATA"], "4 x SATA 6Gb/s ports");
+  assert.equal(fields["spec.SSD type"], "M.2 NVMe, SATA");
+  assert.match(fields["spec.Form factor"], /ATX/);
+});

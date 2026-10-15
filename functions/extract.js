@@ -121,6 +121,29 @@ export function extractProduct(html, sourceUrl, type) {
     const value = $(el).find(".value, .content, .spec-content").first();
     if (key.length && value.length) pairs.push([key.text(), value.text()]);
   });
+  // ASUS ROG pages expose many specifications as a heading followed by prose
+  // and lists instead of a label/value table.
+  $("h2, h3, h4").each((_, el) => {
+    const title = clean($(el).text());
+    if (
+      !/^(?:CPU|Chipset|Memory|Storage|Form Factor|Graphics|Expansion Slots|Operating System)$/i.test(
+        title,
+      )
+    )
+      return;
+    const content = [];
+    let sibling = $(el).next();
+    for (
+      let count = 0;
+      sibling.length && count < 30;
+      count++, sibling = sibling.next()
+    ) {
+      if (sibling.is("h2, h3, h4")) break;
+      const text = clean(sibling.text());
+      if (text) content.push(text);
+    }
+    if (content.length) pairs.push([title, content.join(" ")]);
+  });
   const fields = [];
   const add = (key, value) => {
     value = clean(value);
@@ -148,6 +171,45 @@ export function extractProduct(html, sourceUrl, type) {
     for (const [field, pattern] of Object.entries(rules[type]))
       if (pattern.test(clean(key).replace(/\s*:\s*$/, "")))
         add(`spec.${field}`, value);
+  function addSection(field, pattern, value) {
+    if (fields.some((item) => item.key === `spec.${field}`)) return;
+    const match = value.match(pattern);
+    if (match?.[1]) add(`spec.${field}`, match[1]);
+  }
+  if (type === "Mainboard") {
+    for (const [key, value] of pairs) {
+      const section = clean(key).toLowerCase();
+      if (section === "cpu")
+        addSection("Socket", /\b((?:LGA|AM|sTRX|SP|TR)\s*[A-Z0-9-]+)/i, value);
+      if (section === "memory") {
+        addSection("Memory type", /\b(DDR[3-6](?:\s*\w*)?)/i, value);
+        addSection(
+          "Max memory",
+          /\b(?:max(?:imum)?\s*)?(\d+\s*(?:GB|TB))\b/i,
+          value,
+        );
+        addSection("Memory slots", /\b(\d+\s*x\s*DIMM\s*slots?)\b/i, value);
+      }
+      if (section === "storage") {
+        addSection("M.2 slots", /\b(\d+\s*x\s*M\.2\s*slots?)\b/i, value);
+        addSection("SATA", /\b(\d+\s*x\s*SATA\s*[^,.;]*)/i, value);
+        if (
+          !fields.some((item) => item.key === "spec.SSD type") &&
+          /M\.2[\s\S]*PCIe/i.test(value)
+        )
+          add(
+            "spec.SSD type",
+            /SATA/i.test(value) ? "M.2 NVMe, SATA" : "M.2 NVMe",
+          );
+      }
+      if (section === "form factor")
+        addSection(
+          "Form factor",
+          /\b((?:Mini[- ]?ITX|Micro[- ]?ATX|ATX|E-ATX|SSI[- ]?EEB)[^.;]*)/i,
+          value,
+        );
+    }
+  }
   const images = [];
   for (const entry of [
     product.image ?? [],
