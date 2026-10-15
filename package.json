@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "description": "Interactive motherboard explorer with a visual content studio",
   "scripts": {
+    "import-product": "node --use-system-ca scripts/import-product.mjs",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/core.test.ts tests/backup.test.ts tests/catalog.test.ts tests/features.test.ts",
+    "test": "tsx --test tests/core.test.ts tests/backup.test.ts tests/catalog.test.ts tests/features.test.ts tests/product-import.test.ts",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",

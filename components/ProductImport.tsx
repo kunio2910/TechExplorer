@@ -1,17 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { firebaseApp } from "@/lib/firebase-client";
+import {
+  parseProductFile,
+  type ImportPreview as Preview,
+} from "@/lib/product-import";
 import { specLabel, type Device } from "@/lib/catalog-tools";
 import { normalizeSpecs } from "@/lib/spec-units";
-type Preview = {
-  sourceUrl: string;
-  fetchedAt: string;
-  fields: { key: string; value: string }[];
-  images: string[];
-  missing: string[];
-  warnings: string[];
-};
 export default function ProductImport({
   device,
   type,
@@ -23,7 +17,6 @@ export default function ProductImport({
   onApply: (value: Device) => void;
   onClose: () => void;
 }) {
-  const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -52,32 +45,23 @@ export default function ProductImport({
           model: "Model",
           description: "Mô tả",
         }[key] ?? key);
-  async function load() {
+  async function load(file: File) {
     setBusy(true);
     setError("");
     setPreview(null);
     try {
-      const call = httpsCallable<{ url: string; type: string }, Preview>(
-        getFunctions(firebaseApp, "asia-southeast1"),
-        "importProduct",
-        { timeout: 60000 },
-      );
-      const result = (await call({ url: url.trim(), type })).data;
+      if (file.size > 2_000_000) throw new Error("File tối đa 2 MB.");
+      const result = parseProductFile(await file.text(), file.name, type);
       setPreview(result);
       setSelected(result.fields.map((f) => f.key));
       setImages(result.images);
     } catch (e) {
-      const code = (e as { code?: string }).code;
       setError(
-        [
-          "functions/not-found",
-          "functions/internal",
-          "functions/unavailable",
-        ].includes(code ?? "")
-          ? "Chưa kết nối được dịch vụ nhập dữ liệu. Kiểm tra Cloud Function importProduct đã triển khai và project đã bật Blaze."
+        e instanceof SyntaxError
+          ? "File JSON không đúng cú pháp."
           : e instanceof Error
             ? e.message
-            : "Không thể lấy thông tin.",
+            : "Không thể đọc file.",
       );
     } finally {
       setBusy(false);
@@ -107,7 +91,7 @@ export default function ProductImport({
       } else if (!onlyEmpty || !next.imageUrl) next.imageUrl = images[0];
       next.gallery = [...new Set([...(next.gallery ?? []), ...images])];
     }
-    if ("media" in next && (!onlyEmpty || !next.sourceUrl))
+    if (preview.sourceUrl && "media" in next && (!onlyEmpty || !next.sourceUrl))
       next.sourceUrl = preview.sourceUrl;
     next.importSource = {
       url: preview.sourceUrl,
@@ -129,7 +113,7 @@ export default function ProductImport({
     >
       <section className="import-dialog">
         <div className="section-heading">
-          <h2 id="import-title">Tự động điền {type}</h2>
+          <h2 id="import-title">Nhập dữ liệu {type}</h2>
           <button
             disabled={busy}
             onClick={onClose}
@@ -139,36 +123,38 @@ export default function ProductImport({
           </button>
         </div>
         <p>
-          Dán link sản phẩm hoặc trang thông số chính hãng. Dữ liệu được áp dụng
-          vào bản nháp để bạn kiểm tra trước khi lưu lên Firestore.
+          Chọn file JSON hoặc CSV chứa một sản phẩm. Dữ liệu được áp dụng vào
+          bản nháp để bạn kiểm tra trước khi lưu lên Firestore.
         </p>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void load();
-          }}
-        >
+        <div>
           <label>
-            Link sản phẩm chính hãng
+            File dữ liệu sản phẩm
             <input
               autoFocus
-              type="url"
-              required
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              type="file"
+              accept=".json,.csv,application/json,text/csv"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void load(file);
+                e.target.value = "";
+              }}
               disabled={busy}
-              placeholder="https://www.asus.com/.../techspec/"
             />
           </label>
           <small>
-            ASUS, MSI, GIGABYTE, ASRock, Intel, AMD, Corsair, Kingston, Crucial,
-            Samsung, Seasonic, Cooler Master. Trang tải thông số bằng JavaScript
-            có thể chỉ đọc được thông tin cơ bản.
+            Tối đa 2 MB. CSV dùng cột name, brand, spec.Socket, spec.Capacity…
+            Cột images chứa các URL ảnh cách nhau bằng dấu |.
           </small>
-          <button className="primary" disabled={busy}>
-            {busy ? "Đang lấy thông tin…" : "Lấy thông tin"}
-          </button>
-        </form>
+          <p>
+            <a
+              href={`data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({ type, name: `${type} mẫu`, brand: "Thương hiệu", spec: device.spec, images: [] }, null, 2))}`}
+              download={`mau-${type.toLowerCase()}.json`}
+            >
+              Tải mẫu JSON ({type})
+            </a>
+          </p>
+          {busy && <p role="status">Đang đọc file…</p>}
+        </div>
         {error && (
           <p role="alert" className="admin-message">
             {error}
@@ -259,12 +245,14 @@ export default function ProductImport({
                 </div>
               </>
             )}
-            <p>
-              Nguồn:{" "}
-              <a href={preview.sourceUrl} target="_blank" rel="noreferrer">
-                {preview.sourceUrl}
-              </a>
-            </p>
+            {preview.sourceUrl && (
+              <p>
+                Nguồn:{" "}
+                <a href={preview.sourceUrl} target="_blank" rel="noreferrer">
+                  {preview.sourceUrl}
+                </a>
+              </p>
+            )}
             <button
               className="primary"
               disabled={!selected.length && !images.length}

@@ -988,7 +988,7 @@ export default function StaticAdmin({
               })
             }
           >
-            ✨ Tự động điền
+            Nhập JSON/CSV
           </button>
           <span role="status">
             {!connected

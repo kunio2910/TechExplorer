@@ -1,5 +1,10 @@
 # Nhập thông tin từ link chính hãng
 
+**Luồng hiện tại:** website nhập file JSON/CSV ngay trong trình duyệt. Đọc
+[hướng dẫn nhập file và công cụ local](../docs/product-import.md); không cần
+deploy backend hay nâng Blaze cho luồng này. Nội dung dưới đây dành cho
+backend Cloud Function tùy chọn đã được giữ lại để tham khảo.
+
 Backend `importProduct` dùng Firebase Callable Functions tại `asia-southeast1`.
 Không dùng AI và không cần API key bên thứ ba. Website GitHub Pages gọi backend
 bằng phiên Firebase Authentication hiện tại. Chỉ UID quản trị có sẵn hoặc tài

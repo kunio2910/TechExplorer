@@ -10,7 +10,6 @@ const assert = require("node:assert/strict");
     "next/link": `import React from 'react';export default function Link({href,children,...props}){return React.createElement('a',{...props,href},children);}`,
     "firebase/auth": `export const onAuthStateChanged=(a,cb)=>{const t=setTimeout(()=>cb({email:'qa@example.test',uid:'qa'}),0);return()=>clearTimeout(t);};export const signInWithEmailAndPassword=async()=>{};export const signOut=async()=>{};`,
     "@/lib/firebase-client": `export const auth={currentUser:{uid:'qa'}};export const firebaseApp={};`,
-    "firebase/functions": `export const getFunctions=()=>({});export const httpsCallable=()=>async()=>({data:{sourceUrl:'https://www.asus.com/qa',fetchedAt:'2026-10-15T00:00:00.000Z',fields:[{key:'name',value:'RAM nhập QA'},{key:'brand',value:'ASUS'},{key:'model',value:'Import model'},{key:'spec.Capacity',value:'64gb'}],images:[],missing:['Speed'],warnings:[]}});`,
     "@/lib/firestore": `const q=()=>window.qa;const save=(list,item)=>{const i=list.findIndex(x=>x.id===item.id);if(i<0)list.push(structuredClone(item));else list[i]=structuredClone(item);};export const loadAllProducts=async()=>structuredClone(q().products);export const loadCatalogComponents=async()=>structuredClone(q().components);export const saveProduct=async item=>save(q().products,item);export const saveCatalogComponent=async item=>save(q().components,item);export const deleteProduct=async id=>{q().products=q().products.filter(x=>x.id!==id);};export const deleteCatalogComponent=async id=>{q().components=q().components.filter(x=>x.id!==id);};export const seedProductsToFirestore=async()=>({products:1,components:5});export const restoreCatalog=async b=>{b.products.forEach(saveProduct);b.components.forEach(saveCatalogComponent);};export const firestoreErrorMessage=(e)=>e.message;`,
   };
   mocks["@/lib/firestore"] +=
@@ -467,14 +466,22 @@ const assert = require("node:assert/strict");
       "RAM khôi phục QA",
     );
     await admin
-      .getByRole("button", { name: "✨ Tự động điền", exact: true })
+      .getByRole("button", { name: "Nhập JSON/CSV", exact: true })
       .click();
     await admin
-      .getByLabel("Link sản phẩm chính hãng", { exact: true })
-      .fill("https://www.asus.com/qa");
-    await admin
-      .getByRole("button", { name: "Lấy thông tin", exact: true })
-      .click();
+      .getByLabel("File dữ liệu sản phẩm", { exact: true })
+      .setInputFiles({
+        name: "ram.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(
+          JSON.stringify({
+            type: "RAM",
+            name: "RAM nhập QA",
+            model: "Import model",
+            spec: { Capacity: "64gb" },
+          }),
+        ),
+      });
     await admin
       .getByRole("button", { name: "Áp dụng vào bản nháp", exact: true })
       .click();
@@ -487,14 +494,17 @@ const assert = require("node:assert/strict");
       "Import model",
     );
     await admin
-      .getByRole("button", { name: "✨ Tự động điền", exact: true })
+      .getByRole("button", { name: "Nhập JSON/CSV", exact: true })
       .click();
     await admin
-      .getByLabel("Link sản phẩm chính hãng", { exact: true })
-      .fill("https://www.asus.com/qa");
-    await admin
-      .getByRole("button", { name: "Lấy thông tin", exact: true })
-      .click();
+      .getByLabel("File dữ liệu sản phẩm", { exact: true })
+      .setInputFiles({
+        name: "ram.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(
+          "type,name,model,spec.Capacity\nRAM,RAM nhập QA,Import model,64gb",
+        ),
+      });
     await admin.getByLabel("Chỉ điền ô trống", { exact: false }).uncheck();
     await admin
       .getByRole("button", { name: "Áp dụng vào bản nháp", exact: true })
