@@ -140,6 +140,16 @@ export function createImporterServer() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const server = createImporterServer();
+  server.on("error", (error) => {
+    if (error?.code === "EADDRINUSE") {
+      console.error(
+        `Cổng ${HOST}:${PORT} đang được sử dụng. Dịch vụ có thể đã chạy ở cửa sổ Terminal khác; hãy kiểm tra http://${HOST}:${PORT}/health trước khi khởi động lại.`,
+      );
+    } else {
+      console.error("Không thể khởi động dịch vụ nhập dữ liệu:", error?.message ?? error);
+    }
+    process.exitCode = 1;
+  });
   server.listen(PORT, HOST, () => {
     console.log(`TechExplorer local importer listening on http://${HOST}:${PORT}`);
     console.log("Giữ cửa sổ này mở trong khi nhập URL tại trang quản trị.");
