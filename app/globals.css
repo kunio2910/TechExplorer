@@ -114,6 +114,10 @@
 .import-dialog button { padding: 10px 14px; }
 .import-dialog input[type="url"] { margin-top: 8px; }
 .import-dialog small, .import-dialog p { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.import-mode-switch { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.import-service-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.import-service-status button { padding: 6px 10px; font-size: 12px; }
+.import-detection { color: var(--accent) !important; }
 .import-choice, .import-images span { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
 .import-dialog input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 18px; }
 .import-table { overflow-x: auto; }

@@ -4,6 +4,7 @@
   "description": "Interactive motherboard explorer with a visual content studio",
   "scripts": {
     "import-product": "node --use-system-ca scripts/import-product.mjs",
+    "import-server": "node --use-system-ca scripts/import-server.mjs",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",

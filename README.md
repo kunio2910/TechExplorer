@@ -34,7 +34,7 @@ The local upload adapter saves to `public/uploads` (8 MB limit, raster formats o
 
 ### Firestore administration
 
-Trang quản trị hỗ trợ **Nhập JSON/CSV** và công cụ lấy dữ liệu chạy trên máy,
+Trang quản trị hỗ trợ **Nhận diện từ URL**, **Nhập JSON/CSV** và công cụ lấy dữ liệu chạy trên máy,
 không cần Cloud Functions hoặc gói Blaze. Xem [hướng dẫn nhập sản phẩm](docs/product-import.md).
 
 Nếu trang quản trị báo `permission-denied`, phát hành Rules từ thư mục gốc

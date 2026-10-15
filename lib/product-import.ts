@@ -5,6 +5,9 @@ export type ImportPreview = {
   images: string[];
   missing: string[];
   warnings: string[];
+  detectedBrand?: string;
+  detectedLine?: string;
+  parser?: string;
 };
 function csvRows(text: string): string[][] {
   const rows: string[][] = [];

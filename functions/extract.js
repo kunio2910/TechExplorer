@@ -14,6 +14,68 @@ export const brands = {
   "seasonic.com": "Seasonic",
   "coolermaster.com": "Cooler Master",
 };
+
+const lineMatchers = {
+  ASUS: [
+    [/\brog[-/ ]/i, "ROG"],
+    [/\btuf[-/ ]/i, "TUF Gaming"],
+    [/\bprime[-/ ]/i, "Prime"],
+    [/\bproart[-/ ]/i, "ProArt"],
+    [/\bpro[-/ ]?ws\b/i, "Pro WS"],
+  ],
+  MSI: [
+    [/\bmeg\b/i, "MEG"],
+    [/\bmpg\b/i, "MPG"],
+    [/\bmag\b/i, "MAG"],
+    [/\btomahawk\b/i, "MAG"],
+    [/\bpro\b/i, "PRO"],
+  ],
+  GIGABYTE: [
+    [/\baorus\b/i, "AORUS"],
+    [/\bvision\b/i, "VISION"],
+    [/\baero\b/i, "AERO"],
+    [/\b(ds3h|ultra durable|ud)\b/i, "UD"],
+  ],
+  ASRock: [
+    [/\btaichi\b/i, "Taichi"],
+    [/\bsteel[- ]?legend\b/i, "Steel Legend"],
+    [/\bphantom[- ]?gaming\b/i, "Phantom Gaming"],
+    [/\bpro[- ]?rs\b/i, "Pro RS"],
+  ],
+  Intel: [[/\bnuc\b/i, "NUC"], [/\bxeon\b/i, "Xeon"], [/\bcore\b/i, "Core"]],
+  AMD: [[/\bryzen\b/i, "Ryzen"], [/\bradeon\b/i, "Radeon"], [/\bepyc\b/i, "EPYC"]],
+  Corsair: [[/\bvengeance\b/i, "Vengeance"], [/\bdominator\b/i, "Dominator"]],
+  Kingston: [[/\bfury\b/i, "FURY"], [/\bkc\d/i, "Kingston SSD"]],
+  Crucial: [[/\bpro\b/i, "Pro"], [/\bt[0-9]{3}\b/i, "Crucial SSD"]],
+  Samsung: [[/\b990\b|\b980\b|\b970\b/i, "Samsung SSD"], [/\bpro\b/i, "PRO"]],
+  Seasonic: [[/\bprime\b/i, "PRIME"], [/\bfocus\b/i, "FOCUS"], [/\bvertex\b/i, "VERTEX"]],
+  "Cooler Master": [[/\bmaster\w*\b/i, "Master Series"]],
+};
+
+/** Identify the official vendor and the most useful product family hint. */
+export function detectSource(sourceUrl) {
+  const { url, brand } = officialUrl(sourceUrl);
+  const haystack = `${url.hostname} ${url.pathname} ${url.search}`;
+  const host = url.hostname.toLowerCase();
+  let detectedLine = brand;
+  if (brand === "ASUS" && host.endsWith(".rog.asus.com")) detectedLine = "ROG";
+  else {
+    for (const [pattern, line] of lineMatchers[brand] ?? []) {
+      if (pattern.test(haystack)) {
+        detectedLine = line;
+        break;
+      }
+    }
+  }
+  const parser =
+    brand === "ASUS" && detectedLine === "ROG"
+      ? "asus-rog"
+      : /(?:spec|specification|tech[-_ ]?spec|technical)/i.test(haystack)
+        ? "vendor-spec"
+        : "structured-spec";
+  return { url, brand, detectedLine, parser };
+}
+
 export function officialUrl(input) {
   const url = new URL(input);
   if (
@@ -79,7 +141,8 @@ const rules = {
   },
 };
 export function extractProduct(html, sourceUrl, type) {
-  const { brand } = officialUrl(sourceUrl);
+  const source = detectSource(sourceUrl);
+  const { brand } = source;
   if (!rules[type]) throw new Error("Loại linh kiện không hợp lệ.");
   const $ = load(html);
   const clean = (value) =>
@@ -121,28 +184,40 @@ export function extractProduct(html, sourceUrl, type) {
     const value = $(el).find(".value, .content, .spec-content").first();
     if (key.length && value.length) pairs.push([key.text(), value.text()]);
   });
-  // ASUS ROG pages expose many specifications as a heading followed by prose
-  // and lists instead of a label/value table.
+  // Many vendor pages expose specifications as a heading followed by prose
+  // and lists instead of a label/value table. The aliases cover ASUS ROG,
+  // MSI, GIGABYTE, ASRock and common English product pages.
+  const sectionNames = {
+    cpu: /^(?:cpu|processor|processors)$/i,
+    chipset: /^chipset$/i,
+    memory: /^(?:memory|memory support|system memory|ram)$/i,
+    storage: /^(?:storage|storage support|storage interface)$/i,
+    "form factor": /^(?:form factor|motherboard form factor)$/i,
+    graphics: /^(?:graphics|display)$/i,
+    "expansion slots": /^(?:expansion slots?|expansion)$/i,
+    "operating system": /^operating system$/i,
+  };
   $("h2, h3, h4").each((_, el) => {
     const title = clean($(el).text());
-    if (
-      !/^(?:CPU|Chipset|Memory|Storage|Form Factor|Graphics|Expansion Slots|Operating System)$/i.test(
-        title,
-      )
-    )
-      return;
-    const content = [];
-    let sibling = $(el).next();
-    for (
-      let count = 0;
-      sibling.length && count < 30;
-      count++, sibling = sibling.next()
-    ) {
-      if (sibling.is("h2, h3, h4")) break;
-      const text = clean(sibling.text());
-      if (text) content.push(text);
+    const section = Object.entries(sectionNames).find(([, pattern]) =>
+      pattern.test(title),
+    )?.[0];
+    if (!section) return;
+    if (pairs.some(([key]) => clean(key).toLowerCase() === section)) return;
+    {
+      const content = [];
+      let sibling = $(el).next();
+      for (
+        let count = 0;
+        sibling.length && count < 30;
+        count++, sibling = sibling.next()
+      ) {
+        if (sibling.is("h2, h3, h4")) break;
+        const text = clean(sibling.text());
+        if (text) content.push(text);
+      }
+      if (content.length) pairs.push([section, content.join(" ")]);
     }
-    if (content.length) pairs.push([title, content.join(" ")]);
   });
   const fields = [];
   const add = (key, value) => {
@@ -180,7 +255,7 @@ export function extractProduct(html, sourceUrl, type) {
     for (const [key, value] of pairs) {
       const section = clean(key).toLowerCase();
       if (section === "cpu")
-        addSection("Socket", /\b((?:LGA|AM|sTRX|SP|TR)\s*[A-Z0-9-]+)/i, value);
+        addSection("Socket", /\b((?:LGA|AM|sTRX|SP|TR)\s*\d+[A-Z0-9-]*)/i, value);
       if (section === "memory") {
         addSection("Memory type", /\b(DDR[3-6](?:\s*\w*)?)/i, value);
         addSection(
@@ -208,6 +283,7 @@ export function extractProduct(html, sourceUrl, type) {
           /\b((?:Mini[- ]?ITX|Micro[- ]?ATX|ATX|E-ATX|SSI[- ]?EEB)[^.;]*)/i,
           value,
         );
+      if (section === "chipset") add("spec.Chipset", value);
     }
   }
   const images = [];
@@ -232,6 +308,9 @@ export function extractProduct(html, sourceUrl, type) {
   return {
     type,
     sourceUrl,
+    detectedBrand: source.brand,
+    detectedLine: source.detectedLine,
+    parser: source.parser,
     fetchedAt: new Date().toISOString(),
     fields,
     images: images.slice(0, 12),

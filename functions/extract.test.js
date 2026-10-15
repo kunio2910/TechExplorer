@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { officialUrl, extractProduct } from "./extract.js";
+import { officialUrl, detectSource, extractProduct } from "./extract.js";
 test("only official HTTPS sources and safe redirects are accepted", () => {
   for (const url of [
     "http://asus.com/a",
@@ -11,6 +11,22 @@ test("only official HTTPS sources and safe redirects are accepted", () => {
   ])
     assert.throws(() => officialUrl(url));
   assert.equal(officialUrl("https://rog.asus.com/boards/").brand, "ASUS");
+});
+test("recognizes common vendor product lines from official URLs", () => {
+  assert.deepEqual(
+    (({ brand, detectedLine, parser }) => ({ brand, detectedLine, parser }))(
+      detectSource("https://rog.asus.com/motherboards/rog-maximus/x/spec/"),
+    ),
+    { brand: "ASUS", detectedLine: "ROG", parser: "asus-rog" },
+  );
+  assert.equal(
+    detectSource("https://www.msi.com/Motherboard/MAG-TOMAHAWK").detectedLine,
+    "MAG",
+  );
+  assert.equal(
+    detectSource("https://www.gigabyte.com/Motherboard/X870E-AORUS").detectedLine,
+    "AORUS",
+  );
 });
 test("structured product and table specs are extracted without inventing missing values", () => {
   const html = `<script type="application/ld+json">{"@type":"Product","name":"Board QA","image":["/a.jpg"],"additionalProperty":[{"name":"Socket","value":"AM5"}]}</script><table><tr><th>Memory type</th><td>DDR5</td></tr><tr><th>M.2 slots</th><td>2</td></tr></table>`;
@@ -66,4 +82,19 @@ test("ASUS-style section headings are mapped to mainboard fields", () => {
   assert.equal(fields["spec.SATA"], "4 x SATA 6Gb/s ports");
   assert.equal(fields["spec.SSD type"], "M.2 NVMe, SATA");
   assert.match(fields["spec.Form factor"], /ATX/);
+});
+
+test("vendor-neutral heading aliases map non-ASUS mainboard pages", () => {
+  const result = extractProduct(
+    `<h1>MAG BOARD</h1><h3>Processor</h3><div>AMD AM5 Socket</div>
+      <h3>Memory Support</h3><div>4 x DIMM, DDR5, max 128GB</div>
+      <h3>Storage Support</h3><div>2 x M.2 slots, 4 x SATA ports</div>`,
+    "https://www.msi.com/Motherboard/MAG-BOARD/specification",
+    "Mainboard",
+  );
+  const fields = Object.fromEntries(result.fields.map((field) => [field.key, field.value]));
+  assert.equal(fields["spec.Socket"], "AM5");
+  assert.equal(fields["spec.Memory type"], "DDR5");
+  assert.equal(fields["spec.M.2 slots"], "2 x M.2 slots");
+  assert.equal(result.detectedLine, "MAG");
 });

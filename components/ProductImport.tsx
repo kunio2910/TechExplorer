@@ -6,6 +6,9 @@ import {
 } from "@/lib/product-import";
 import { specLabel, type Device } from "@/lib/catalog-tools";
 import { normalizeSpecs } from "@/lib/spec-units";
+
+const LOCAL_IMPORT_URL = "http://127.0.0.1:8787";
+
 export default function ProductImport({
   device,
   type,
@@ -23,6 +26,11 @@ export default function ProductImport({
   const [selected, setSelected] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [onlyEmpty, setOnlyEmpty] = useState(true);
+  const [mode, setMode] = useState<"local" | "file">("local");
+  const [url, setUrl] = useState("");
+  const [localStatus, setLocalStatus] = useState<
+    "checking" | "connected" | "offline"
+  >("checking");
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     dialog.current?.showModal();
@@ -31,6 +39,24 @@ export default function ProductImport({
     return () => {
       document.body.style.overflow = previous;
     };
+  }, []);
+  async function checkLocalService() {
+    setLocalStatus("checking");
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 1500);
+    try {
+      const response = await fetch(`${LOCAL_IMPORT_URL}/health`, {
+        signal: controller.signal,
+      });
+      setLocalStatus(response.ok ? "connected" : "offline");
+    } catch {
+      setLocalStatus("offline");
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+  useEffect(() => {
+    void checkLocalService();
   }, []);
   const current = (key: string): string =>
     key.startsWith("spec.")
@@ -62,6 +88,43 @@ export default function ProductImport({
           : e instanceof Error
             ? e.message
             : "Không thể đọc file.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function loadFromUrl(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!url.trim()) {
+      setError("Hãy nhập URL trang sản phẩm.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setPreview(null);
+    try {
+      const response = await fetch(`${LOCAL_IMPORT_URL}/extract`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: url.trim(), type }),
+      });
+      const result = (await response.json()) as Preview & { error?: string };
+      if (!response.ok || result.error)
+        throw new Error(result.error || "Dịch vụ cục bộ không đọc được nguồn.");
+      if (!Array.isArray(result.fields) || !Array.isArray(result.images))
+        throw new Error("Dữ liệu trả về từ dịch vụ không hợp lệ.");
+      setPreview(result);
+      setSelected(result.fields.map((f) => f.key));
+      setImages(result.images);
+      setLocalStatus("connected");
+    } catch (e) {
+      setLocalStatus("offline");
+      setError(
+        e instanceof Error && e.name === "TypeError"
+          ? "Không kết nối được dịch vụ trên máy. Hãy chạy npm run import-server trong thư mục TechExplorer rồi thử lại."
+          : e instanceof Error
+            ? e.message
+            : "Không thể đọc URL sản phẩm.",
       );
     } finally {
       setBusy(false);
@@ -123,38 +186,102 @@ export default function ProductImport({
           </button>
         </div>
         <p>
-          Chọn file JSON hoặc CSV chứa một sản phẩm. Dữ liệu được áp dụng vào
-          bản nháp để bạn kiểm tra trước khi lưu lên Firestore.
+          Nhận diện hãng và dòng sản phẩm từ URL chính hãng, hoặc nhập file
+          JSON/CSV. Dữ liệu chỉ được áp dụng vào bản nháp để bạn kiểm tra trước
+          khi lưu lên Firestore.
         </p>
-        <div>
-          <label>
-            File dữ liệu sản phẩm
-            <input
-              autoFocus
-              type="file"
-              accept=".json,.csv,application/json,text/csv"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void load(file);
-                e.target.value = "";
-              }}
-              disabled={busy}
-            />
-          </label>
-          <small>
-            Tối đa 2 MB. CSV dùng cột name, brand, spec.Socket, spec.Capacity…
-            Cột images chứa các URL ảnh cách nhau bằng dấu |.
-          </small>
-          <p>
-            <a
-              href={`data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({ type, name: `${type} mẫu`, brand: "Thương hiệu", spec: device.spec, images: [] }, null, 2))}`}
-              download={`mau-${type.toLowerCase()}.json`}
-            >
-              Tải mẫu JSON ({type})
-            </a>
-          </p>
-          {busy && <p role="status">Đang đọc file…</p>}
+        <div className="import-mode-switch" role="tablist" aria-label="Cách nhập dữ liệu">
+          <button
+            type="button"
+            className={mode === "local" ? "primary" : ""}
+            onClick={() => {
+              setMode("local");
+              setError("");
+            }}
+            role="tab"
+            aria-selected={mode === "local"}
+          >
+            Nhận diện từ URL
+          </button>
+          <button
+            type="button"
+            className={mode === "file" ? "primary" : ""}
+            onClick={() => {
+              setMode("file");
+              setError("");
+            }}
+            role="tab"
+            aria-selected={mode === "file"}
+          >
+            Nhập file JSON/CSV
+          </button>
         </div>
+        {mode === "local" ? (
+          <form onSubmit={loadFromUrl}>
+            <label>
+              URL trang sản phẩm chính hãng
+              <input
+                autoFocus
+                type="url"
+                value={url}
+                placeholder="https://www.asus.com/.../spec/"
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={busy}
+                required
+              />
+            </label>
+            <div className="import-service-status" role="status">
+              <span>
+                {localStatus === "connected"
+                  ? "● Dịch vụ trên máy đã kết nối"
+                  : localStatus === "checking"
+                    ? "○ Đang kiểm tra dịch vụ trên máy…"
+                    : "○ Dịch vụ trên máy chưa chạy"}
+              </span>
+              <button type="button" onClick={() => void checkLocalService()} disabled={busy}>
+                Kiểm tra lại
+              </button>
+            </div>
+            <small>
+              Cài một lần bằng <code>npm ci --prefix functions</code>, sau đó
+              chạy <code>npm run import-server</code> tại thư mục dự án. Dịch vụ
+              chỉ nghe trên máy này, không cần Firebase hoặc Blaze.
+            </small>
+            <button className="primary" type="submit" disabled={busy || localStatus !== "connected"}>
+              {busy ? "Đang lấy dữ liệu…" : "Nhận diện và xem trước"}
+            </button>
+          </form>
+        ) : (
+          <div>
+            <label>
+              File dữ liệu sản phẩm
+              <input
+                autoFocus
+                type="file"
+                accept=".json,.csv,application/json,text/csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void load(file);
+                  e.target.value = "";
+                }}
+                disabled={busy}
+              />
+            </label>
+            <small>
+              Tối đa 2 MB. CSV dùng cột name, brand, spec.Socket, spec.Capacity…
+              Cột images chứa các URL ảnh cách nhau bằng dấu |.
+            </small>
+            <p>
+              <a
+                href={`data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({ type, name: `${type} mẫu`, brand: "Thương hiệu", spec: device.spec, images: [] }, null, 2))}`}
+                download={`mau-${type.toLowerCase()}.json`}
+              >
+                Tải mẫu JSON ({type})
+              </a>
+            </p>
+          </div>
+        )}
+        {mode === "file" && busy && <p role="status">Đang đọc file…</p>}
         {error && (
           <p role="alert" className="admin-message">
             {error}
@@ -162,6 +289,13 @@ export default function ProductImport({
         )}
         {preview && (
           <>
+            {(preview.detectedBrand || preview.detectedLine || preview.parser) && (
+              <p className="import-detection" role="status">
+                Nhận diện: <strong>{preview.detectedBrand || "—"}</strong>
+                {preview.detectedLine && ` · Dòng ${preview.detectedLine}`}
+                {preview.parser && ` · Bộ đọc ${preview.parser}`}
+              </p>
+            )}
             <label className="import-choice">
               <input
                 type="checkbox"

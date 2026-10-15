@@ -1,0 +1,150 @@
+import { createServer } from "node:http";
+import { pathToFileURL } from "node:url";
+import { officialUrl, extractProduct } from "../functions/extract.js";
+
+const HOST = "127.0.0.1";
+const PORT = Number(process.env.TECH_EXPLORER_IMPORT_PORT || process.env.PORT || 8787);
+const MAX_REQUEST_BYTES = 32_000;
+const MAX_HTML_BYTES = 3_000_000;
+const FETCH_TIMEOUT_MS = 25_000;
+const TYPES = new Set(["Mainboard", "CPU", "RAM", "SSD", "GPU", "PSU"]);
+const ALLOWED_ORIGINS = new Set([
+  "https://kunio2910.github.io",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
+]);
+
+function writeJson(response, status, value, origin) {
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Vary", "Origin");
+  }
+  response.setHeader("Access-Control-Allow-Private-Network", "true");
+  response.setHeader("Content-Type", "application/json; charset=utf-8");
+  response.writeHead(status);
+  response.end(JSON.stringify(value));
+}
+
+function cors(response, origin) {
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    response.setHeader("Access-Control-Allow-Origin", origin);
+    response.setHeader("Vary", "Origin");
+  }
+  response.setHeader("Access-Control-Allow-Private-Network", "true");
+  response.setHeader("Access-Control-Allow-Headers", "content-type");
+  response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+}
+
+async function readRequest(request) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > MAX_REQUEST_BYTES) throw new Error("Dữ liệu yêu cầu vượt quá 32 KB.");
+    chunks.push(chunk);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw new Error("Nội dung yêu cầu phải là JSON hợp lệ.");
+  }
+}
+
+async function readHtml(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!response.ok || !contentType.toLowerCase().includes("text/html")) {
+    await response.body?.cancel();
+    throw new Error(
+      `Nguồn không trả HTML hợp lệ (HTTP ${response.status}). Trang có thể chặn truy cập tự động.`,
+    );
+  }
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("Không đọc được nội dung HTML từ nguồn.");
+  const chunks = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_HTML_BYTES) {
+      await reader.cancel();
+      throw new Error("Trang vượt quá 3 MB.");
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+export async function fetchProduct(urlInput, type) {
+  let { url } = officialUrl(urlInput);
+  if (!TYPES.has(type)) throw new Error("Loại linh kiện không hợp lệ.");
+  const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+  for (let redirects = 0; redirects < 5; redirects++) {
+    const response = await fetch(url, {
+      redirect: "manual",
+      signal,
+      headers: {
+        "User-Agent": "TechExplorerLocalImporter/1.0",
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      const location = response.headers.get("location");
+      await response.body?.cancel();
+      if (!location) throw new Error("Nguồn chuyển hướng thiếu địa chỉ.");
+      url = officialUrl(new URL(location, url).href).url;
+      continue;
+    }
+    const html = await readHtml(response);
+    return extractProduct(html, url.href, type);
+  }
+  throw new Error("Nguồn chuyển hướng quá nhiều lần.");
+}
+
+export function createImporterServer() {
+  return createServer(async (request, response) => {
+    const origin = request.headers.origin;
+    cors(response, origin);
+    if (request.method === "OPTIONS") {
+      response.writeHead(204);
+      response.end();
+      return;
+    }
+    const path = new URL(request.url || "/", `http://${HOST}:${PORT}`).pathname;
+    if (request.method === "GET" && path === "/health") {
+      writeJson(response, 200, { ok: true, service: "techexplorer-importer", version: 1 }, origin);
+      return;
+    }
+    if (request.method !== "POST" || path !== "/extract") {
+      writeJson(response, 404, { error: "Không tìm thấy endpoint." }, origin);
+      return;
+    }
+    try {
+      const body = await readRequest(request);
+      if (!body || typeof body !== "object" || Array.isArray(body))
+        throw new Error("Yêu cầu không hợp lệ.");
+      const url = typeof body.url === "string" ? body.url.trim() : "";
+      const type = typeof body.type === "string" ? body.type : "";
+      if (!url) throw new Error("Hãy nhập URL trang sản phẩm.");
+      if (!TYPES.has(type)) throw new Error("Loại linh kiện không hợp lệ.");
+      const result = await fetchProduct(url, type);
+      writeJson(response, 200, result, origin);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không thể đọc nguồn sản phẩm.";
+      writeJson(response, 400, { error: message }, origin);
+    }
+  });
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const server = createImporterServer();
+  server.listen(PORT, HOST, () => {
+    console.log(`TechExplorer local importer listening on http://${HOST}:${PORT}`);
+    console.log("Giữ cửa sổ này mở trong khi nhập URL tại trang quản trị.");
+  });
+  const close = () => server.close(() => process.exit(0));
+  process.once("SIGINT", close);
+  process.once("SIGTERM", close);
+}

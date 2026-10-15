@@ -1,9 +1,10 @@
 # Nhập thông tin từ link chính hãng
 
-**Luồng hiện tại:** website nhập file JSON/CSV ngay trong trình duyệt. Đọc
-[hướng dẫn nhập file và công cụ local](../docs/product-import.md); không cần
-deploy backend hay nâng Blaze cho luồng này. Nội dung dưới đây dành cho
-backend Cloud Function tùy chọn đã được giữ lại để tham khảo.
+**Luồng hiện tại:** website gọi dịch vụ local bằng URL để nhận diện hãng và
+dòng sản phẩm, hoặc nhập file JSON/CSV ngay trong trình duyệt. Đọc
+[hướng dẫn nhập sản phẩm](../docs/product-import.md); không cần deploy backend
+hay nâng Blaze cho luồng này. Nội dung dưới đây dành cho backend Cloud Function
+tùy chọn đã được giữ lại để tham khảo.
 
 Backend `importProduct` dùng Firebase Callable Functions tại `asia-southeast1`.
 Không dùng AI và không cần API key bên thứ ba. Website GitHub Pages gọi backend
@@ -32,8 +33,10 @@ Không có thao tác tự nâng gói hoặc thêm thanh toán trong mã nguồn.
 ## Sử dụng
 
 1. Trong quản trị chọn đúng tab và thiết bị cần sửa hoặc thêm thiết bị mới.
-2. Chọn **Tự động điền**, nhập link HTTPS trang sản phẩm/trang thông số.
-3. Chọn **Lấy thông tin**, xem các trường hiện tại và trường trích xuất.
+2. Chạy `npm ci --prefix functions` một lần, sau đó `npm run import-server` ở
+   thư mục gốc. Trong quản trị chọn **Nhận diện từ URL**, nhập link HTTPS trang
+   sản phẩm/trang thông số.
+3. Chọn **Nhận diện và xem trước**, xem hãng, dòng sản phẩm, các trường và ảnh.
 4. Chọn trường và ảnh cần áp dụng. Mặc định chỉ điền ô trống. Bỏ chọn chế độ
    này nếu muốn thay tên, thương hiệu hoặc thông số đang có, kể cả tên mẫu mới.
 5. Áp dụng vào bản nháp, kiểm tra rồi bấm **Lưu lên Firestore**.
