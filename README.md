@@ -37,6 +37,16 @@ The local upload adapter saves to `public/uploads` (8 MB limit, raster formats o
 Trang quản trị hỗ trợ **Nhập JSON/CSV** và công cụ lấy dữ liệu chạy trên máy,
 không cần Cloud Functions hoặc gói Blaze. Xem [hướng dẫn nhập sản phẩm](docs/product-import.md).
 
+Nếu trang quản trị báo `permission-denied`, phát hành Rules từ thư mục gốc
+trên Cloud Shell hoặc Firebase CLI đã đăng nhập:
+
+```sh
+firebase deploy --only firestore:rules --project techexplorer-38d83
+```
+
+UID quản trị mặc định đã có trong `firestore.rules`. Chỉ cần tạo document
+`admins/{UID}` khi dùng một tài khoản Firebase khác.
+
 Trang quản trị cảnh báo khi chuyển thẻ/tab hoặc rời trang có thay đổi chưa lưu. Thanh lưu cố định hiển thị trạng thái tải, mất kết nối và lỗi đồng bộ. Bản sao thiết bị mặc định là bản nháp.
 
 Nút **Khôi phục JSON** nhận file từ **Backup JSON**, kiểm tra dữ liệu và hiển thị danh sách trước khi xác nhận. Chế độ **Chỉ thêm ID mới** bỏ qua ID đã tồn tại; **Thêm mới và cập nhật** ghi đè toàn bộ bản ghi cùng ID. Mỗi lần nhập tối đa 450 bản ghi, file tối đa 10 MB; slug mainboard phải duy nhất. Thao tác ghi dùng một batch Firestore để toàn bộ lần nhập thành công hoặc thất bại cùng nhau.
