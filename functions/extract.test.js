@@ -122,3 +122,23 @@ test("MSI summary labels map to the shared mainboard schema", () => {
   assert.equal(fields["spec.M.2 slots"], "2");
   assert.equal(fields["spec.Form factor"], "ATX");
 });
+
+test("MSI pipe-style specification pages map compact summary fields", () => {
+  const result = extractProduct(
+    `<body><h1>B650M GAMING PLUS WIFI</h1>
+      Chipset | AMD B650 CPU | Supports AMD Ryzen 9000 series
+      Memory | 4x DDR5 UDIMM, Maximum Memory Capacity 256GB
+      Storage | 2x M.2 (Qty) supports PCIe 4.0 x4, 4x SATA 6G (Qty)
+      PCB Info | mATX</body>`,
+    "https://vn.msi.com/Motherboard/B650M-GAMING-PLUS-WIFI/Specification",
+    "Mainboard",
+  );
+  const fields = Object.fromEntries(result.fields.map((field) => [field.key, field.value]));
+  assert.equal(fields["spec.Chipset"], "AMD B650");
+  assert.equal(fields["spec.Memory type"], "DDR5 UDIMM");
+  assert.equal(fields["spec.Max memory"], "256GB");
+  assert.equal(fields["spec.Memory slots"], "4 x DIMM slots");
+  assert.equal(fields["spec.M.2 slots"], "2x M.2 (Qty)");
+  assert.equal(fields["spec.SATA"], "4x SATA 6G (Qty)");
+  assert.equal(fields["spec.Form factor"], "mATX");
+});

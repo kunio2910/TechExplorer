@@ -80,11 +80,8 @@ async function readHtml(response) {
 export async function fetchProduct(urlInput, type) {
   const original = officialUrl(urlInput).url;
   if (!TYPES.has(type)) throw new Error("Loại linh kiện không hợp lệ.");
-  const candidates = [original.href];
-  if (original.hostname === "www.msi.com") {
-    for (const host of ["us.msi.com", "vn.msi.com", "uk.msi.com"])
-      candidates.push(new URL(original.href).toString().replace(original.hostname, host));
-  }
+  const candidates = sourceCandidates(original);
+  const isMsi = original.hostname === "msi.com" || original.hostname.endsWith(".msi.com");
   let firstResult = null;
   let bestResult = null;
   let bestSpecCount = -1;
@@ -129,12 +126,15 @@ export async function fetchProduct(urlInput, type) {
       }
       const enoughSpecs =
         specCount > 0 && (type !== "Mainboard" || specCount >= 3);
-      if (enoughSpecs || original.hostname !== "www.msi.com") {
+      if (enoughSpecs || !isMsi) {
         if (url.href !== original.href) {
           result.sourceUrl = original.href;
+          const switchedHost = url.hostname !== original.hostname;
           result.warnings = [
             ...(result.warnings ?? []),
-            `MSI không trả đủ HTML ở ${original.hostname}; đã dùng bản chính hãng ${url.hostname}.`,
+            switchedHost
+              ? `MSI không trả đủ HTML ở ${original.hostname}; đã dùng bản chính hãng ${url.hostname}.`
+              : "MSI yêu cầu trang Specification riêng; hệ thống đã tự chuyển sang URL thông số.",
           ];
         }
         return result;
@@ -153,6 +153,31 @@ export async function fetchProduct(urlInput, type) {
     return result;
   }
   throw lastError ?? new Error("Không thể đọc nguồn sản phẩm.");
+}
+
+export function sourceCandidates(original) {
+  const candidates = [];
+  const add = (url) => {
+    if (!candidates.includes(url.href)) candidates.push(url.href);
+  };
+  add(original);
+  const isMsi = original.hostname === "msi.com" || original.hostname.endsWith(".msi.com");
+  if (!isMsi) return candidates;
+  const paths = [original.pathname.replace(/\/+$/, "") || "/"];
+  if (!/\/specification$/i.test(paths[0])) paths.push(`${paths[0]}/Specification`);
+  const hosts = [original.hostname];
+  for (const host of ["www.msi.com", "us.msi.com", "vn.msi.com", "uk.msi.com"])
+    if (!hosts.includes(host)) hosts.push(host);
+  for (const host of hosts)
+    for (const pathname of paths) {
+      const url = new URL(original.href);
+      url.hostname = host;
+      url.pathname = pathname;
+      url.search = "";
+      url.hash = "";
+      add(url);
+    }
+  return candidates;
 }
 
 export function createImporterServer() {

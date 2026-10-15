@@ -184,6 +184,41 @@ export function extractProduct(html, sourceUrl, type) {
     const value = $(el).find(".value, .content, .spec-content").first();
     if (key.length && value.length) pairs.push([key.text(), value.text()]);
   });
+  // Newer MSI pages render the compact specification as text pairs separated
+  // by a pipe instead of table rows (for example: "Chipset | AMD B650").
+  const bodyText = $("body")
+    .text()
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const pipeLabels = [
+    "Chipset",
+    "CPU",
+    "Memory",
+    "Memory Support",
+    "Storage",
+    "Form Factor",
+    "PCB Info",
+    "Socket",
+    "SATAIII",
+    "M.2 Slot",
+    "M.2 port",
+    "DIMM Slots",
+    "Max Memory (GB)",
+  ];
+  const pipeLabelPattern = pipeLabels
+    .sort((a, b) => b.length - a.length)
+    .map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  const pipePairs = new RegExp(
+    `(?:^|\\s)(${pipeLabelPattern})\\s*\\|\\s*(.{1,1800}?)(?=\\s+(?:${pipeLabelPattern})\\s*\\||$)`,
+    "gi",
+  );
+  for (const match of bodyText.matchAll(pipePairs)) pairs.push([match[1], match[2]]);
+  const memorySupport = bodyText.match(
+    /\bMemory\s+Support\s+(DDR[3-6][^|]{0,180}?)(?=\s+Supports\b|\s+Max\.?\s+overclocking|\s+Onboard\s+Graphics|\s+Slot\s+\||\s+Storage\s+\||$)/i,
+  );
+  if (memorySupport) pairs.push(["Memory Support", memorySupport[1]]);
   // Many vendor pages expose specifications as a heading followed by prose
   // and lists instead of a label/value table. The aliases cover ASUS ROG,
   // MSI, GIGABYTE, ASRock and common English product pages.
@@ -268,9 +303,17 @@ export function extractProduct(html, sourceUrl, type) {
           /\b(\d+\s*x\s*(?:(?:DIMM|DDR[3-6])\s*)?(?:memory\s*)?slots?)\b/i,
           value,
         );
+        if (!fields.some((item) => item.key === "spec.Memory slots")) {
+          const count = value.match(/\b(\d+)\s*x\s*(?:DDR[3-6]\s*)?(?:UDIMM|DIMM)\b/i);
+          if (count?.[1]) add("spec.Memory slots", `${count[1]} x DIMM slots`);
+        }
       }
       if (section === "storage") {
-        addSection("M.2 slots", /\b(\d+\s*x\s*M\.2\s*slots?)\b/i, value);
+        addSection(
+          "M.2 slots",
+          /\b(\d+\s*x\s*M\.2(?:\s*slots?|\s*\(Qty\)))/i,
+          value,
+        );
         addSection("SATA", /\b(\d+\s*x\s*SATA\s*[^,.;]*)/i, value);
         if (
           !fields.some((item) => item.key === "spec.SSD type") &&
@@ -281,14 +324,19 @@ export function extractProduct(html, sourceUrl, type) {
             /SATA/i.test(value) ? "M.2 NVMe, SATA" : "M.2 NVMe",
           );
       }
-      if (section === "form factor")
+      if (section === "form factor" || section === "pcb info")
         addSection(
           "Form factor",
-          /\b((?:Mini[- ]?ITX|Micro[- ]?ATX|ATX|E-ATX|SSI[- ]?EEB)[^.;]*)/i,
+          /\b((?:Mini[- ]?ITX|Micro[- ]?ATX|mATX|E-ATX|ATX|SSI[- ]?EEB)(?=\b|\d))/i,
           value,
         );
       if (section === "chipset") add("spec.Chipset", value);
     }
+    const maxMemory = bodyText.match(
+      /\b(?:maximum\s+memory\s+capacity|max\.?\s*memory(?:\s*\(gb\))?)\s*[:|]?\s*(\d+\s*(?:GB|TB)?)/i,
+    );
+    if (!fields.some((item) => item.key === "spec.Max memory") && maxMemory?.[1])
+      add("spec.Max memory", maxMemory[1]);
   }
   const images = [];
   for (const entry of [
