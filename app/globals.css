@@ -108,6 +108,20 @@
   min-height: 0;
   margin: 0 0 8px;
 }
+.import-overlay { position: fixed; inset: 0; z-index: 100; width: 100vw; height: 100svh; max-width: none; max-height: none; margin: 0; border: 0; color: var(--text); background: #000b; display: grid; place-items: center; padding: 16px; }
+.import-dialog { width: min(100%, 960px); max-height: 90svh; overflow: auto; padding: 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+.import-dialog form { display: grid; gap: 12px; margin-bottom: 16px; }
+.import-dialog button { padding: 10px 14px; }
+.import-dialog input[type="url"] { margin-top: 8px; }
+.import-dialog small, .import-dialog p { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.import-choice, .import-images span { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.import-dialog input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 18px; }
+.import-table { overflow-x: auto; }
+.import-table table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.import-table td, .import-table th { text-align: left; padding: 10px; border-bottom: 1px solid var(--border); max-width: 320px; overflow-wrap: anywhere; }
+.import-images { display: flex; gap: 12px; flex-wrap: wrap; }
+.import-images label { width: 140px; }
+.import-images img { width: 140px; height: 110px; object-fit: contain; background: var(--bg); }
 .review-actions button {
   padding: 7px 10px;
 }

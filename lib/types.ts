@@ -32,6 +32,7 @@ export type AssociatedComponent = {
 };
 export type CatalogComponentType = "CPU" | "RAM" | "SSD" | "GPU" | "PSU";
 export type CatalogMetadata = {
+  importSource?: { url: string; fetchedAt: string; fields: string[] };
   updatedAt?: string;
   updatedBy?: string;
   deletedAt?: string;

@@ -24,6 +24,7 @@ import {
   saveVersionedDevice,
 } from "@/lib/firestore";
 import AdminRecovery from "./AdminRecovery";
+import ProductImport from "./ProductImport";
 import AdminVersions from "./AdminVersions";
 import { linkComponent } from "@/lib/linked-components";
 import { normalizeSpecs, normalizeSpecValue } from "@/lib/spec-units";
@@ -146,6 +147,10 @@ export default function StaticAdmin({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [backup, setBackup] = useState<CatalogBackup | null>(null);
+  const [importTarget, setImportTarget] = useState<{
+    device: Device;
+    type: AdminTab;
+  } | null>(null);
   const [restoreMode, setRestoreMode] = useState<"add" | "update">("add");
   const [connected, setConnected] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -948,6 +953,20 @@ export default function StaticAdmin({
         </div>
       </div>
       <div className="admin-toolbar">
+        {importTarget && (
+          <ProductImport
+            device={importTarget.device}
+            type={importTarget.type}
+            onClose={() => setImportTarget(null)}
+            onApply={(next) => {
+              if ("media" in next) setProduct(next);
+              else setComponent(next);
+              setMessage(
+                "Đã áp dụng vào bản nháp. Kiểm tra rồi bấm Lưu lên Firestore.",
+              );
+            }}
+          />
+        )}
         <nav className="admin-tabs" aria-label="Danh mục phần cứng">
           {tabs.map((item) => (
             <button
@@ -960,6 +979,17 @@ export default function StaticAdmin({
           ))}
         </nav>
         <div className="admin-toolbar-actions">
+          <button
+            disabled={busy}
+            onClick={() =>
+              setImportTarget({
+                device: copy(tab === "Mainboard" ? product : component),
+                type: tab,
+              })
+            }
+          >
+            ✨ Tự động điền
+          </button>
           <span role="status">
             {!connected
               ? "Mất kết nối"

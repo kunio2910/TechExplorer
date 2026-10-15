@@ -9,7 +9,8 @@ const assert = require("node:assert/strict");
   const mocks = {
     "next/link": `import React from 'react';export default function Link({href,children,...props}){return React.createElement('a',{...props,href},children);}`,
     "firebase/auth": `export const onAuthStateChanged=(a,cb)=>{const t=setTimeout(()=>cb({email:'qa@example.test',uid:'qa'}),0);return()=>clearTimeout(t);};export const signInWithEmailAndPassword=async()=>{};export const signOut=async()=>{};`,
-    "@/lib/firebase-client": `export const auth={currentUser:{uid:'qa'}};`,
+    "@/lib/firebase-client": `export const auth={currentUser:{uid:'qa'}};export const firebaseApp={};`,
+    "firebase/functions": `export const getFunctions=()=>({});export const httpsCallable=()=>async()=>({data:{sourceUrl:'https://www.asus.com/qa',fetchedAt:'2026-10-15T00:00:00.000Z',fields:[{key:'name',value:'RAM nhập QA'},{key:'brand',value:'ASUS'},{key:'model',value:'Import model'},{key:'spec.Capacity',value:'64gb'}],images:[],missing:['Speed'],warnings:[]}});`,
     "@/lib/firestore": `const q=()=>window.qa;const save=(list,item)=>{const i=list.findIndex(x=>x.id===item.id);if(i<0)list.push(structuredClone(item));else list[i]=structuredClone(item);};export const loadAllProducts=async()=>structuredClone(q().products);export const loadCatalogComponents=async()=>structuredClone(q().components);export const saveProduct=async item=>save(q().products,item);export const saveCatalogComponent=async item=>save(q().components,item);export const deleteProduct=async id=>{q().products=q().products.filter(x=>x.id!==id);};export const deleteCatalogComponent=async id=>{q().components=q().components.filter(x=>x.id!==id);};export const seedProductsToFirestore=async()=>({products:1,components:5});export const restoreCatalog=async b=>{b.products.forEach(saveProduct);b.components.forEach(saveCatalogComponent);};export const firestoreErrorMessage=(e)=>e.message;`,
   };
   mocks["@/lib/firestore"] +=
@@ -36,7 +37,7 @@ const assert = require("node:assert/strict");
           b.onResolve(
             {
               filter:
-                /^(next\/link|firebase\/auth|@\/lib\/(firebase-client|firestore))$/,
+                /^(next\/link|firebase\/(auth|functions)|@\/lib\/(firebase-client|firestore))$/,
             },
             (args) => ({ path: args.path, namespace: "mock" }),
           );
@@ -198,7 +199,9 @@ const assert = require("node:assert/strict");
     assert.ok(
       (await page.locator(".comparison-dialog .different").count()) > 0,
     );
-    const comparisonBounds = await page.locator(".comparison-dialog").boundingBox();
+    const comparisonBounds = await page
+      .locator(".comparison-dialog")
+      .boundingBox();
     assert.ok(comparisonBounds);
     assert.ok(Math.abs(comparisonBounds.width - 1440) <= 2);
     assert.ok(Math.abs(comparisonBounds.height - 1050) <= 2);
@@ -260,7 +263,9 @@ const assert = require("node:assert/strict");
     await page.locator(".device-card").first().click();
     await page.getByRole("button", { name: "Thông số", exact: true }).click();
     assert.equal(
-      await page.getByRole("button", { name: "Chia sẻ màn hình", exact: true }).count(),
+      await page
+        .getByRole("button", { name: "Chia sẻ màn hình", exact: true })
+        .count(),
       0,
     );
     await page.reload();
@@ -460,6 +465,53 @@ const assert = require("node:assert/strict");
     assert.equal(
       await admin.getByLabel("Tên linh kiện", { exact: true }).inputValue(),
       "RAM khôi phục QA",
+    );
+    await admin
+      .getByRole("button", { name: "✨ Tự động điền", exact: true })
+      .click();
+    await admin
+      .getByLabel("Link sản phẩm chính hãng", { exact: true })
+      .fill("https://www.asus.com/qa");
+    await admin
+      .getByRole("button", { name: "Lấy thông tin", exact: true })
+      .click();
+    await admin
+      .getByRole("button", { name: "Áp dụng vào bản nháp", exact: true })
+      .click();
+    assert.equal(
+      await admin.getByLabel("Tên linh kiện", { exact: true }).inputValue(),
+      "RAM khôi phục QA",
+    );
+    assert.equal(
+      await admin.getByLabel("Mã sản phẩm", { exact: true }).inputValue(),
+      "Import model",
+    );
+    await admin
+      .getByRole("button", { name: "✨ Tự động điền", exact: true })
+      .click();
+    await admin
+      .getByLabel("Link sản phẩm chính hãng", { exact: true })
+      .fill("https://www.asus.com/qa");
+    await admin
+      .getByRole("button", { name: "Lấy thông tin", exact: true })
+      .click();
+    await admin.getByLabel("Chỉ điền ô trống", { exact: false }).uncheck();
+    await admin
+      .getByRole("button", { name: "Áp dụng vào bản nháp", exact: true })
+      .click();
+    assert.equal(
+      await admin.getByLabel("Tên linh kiện", { exact: true }).inputValue(),
+      "RAM nhập QA",
+    );
+    assert.equal(
+      await admin.getByLabel("Dung lượng (GB)", { exact: true }).inputValue(),
+      "64 GB",
+    );
+    assert.equal(
+      await admin.evaluate(
+        () => window.qa.components.find((c) => c.type === "RAM").name,
+      ),
+      "RAM QA",
     );
     await admin.close();
     assert.deepEqual(errors, []);
