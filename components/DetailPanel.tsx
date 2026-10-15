@@ -83,9 +83,6 @@ export default function DetailPanel({
         {tab === "Compatibility" ? (
           <CompatibilityPanel
             spec={product.spec}
-            ssdComponents={product.components.filter(
-              (component) => component.category === "Storage",
-            )}
           />
         ) : (
           <>
