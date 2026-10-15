@@ -98,3 +98,27 @@ test("vendor-neutral heading aliases map non-ASUS mainboard pages", () => {
   assert.equal(fields["spec.M.2 slots"], "2 x M.2 slots");
   assert.equal(result.detectedLine, "MAG");
 });
+
+test("MSI summary labels map to the shared mainboard schema", () => {
+  const result = extractProduct(
+    `<h1>MPG B550 GAMING PLUS</h1><table>
+      <tr><th>Socket</th><td>AM4</td></tr>
+      <tr><th>DDR4 Memory</th><td>DDR4</td></tr>
+      <tr><th>DIMM Slots</th><td>4</td></tr>
+      <tr><th>Max Memory (GB)</th><td>128</td></tr>
+      <tr><th>SATAIII</th><td>6</td></tr>
+      <tr><th>M.2 Slot</th><td>2</td></tr>
+      <tr><th>Form Factor</th><td>ATX</td></tr>
+    </table>`,
+    "https://www.msi.com/Motherboard/MPG-B550-GAMING-PLUS/Specification",
+    "Mainboard",
+  );
+  const fields = Object.fromEntries(result.fields.map((field) => [field.key, field.value]));
+  assert.equal(fields["spec.Socket"], "AM4");
+  assert.equal(fields["spec.Memory type"], "DDR4");
+  assert.equal(fields["spec.Memory slots"], "4");
+  assert.equal(fields["spec.Max memory"], "128");
+  assert.equal(fields["spec.SATA"], "6");
+  assert.equal(fields["spec.M.2 slots"], "2");
+  assert.equal(fields["spec.Form factor"], "ATX");
+});

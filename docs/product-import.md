@@ -21,6 +21,10 @@ Firebase hay gói Blaze. Trình đọc hiện nhận diện ASUS/ROG, MSI, GIGAB
 ASRock, Intel, AMD, Corsair, Kingston, Crucial, Samsung, Seasonic và Cooler
 Master; URL phải thuộc đúng domain chính hãng được hỗ trợ.
 
+Với một số trang MSI `www.msi.com` bị CDN trả thiếu nội dung, dịch vụ tự thử
+phiên bản chính hãng theo khu vực (`us.msi.com`, `vn.msi.com`, `uk.msi.com`) và
+giữ lại URL người dùng đã nhập làm nguồn sản phẩm.
+
 Trang chống bot, chỉ dựng thông số bằng JavaScript hoặc có cấu trúc riêng vẫn có
 thể trả về ít trường. Khi đó kiểm tra cảnh báo và dùng file JSON/CSV để bổ sung
 thông tin còn thiếu.

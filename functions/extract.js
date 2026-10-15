@@ -97,13 +97,13 @@ export function officialUrl(input) {
 const rules = {
   Mainboard: {
     Socket: /^(?:cpu socket|socket|socket cpu)$/i,
-    "Memory type": /^(?:memory type|memory technology|loại ram)$/i,
+    "Memory type": /^(?:memory type|memory technology|ddr[3-6]\s+memory|loại ram)$/i,
     Chipset: /^chipset$/i,
     "Form factor": /^form factor$/i,
-    "Max memory": /^(?:max(?:imum)? memory|maximum memory capacity)$/i,
+    "Max memory": /^(?:max(?:imum)? memory(?: \(gb\))?|maximum memory capacity)$/i,
     "Memory slots": /^(?:memory slots|dimm slots)$/i,
-    "M.2 slots": /^(?:m\.2 slots|m\.2 connectors)$/i,
-    SATA: /^(?:sata|sata ports|sata connectors)$/i,
+    "M.2 slots": /^(?:m\.2 slots?|m\.2 connectors|m\.2 port)$/i,
+    SATA: /^(?:sata|sataiii|sata ports|sata connectors)$/i,
     "SSD type": /^(?:ssd type|storage interface)$/i,
   },
   CPU: {
@@ -263,7 +263,11 @@ export function extractProduct(html, sourceUrl, type) {
           /\b(?:max(?:imum)?\s*)?(\d+\s*(?:GB|TB))\b/i,
           value,
         );
-        addSection("Memory slots", /\b(\d+\s*x\s*DIMM\s*slots?)\b/i, value);
+        addSection(
+          "Memory slots",
+          /\b(\d+\s*x\s*(?:(?:DIMM|DDR[3-6])\s*)?(?:memory\s*)?slots?)\b/i,
+          value,
+        );
       }
       if (section === "storage") {
         addSection("M.2 slots", /\b(\d+\s*x\s*M\.2\s*slots?)\b/i, value);

@@ -78,29 +78,81 @@ async function readHtml(response) {
 }
 
 export async function fetchProduct(urlInput, type) {
-  let { url } = officialUrl(urlInput);
+  const original = officialUrl(urlInput).url;
   if (!TYPES.has(type)) throw new Error("Loại linh kiện không hợp lệ.");
-  const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
-  for (let redirects = 0; redirects < 5; redirects++) {
-    const response = await fetch(url, {
-      redirect: "manual",
-      signal,
-      headers: {
-        "User-Agent": "TechExplorerLocalImporter/1.0",
-        Accept: "text/html,application/xhtml+xml",
-      },
-    });
-    if ([301, 302, 303, 307, 308].includes(response.status)) {
-      const location = response.headers.get("location");
-      await response.body?.cancel();
-      if (!location) throw new Error("Nguồn chuyển hướng thiếu địa chỉ.");
-      url = officialUrl(new URL(location, url).href).url;
-      continue;
-    }
-    const html = await readHtml(response);
-    return extractProduct(html, url.href, type);
+  const candidates = [original.href];
+  if (original.hostname === "www.msi.com") {
+    for (const host of ["us.msi.com", "vn.msi.com", "uk.msi.com"])
+      candidates.push(new URL(original.href).toString().replace(original.hostname, host));
   }
-  throw new Error("Nguồn chuyển hướng quá nhiều lần.");
+  let firstResult = null;
+  let bestResult = null;
+  let bestSpecCount = -1;
+  let lastError;
+  for (const candidate of candidates) {
+    let url = new URL(candidate);
+    const signal = AbortSignal.timeout(
+      candidate === original.href
+        ? FETCH_TIMEOUT_MS
+        : Math.min(12_000, FETCH_TIMEOUT_MS),
+    );
+    try {
+      let html = "";
+      for (let redirects = 0; redirects < 5; redirects++) {
+        const response = await fetch(url, {
+          redirect: "manual",
+          signal,
+          headers: {
+            "User-Agent": "TechExplorerLocalImporter/1.0",
+            Accept: "text/html,application/xhtml+xml",
+          },
+        });
+        if ([301, 302, 303, 307, 308].includes(response.status)) {
+          const location = response.headers.get("location");
+          await response.body?.cancel();
+          if (!location) throw new Error("Nguồn chuyển hướng thiếu địa chỉ.");
+          url = officialUrl(new URL(location, url).href).url;
+          continue;
+        }
+        html = await readHtml(response);
+        break;
+      }
+      if (!html) throw new Error("Nguồn chuyển hướng quá nhiều lần.");
+      const result = extractProduct(html, url.href, type);
+      if (!firstResult) firstResult = result;
+      const specCount = result.fields.filter((field) =>
+        field.key.startsWith("spec."),
+      ).length;
+      if (specCount > bestSpecCount) {
+        bestResult = result;
+        bestSpecCount = specCount;
+      }
+      const enoughSpecs =
+        specCount > 0 && (type !== "Mainboard" || specCount >= 3);
+      if (enoughSpecs || original.hostname !== "www.msi.com") {
+        if (url.href !== original.href) {
+          result.sourceUrl = original.href;
+          result.warnings = [
+            ...(result.warnings ?? []),
+            `MSI không trả đủ HTML ở ${original.hostname}; đã dùng bản chính hãng ${url.hostname}.`,
+          ];
+        }
+        return result;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (bestResult ?? firstResult) {
+    const result = bestResult ?? firstResult;
+    if (result.sourceUrl !== original.href) result.sourceUrl = original.href;
+    result.warnings = [
+      ...(result.warnings ?? []),
+      "Nguồn chỉ trả về tiêu đề và ảnh; MSI có thể đang chặn nội dung thông số theo khu vực hoặc yêu cầu JavaScript.",
+    ];
+    return result;
+  }
+  throw lastError ?? new Error("Không thể đọc nguồn sản phẩm.");
 }
 
 export function createImporterServer() {

@@ -9,6 +9,16 @@ import { normalizeSpecs } from "@/lib/spec-units";
 
 const LOCAL_IMPORT_URL = "http://127.0.0.1:8787";
 
+function importSlug(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90);
+}
+
 export default function ProductImport({
   device,
   type,
@@ -145,6 +155,15 @@ export default function ProductImport({
       applied.push(f.key);
     }
     next.spec = normalizeSpecs(next.spec);
+    if (
+      "media" in next &&
+      (!next.slug.trim() || next.slug === "mainboard-moi")
+    ) {
+      const importedName =
+        preview.fields.find((field) => field.key === "name")?.value || next.name;
+      const generatedSlug = importSlug(importedName);
+      if (generatedSlug) next.slug = generatedSlug;
+    }
     if (images.length) {
       if ("media" in next) {
         if (!onlyEmpty || !next.media.top) {
