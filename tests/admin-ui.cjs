@@ -227,7 +227,7 @@ const assert = require("node:assert/strict");
     assert.equal(await page.locator(".image-lightbox").isVisible(), false);
     await page
       .locator(".explorer-main .breadcrumb")
-      .getByRole("button", { name: "Linh kiện", exact: true })
+      .getByRole("button", { name: "Mainboard", exact: true })
       .click();
     assert.equal(await page.locator(".device-grid .device-card").count(), 2);
     await page.screenshot({
