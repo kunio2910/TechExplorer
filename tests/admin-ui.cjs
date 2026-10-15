@@ -225,7 +225,10 @@ const assert = require("node:assert/strict");
     );
     await page.keyboard.press("Escape");
     assert.equal(await page.locator(".image-lightbox").isVisible(), false);
-    await page.getByRole("button", { name: "← Quay lại danh sách" }).click();
+    await page
+      .locator(".explorer-main .breadcrumb")
+      .getByRole("button", { name: "Linh kiện", exact: true })
+      .click();
     assert.equal(await page.locator(".device-grid .device-card").count(), 2);
     await page.screenshot({
       path: "test-results/explorer-improved-library.png",
