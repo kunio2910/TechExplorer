@@ -142,3 +142,23 @@ test("MSI pipe-style specification pages map compact summary fields", () => {
   assert.equal(fields["spec.SATA"], "4x SATA 6G (Qty)");
   assert.equal(fields["spec.Form factor"], "mATX");
 });
+
+test("product image galleries keep every safe JSON-LD and social image", () => {
+  const result = extractProduct(
+    `<script type="application/ld+json">${JSON.stringify({
+      "@type": "Product",
+      name: "Board gallery",
+      image: ["https://cdn.example.test/front.jpg", "https://cdn.example.test/back.jpg"],
+    })}</script>
+    <meta property="og:image" content="https://cdn.example.test/detail.jpg">
+    <meta name="twitter:image" content="https://cdn.example.test/twitter.jpg">`,
+    "https://www.asus.com/boards/gallery",
+    "Mainboard",
+  );
+  assert.deepEqual(result.images, [
+    "https://cdn.example.test/front.jpg",
+    "https://cdn.example.test/back.jpg",
+    "https://cdn.example.test/detail.jpg",
+    "https://cdn.example.test/twitter.jpg",
+  ]);
+});

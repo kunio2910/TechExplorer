@@ -13,6 +13,7 @@ import {
   Network,
   Fan,
   Zap,
+  LoaderCircle,
   ChevronRight,
   Box,
   Layers,
@@ -206,6 +207,7 @@ export default function Explorer({
   const [tab, setTab] = useState("Overview");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const personal = usePersonalLibrary();
   const [personalTab, setPersonalTab] = useState("favorites");
   const [routeReady, setRouteReady] = useState(false);
@@ -311,6 +313,15 @@ export default function Explorer({
     let cancelled = false;
     let unsubscribeProducts = () => {};
     let unsubscribeComponents = () => {};
+    let productsReady = false;
+    let componentsReady = false;
+
+    const markReady = (kind: "products" | "components") => {
+      if (kind === "products") productsReady = true;
+      else componentsReady = true;
+      if (!cancelled && productsReady && componentsReady)
+        setCatalogLoading(false);
+    };
 
     async function connectRemoteCatalog() {
       try {
@@ -326,11 +337,14 @@ export default function Explorer({
                 localizeDevice({ ...item, spec: normalizeSpecs(item.spec) }),
               ),
             );
+            markReady("products");
           },
-          () =>
+          () => {
+            markReady("products");
             setNotice(
               "Không thể đồng bộ danh sách mainboard. Vui lòng kiểm tra kết nối và tải lại trang.",
-            ),
+            );
+          },
         );
         unsubscribeComponents = subscribeToPublishedComponents(
           (remoteComponents) => {
@@ -340,13 +354,17 @@ export default function Explorer({
                 localizeDevice({ ...item, spec: normalizeSpecs(item.spec) }),
               ),
             );
+            markReady("components");
           },
-          () =>
+          () => {
+            markReady("components");
             setNotice(
               "Không thể đồng bộ danh sách linh kiện. Vui lòng kiểm tra kết nối và tải lại trang.",
-            ),
+            );
+          },
         );
       } catch {
+        setCatalogLoading(false);
         // Keep the bundled catalog available when Firestore is unavailable.
         try {
           const saved = JSON.parse(
@@ -523,6 +541,14 @@ export default function Explorer({
   }
   return (
     <div className="app-shell">
+      {workspaceMode === "home" && catalogLoading && (
+        <div className="catalog-loading-overlay" role="status" aria-live="polite">
+          <div className="catalog-loading-card">
+            <LoaderCircle className="catalog-loading-icon" size={48} aria-hidden="true" />
+            <span>Đang tải dữ liệu thiết bị…</span>
+          </div>
+        </div>
+      )}
       <dialog ref={technologyDialog} className="info-dialog">
         <div className="section-heading">
           <h2>Kết nối công nghệ</h2>

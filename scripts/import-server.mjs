@@ -85,6 +85,7 @@ export async function fetchProduct(urlInput, type) {
   let firstResult = null;
   let bestResult = null;
   let bestSpecCount = -1;
+  const candidateImages = [];
   let lastError;
   for (const candidate of candidates) {
     let url = new URL(candidate);
@@ -117,6 +118,7 @@ export async function fetchProduct(urlInput, type) {
       if (!html) throw new Error("Nguồn chuyển hướng quá nhiều lần.");
       const result = extractProduct(html, url.href, type);
       if (!firstResult) firstResult = result;
+      candidateImages.push(...result.images);
       const specCount = result.fields.filter((field) =>
         field.key.startsWith("spec."),
       ).length;
@@ -127,6 +129,7 @@ export async function fetchProduct(urlInput, type) {
       const enoughSpecs =
         specCount > 0 && (type !== "Mainboard" || specCount >= 3);
       if (enoughSpecs || !isMsi) {
+        result.images = [...new Set(candidateImages)].slice(0, 12);
         if (url.href !== original.href) {
           result.sourceUrl = original.href;
           const switchedHost = url.hostname !== original.hostname;
@@ -145,6 +148,7 @@ export async function fetchProduct(urlInput, type) {
   }
   if (bestResult ?? firstResult) {
     const result = bestResult ?? firstResult;
+    result.images = [...new Set(candidateImages)].slice(0, 12);
     if (result.sourceUrl !== original.href) result.sourceUrl = original.href;
     result.warnings = [
       ...(result.warnings ?? []),

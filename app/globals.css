@@ -518,6 +518,54 @@ p {
   background:
     radial-gradient(ellipse at 45% 35%, #0d2135 0, transparent 48%), var(--bg);
 }
+.catalog-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #020812d9;
+  backdrop-filter: blur(2px);
+}
+.catalog-loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 13px;
+  color: var(--text);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.catalog-loading-icon {
+  display: block;
+  color: var(--cyan);
+  animation: catalog-loading-spin 0.9s linear infinite;
+  filter: drop-shadow(0 0 10px #42d9ff66);
+}
+.catalog-loading-spinner {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border: 3px solid #42d9ff36;
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: catalog-loading-spin 0.9s linear infinite;
+  filter: drop-shadow(0 0 10px #42d9ff66);
+}
+.route-loading-screen {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: var(--text);
+  background:
+    radial-gradient(ellipse at 45% 35%, #0d2135 0, transparent 48%), var(--bg);
+}
+@keyframes catalog-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .light {
   --bg: #e9f1f7;
   --panel: #fff;

@@ -339,10 +339,14 @@ export function extractProduct(html, sourceUrl, type) {
       add("spec.Max memory", maxMemory[1]);
   }
   const images = [];
-  for (const entry of [
-    product.image ?? [],
-    $('meta[property="og:image"]').attr("content"),
-  ].flat()) {
+  const imageEntries = products.flatMap((item) => [item.image].flat());
+  $('meta[property="og:image"], meta[name="twitter:image"]').each((_, el) => {
+    imageEntries.push($(el).attr("content"));
+  });
+  $('link[rel="image_src"]').each((_, el) => {
+    imageEntries.push($(el).attr("href"));
+  });
+  for (const entry of imageEntries) {
     try {
       if (
         !entry ||
