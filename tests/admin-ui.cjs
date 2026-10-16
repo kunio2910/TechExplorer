@@ -140,6 +140,10 @@ const assert = require("node:assert/strict");
     assert.ok((await page.locator(".admin-detail-spec-table > div").count()) > 0);
     await page.getByRole("button", { name: /Quay lại danh sách/ }).click();
     await page.getByRole("heading", { name: "Danh sách sản phẩm", exact: true }).waitFor();
+    await page.getByRole("button", { name: /Về quản lý chính/ }).click();
+    await page.getByRole("heading", { name: "Thông tin mainboard", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Danh sách", exact: true }).click();
+    await page.getByRole("heading", { name: "Danh sách sản phẩm", exact: true }).waitFor();
     await page.getByRole("button", { name: "Mở cài đặt", exact: true }).click();
     await page.getByRole("heading", { name: "Cài đặt quản lý", exact: true }).waitFor();
     await page.getByRole("button", { name: /Về trình chỉnh sửa/ }).click();
@@ -195,6 +199,7 @@ const assert = require("node:assert/strict");
       .click();
     await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
     await page.getByRole("button", { name: "Xem chi tiết MSI QA" }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Đặt lại thu phóng", exact: true }).count(), 0);
     await page
       .locator(".sidebar")
       .getByLabel("Hãng", { exact: true })

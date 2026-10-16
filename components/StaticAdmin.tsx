@@ -2110,6 +2110,7 @@ export default function StaticAdmin({
             else void removeComponentById(item.id, item.name);
           }}
           onAdd={addDevice}
+          onBack={() => setAdminView("editor")}
         />
       )}
       {adminView === "detail" && detailDevice && (

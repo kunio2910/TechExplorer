@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  RefreshCcw,
   Minus,
   RotateCcw,
   RotateCw,
@@ -230,9 +229,6 @@ export default function DeviceCanvas({
           <Plus size={16} />
         </button>
         <span className="divider" />
-        <button aria-label="Đặt lại thu phóng" onClick={() => setZoom(1)}>
-          <RefreshCcw size={15} />
-        </button>
         <button
           aria-label="Xoay trái"
           title="Xoay trái"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Copy, Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Eye, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { assetUrl } from "@/lib/runtime";
 import { specLabel, type Device } from "@/lib/catalog-tools";
 import type { CatalogComponent, CatalogComponentType, Product } from "@/lib/types";
@@ -40,6 +40,7 @@ export default function AdminProductList({
   onDuplicate,
   onDelete,
   onAdd,
+  onBack,
 }: {
   products: Product[];
   components: CatalogComponent[];
@@ -48,6 +49,7 @@ export default function AdminProductList({
   onDuplicate: (item: Device) => void;
   onDelete: (item: Device) => void;
   onAdd: (type: Exclude<ProductListType, "Tất cả">) => void;
+  onBack: () => void;
 }) {
   const [type, setType] = useState<ProductListType>("Tất cả");
   const [query, setQuery] = useState("");
@@ -88,9 +90,14 @@ export default function AdminProductList({
           <h2 id="product-list-title">Danh sách sản phẩm</h2>
           <p>Tra cứu, chỉnh sửa và quản lý các thiết bị đang có trong hệ thống.</p>
         </div>
-        <button className="primary admin-add-product" onClick={() => onAdd(type === "Tất cả" ? "Mainboard" : type)}>
-          <Plus size={17} /> Thêm sản phẩm
-        </button>
+        <div className="admin-list-heading-actions">
+          <button className="admin-header-nav" onClick={onBack}>
+            <ArrowLeft size={16} /> Về quản lý chính
+          </button>
+          <button className="primary admin-add-product" onClick={() => onAdd(type === "Tất cả" ? "Mainboard" : type)}>
+            <Plus size={17} /> Thêm sản phẩm
+          </button>
+        </div>
       </div>
 
       <nav className="admin-list-categories" aria-label="Loại sản phẩm">

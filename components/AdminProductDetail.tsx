@@ -31,11 +31,13 @@ export default function AdminProductDetail({
 
   return (
     <section className="admin-product-detail" aria-labelledby="admin-product-detail-title">
+      <div className="admin-detail-back-row">
+        <button className="admin-back-link" onClick={onBack}>
+          <ArrowLeft size={16} /> Quay lại danh sách
+        </button>
+      </div>
       <div className="admin-view-heading admin-detail-heading">
         <div>
-          <button className="admin-back-link" onClick={onBack}>
-            <ArrowLeft size={16} /> Quay lại danh sách
-          </button>
           <span className="eyebrow">CHI TIẾT SẢN PHẨM · {type}</span>
           <h2 id="admin-product-detail-title">{item.name}</h2>
           <p>{item.brand || "Chưa có thương hiệu"} · {statusLabel(item.status)}</p>
