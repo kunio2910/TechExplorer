@@ -4,7 +4,7 @@ import type {
   CatalogComponentType,
   CatalogMetadata,
 } from "./types";
-import { normalizeSpecValue } from "./spec-units";
+import { canonicalSpecValue, specMatches } from "./spec-units";
 export type Device = Product | CatalogComponent;
 export const specTemplates: Record<string, Record<string, string>> = {
   Mainboard: {
@@ -67,6 +67,43 @@ export const specLabel = (key: string) =>
     Efficiency: "Chứng nhận hiệu suất",
     Modular: "Dây nguồn tháo rời",
   })[key] ?? key;
+
+const specOrder: Record<string, string[]> = {
+  Mainboard: [
+    "Chipset",
+    "Socket",
+    "Memory type",
+    "Memory slots",
+    "Max memory",
+    "Memory speed",
+    "PCIe",
+    "M.2 slots",
+    "SSD type",
+    "SATA",
+    "Form factor",
+    "WiFi",
+    "LAN",
+    "Audio",
+  ],
+  CPU: ["Socket", "Cores", "Threads", "Boost clock", "TDP"],
+  RAM: ["Memory type", "Capacity", "Speed", "Modules"],
+  SSD: ["Capacity", "Interface", "Form factor", "Read speed", "Write speed"],
+  GPU: ["VRAM", "Memory type", "Boost clock", "TDP", "Recommended PSU"],
+  PSU: ["Wattage", "Efficiency", "Modular", "Form factor"],
+};
+
+export function orderedSpecEntries(item: Device) {
+  const type = deviceType(item);
+  const order = specOrder[type] ?? [];
+  const position = new Map(order.map((key, index) => [key, index]));
+  return Object.entries(item.spec).sort(
+    ([a], [b]) => (position.get(a) ?? 1000) - (position.get(b) ?? 1000),
+  );
+}
+
+export function comparableSpecValue(key: string, value: string | undefined) {
+  return canonicalSpecValue(key, value ?? "");
+}
 export function stamp<T extends CatalogMetadata>(
   item: T,
   by: string,
@@ -155,8 +192,7 @@ export function filterDevices<T extends Device>(
         !value ||
         (key === "brand"
           ? item.brand === value
-          : normalizeSpecValue(key, item.spec[key] ?? "") ===
-            normalizeSpecValue(key, value)),
+          : specMatches(key, item.spec[key], value)),
     ),
   );
 }

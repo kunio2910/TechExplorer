@@ -207,6 +207,8 @@ export default function Explorer({
   const [tab, setTab] = useState("Overview");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [pendingBuildItem, setPendingBuildItem] = useState<Device | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const personal = usePersonalLibrary();
   const [personalTab, setPersonalTab] = useState("favorites");
@@ -461,6 +463,36 @@ export default function Explorer({
     if ("media" in item) choose(item);
     else chooseComponent(item);
   }
+  function addToBuilder(item: Device) {
+    setPendingBuildItem(item);
+    setWorkspaceMode("builder");
+    setMobileMenu(false);
+  }
+  function reportDevice(item: Device) {
+    const note = window.prompt(
+      `Mô tả thông tin chưa đúng của “${item.name}”`,
+      "",
+    );
+    if (!note?.trim()) return;
+    try {
+      const reports = JSON.parse(
+        localStorage.getItem("tech-explorer-data-reports-v1") ?? "[]",
+      );
+      const next = Array.isArray(reports) ? reports : [];
+      next.push({
+        id: crypto.randomUUID(),
+        deviceId: item.id,
+        deviceType: deviceType(item),
+        deviceName: item.name,
+        note: note.trim(),
+        createdAt: new Date().toISOString(),
+      });
+      localStorage.setItem("tech-explorer-data-reports-v1", JSON.stringify(next));
+      setNotice("Đã ghi nhận phản hồi. Cảm ơn bạn đã góp ý.");
+    } catch {
+      setNotice("Không thể lưu phản hồi trên trình duyệt này.");
+    }
+  }
   function openWorkspace(screen: ExplorerScreen) {
     setWorkspaceMode(screen);
     setMobileMenu(false);
@@ -556,12 +588,20 @@ export default function Explorer({
             Đóng
           </button>
         </div>
-        {product?.hotspots.map((h) => (
-          <section key={h.id}>
-            <h3>{h.title}</h3>
-            <p>{h.description}</p>
-          </section>
-        ))}
+        <div className="technology-topic-grid">
+          {[
+            ["Hotspot tương tác", "Chọn vòng tròn trên ảnh để xem vị trí và vai trò của từng khu vực."],
+            ["Chuẩn hóa thông số", "Các đơn vị GB, W, GHz và chuẩn DDR được hiển thị theo cách thống nhất để dễ so sánh."],
+            ["Liên kết linh kiện", "Linh kiện đi kèm được nối với thư viện sản phẩm để mở nhanh thông số và đưa vào cấu hình."],
+            ["Kiểm tra tương thích", "Socket CPU, chuẩn RAM, loại SSD và công suất nguồn được đối chiếu trước khi lắp máy."],
+          ].map(([title, text]) => (
+            <section key={title} className="technology-topic">
+              <span className="eyebrow">TECH EXPLORER</span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </section>
+          ))}
+        </div>
       </dialog>
       <header className="header">
         <Link href="/" className="logo">
@@ -603,14 +643,7 @@ export default function Explorer({
           </button>
           <button
             onClick={() => {
-              const dialog = document.querySelector(
-                ".comparison-dialog",
-              ) as HTMLDialogElement | null;
-              if (dialog && comparison.length >= 2) dialog.showModal();
-              else
-                setNotice(
-                  "Chọn ít nhất 2 thiết bị cùng loại bằng nút Thêm vào so sánh.",
-                );
+              setComparisonOpen(true);
             }}
           >
             So sánh
@@ -860,6 +893,8 @@ export default function Explorer({
             devices={allDevices}
             onOpen={openDevice}
             onNotice={setNotice}
+            initialItem={pendingBuildItem}
+            onInitialItemConsumed={() => setPendingBuildItem(null)}
           />
         ) : workspaceMode === "learn" ? (
           <KnowledgeCenter />
@@ -1050,6 +1085,8 @@ export default function Explorer({
                 component={activeComponent}
                 tab={tab}
                 setTab={setTab}
+                onAddToBuild={() => addToBuilder(activeComponent)}
+                onReport={() => reportDevice(activeComponent)}
               />
             </>
           ) : (
@@ -1286,6 +1323,8 @@ export default function Explorer({
               tab={tab}
               setTab={setTab}
               onClose={() => setActive(null)}
+              onAddToBuild={() => addToBuilder(product)}
+              onReport={() => reportDevice(product)}
             />
           </>
         ) : (
@@ -1300,6 +1339,10 @@ export default function Explorer({
         onRemove={(id) =>
           setComparison((current) => current.filter((item) => item.id !== id))
         }
+        open={comparisonOpen}
+        onOpen={() => setComparisonOpen(true)}
+        onClose={() => setComparisonOpen(false)}
+        onBrowse={() => browseComponents()}
       />
       {notice && (
         <div className="toast" role="status">

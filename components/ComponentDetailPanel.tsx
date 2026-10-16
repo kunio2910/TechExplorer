@@ -4,7 +4,7 @@ import { assetUrl } from "@/lib/runtime";
 import type { CatalogComponent } from "@/lib/types";
 import { Cpu, HardDrive, MemoryStick } from "lucide-react";
 import CompatibilityPanel from "./CompatibilityPanel";
-import { specLabel } from "@/lib/catalog-tools";
+import { orderedSpecEntries, specLabel } from "@/lib/catalog-tools";
 
 const icons = [Cpu, MemoryStick, HardDrive];
 
@@ -12,12 +12,16 @@ export default function ComponentDetailPanel({
   component,
   tab,
   setTab,
+  onAddToBuild,
+  onReport,
 }: {
   component: CatalogComponent;
   tab: string;
   setTab: (tab: string) => void;
+  onAddToBuild?: () => void;
+  onReport?: () => void;
 }) {
-  const specEntries = Object.entries(component.spec);
+  const specEntries = orderedSpecEntries(component);
 
   return (
     <aside className="detail-panel">
@@ -63,13 +67,18 @@ export default function ComponentDetailPanel({
               <>
                 <div className="product-overview component-overview">
                   {component.imageUrl ? (
-                    <img
-                      src={assetUrl(component.imageUrl)}
-                      alt={component.name}
-                      width={92}
-                      height={122}
-                      loading="lazy"
-                    />
+                    <div className="component-overview-image">
+                      <img
+                        src={assetUrl(component.imageUrl)}
+                        alt={component.name}
+                        width={92}
+                        height={122}
+                        loading="lazy"
+                      />
+                      {component.imageUrl.includes("/media/sample-") && (
+                        <small>Ảnh minh họa</small>
+                      )}
+                    </div>
                   ) : (
                     <div className="component-overview-placeholder">
                       {component.type}
@@ -107,6 +116,18 @@ export default function ComponentDetailPanel({
                     {component.brand || component.type} · {component.model}
                   </span>
                   <p>{component.notes || "Chưa có ghi chú tương thích."}</p>
+                  <div className="detail-action-row">
+                    {onAddToBuild && (
+                      <button className="primary" onClick={onAddToBuild}>
+                        ＋ Thêm vào cấu hình
+                      </button>
+                    )}
+                    {onReport && (
+                      <button className="text-button" onClick={onReport}>
+                        Báo thông tin chưa đúng
+                      </button>
+                    )}
+                  </div>
                 </section>
               </>
             )}

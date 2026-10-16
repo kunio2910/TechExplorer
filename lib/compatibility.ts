@@ -1,3 +1,5 @@
+import { specMatches } from "./spec-units";
+
 export type Result = {
   status: "compatible" | "warning" | "incompatible";
   message: string;
@@ -9,11 +11,7 @@ export function evaluateCompatibility(
   ssdType?: string,
 ): Result[] {
   const matchesSpecOption = (key: string, value: string) =>
-    (spec[key] ?? "")
-      .split(/[,;|\n]+/)
-      .map((item) => item.trim().toUpperCase().replace(/\s+/g, ""))
-      .filter(Boolean)
-      .includes(value.trim().toUpperCase().replace(/\s+/g, ""));
+    specMatches(key, spec[key], value);
   const results: Result[] = [
     matchesSpecOption("Socket", cpuSocket)
       ? {
@@ -35,12 +33,9 @@ export function evaluateCompatibility(
         },
   ];
   if (ssdType) {
-    const supported = (spec["SSD type"] ?? spec["SSD types"] ?? "")
-      .split(/[,;|\n]+/)
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean);
+    const supported = spec["SSD type"] ?? spec["SSD types"] ?? "";
     results.splice(2, 0,
-      supported.length && supported.includes(ssdType.trim().toLowerCase())
+      specMatches("SSD type", supported, ssdType)
         ? {
             status: "compatible",
             message: `SSD ${ssdType} nằm trong danh sách chuẩn lưu trữ của mainboard.`,

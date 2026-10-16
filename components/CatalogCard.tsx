@@ -1,6 +1,6 @@
 "use client";
 import { assetUrl } from "@/lib/runtime";
-import { specLabel, deviceType, type Device } from "@/lib/catalog-tools";
+import { specLabel, deviceType, orderedSpecEntries, type Device } from "@/lib/catalog-tools";
 export default function CatalogCard({
   item,
   onOpen,
@@ -37,7 +37,7 @@ export default function CatalogCard({
             <span>ĐÃ XUẤT BẢN</span>
           </div>
           <h2>{item.name}</h2>
-          {Object.entries(item.spec)
+          {orderedSpecEntries(item)
             .filter(([, value]) => value)
             .slice(0, 3)
             .map(([key, value]) => (

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Product, Hotspot } from "@/lib/types";
 import CompatibilityPanel from "./CompatibilityPanel";
-import { specLabel } from "@/lib/catalog-tools";
+import { orderedSpecEntries, specLabel } from "@/lib/catalog-tools";
 import { categoryLabel } from "@/lib/labels";
 const specKeys = [
   "Chipset",
@@ -44,6 +44,8 @@ export default function DetailPanel({
   setTab,
   onClose,
   onOpenLinked,
+  onAddToBuild,
+  onReport,
 }: {
   product: Product;
   active: Hotspot | undefined;
@@ -51,6 +53,8 @@ export default function DetailPanel({
   setTab: (t: string) => void;
   onClose: () => void;
   onOpenLinked?: (id: string) => void;
+  onAddToBuild?: () => void;
+  onReport?: () => void;
 }) {
   const reduced = useReducedMotion();
   return (
@@ -115,6 +119,18 @@ export default function DetailPanel({
                     );
                   })}
                 </div>
+                <div className="detail-action-row">
+                  {onAddToBuild && (
+                    <button className="primary" onClick={onAddToBuild}>
+                      ＋ Thêm vào cấu hình
+                    </button>
+                  )}
+                  {onReport && (
+                    <button className="text-button" onClick={onReport}>
+                      Báo thông tin chưa đúng
+                    </button>
+                  )}
+                </div>
                 {active ? (
                   <motion.section
                     key={active.id}
@@ -161,7 +177,7 @@ export default function DetailPanel({
               )}
             </div>
             <dl className="spec-table">
-              {Object.entries(product.spec)
+              {orderedSpecEntries(product)
                 .filter((_, i) => tab === "Specifications" || i < 10)
                 .map(([key, value]) => (
                   <div key={key}>

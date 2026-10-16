@@ -1,6 +1,6 @@
 import type { Device } from "./catalog-tools";
 import { deviceType } from "./catalog-tools";
-import { normalizeSpecValue, specNumber } from "./spec-units";
+import { normalizeSpecValue, specMatches, specNumber } from "./spec-units";
 export const buildSlots = [
   "Mainboard",
   "CPU",
@@ -73,6 +73,67 @@ export function selectedParts(build: PcBuild, devices: Device[]) {
       ),
     ]),
   ) as Partial<Record<BuildSlot, Device>>;
+}
+
+export function candidateCompatibility(
+  slot: BuildSlot,
+  candidate: Device,
+  build: PcBuild,
+  devices: Device[],
+): { ok: boolean; reason?: string } {
+  const selected = selectedParts(build, devices);
+  const mismatch = (label: string, left?: string, right?: string) =>
+    left && right && !specMatches(label === "Socket" ? "Socket" : "Memory type", left, right)
+      ? { ok: false, reason: `${left} không khớp ${right}` }
+      : { ok: true };
+  if (slot === "CPU" && selected.Mainboard)
+    return mismatch("Socket", candidate.spec.Socket, selected.Mainboard.spec.Socket);
+  if (slot === "RAM" && selected.Mainboard)
+    return mismatch("Memory type", candidate.spec["Memory type"], selected.Mainboard.spec["Memory type"]);
+  if (slot === "SSD" && selected.Mainboard) {
+    const supported = selected.Mainboard.spec["SSD type"] ?? selected.Mainboard.spec["SSD types"];
+    const interfaceValue = candidate.spec.Interface ?? candidate.spec["Form factor"];
+    const kind = /nvme|pcie/i.test(interfaceValue ?? "")
+      ? "M.2 NVMe"
+      : /sata/i.test(interfaceValue ?? "")
+        ? "SATA"
+        : interfaceValue;
+    if (supported && kind && !specMatches("SSD type", supported, kind))
+      return { ok: false, reason: `${interfaceValue} không nằm trong chuẩn SSD của mainboard` };
+  }
+  if (slot === "Mainboard") {
+    const cpu = selected.CPU,
+      ram = selected.RAM,
+      ssd = selected.SSD;
+    if (cpu) {
+      const result = mismatch("Socket", cpu.spec.Socket, candidate.spec.Socket);
+      if (!result.ok) return result;
+    }
+    if (ram) {
+      const result = mismatch("Memory type", ram.spec["Memory type"], candidate.spec["Memory type"]);
+      if (!result.ok) return result;
+    }
+    if (ssd) {
+      const supported = candidate.spec["SSD type"] ?? candidate.spec["SSD types"];
+      const interfaceValue = ssd.spec.Interface ?? ssd.spec["Form factor"];
+      const kind = /nvme|pcie/i.test(interfaceValue ?? "")
+        ? "M.2 NVMe"
+        : /sata/i.test(interfaceValue ?? "")
+          ? "SATA"
+          : interfaceValue;
+      if (supported && kind && !specMatches("SSD type", supported, kind))
+        return { ok: false, reason: `${interfaceValue} không được mainboard hỗ trợ` };
+    }
+  }
+  if (slot === "PSU") {
+    const cpuW = specNumber("TDP", selected.CPU?.spec.TDP, "W"),
+      gpuW = specNumber("TDP", selected.GPU?.spec.TDP, "W"),
+      wattage = specNumber("Wattage", candidate.spec.Wattage, "W");
+    const target = cpuW && gpuW ? Math.ceil(((cpuW + gpuW + 100) * 1.3) / 50) * 50 : undefined;
+    if (target && wattage && wattage < target)
+      return { ok: false, reason: `Cần khoảng ${target} W cho CPU/GPU hiện tại` };
+  }
+  return { ok: true };
 }
 export function checkBuild(build: PcBuild, devices: Device[]): BuildCheck[] {
   const p = selectedParts(build, devices),

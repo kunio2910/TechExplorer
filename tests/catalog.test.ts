@@ -7,7 +7,9 @@ import {
   moveImage,
   publishChecks,
 } from "../lib/catalog-tools";
-import { seedProducts } from "../lib/seed";
+import { seedCatalogComponents, seedProducts } from "../lib/seed";
+import { normalizeSpecValue, specMatches } from "../lib/spec-units";
+import { candidateCompatibility, newBuild } from "../lib/pc-build";
 test("trash preserves data and restores as a draft", () => {
   const item = archive(seedProducts[0], "admin");
   assert.equal(item.status, "draft");
@@ -35,5 +37,18 @@ test("publication refuses missing images and duplicate slugs", () => {
     publishChecks({ ...copy, slug: "new", media: {} }, []).some(
       (c) => !c.valid,
     ),
+  );
+});
+test("normalizes equivalent memory and SSD labels for filters and builder choices", () => {
+  assert.equal(normalizeSpecValue("Memory type", "DDR5 UDIMM"), "DDR5");
+  assert.equal(specMatches("Memory type", "DDR5UDIMM", "DDR5"), true);
+  assert.equal(specMatches("SSD type", "M2-NVMe, SATA", "M.2 NVMe"), true);
+  const build = newBuild();
+  const board = seedProducts[0];
+  const cpu = seedCatalogComponents.find((item) => item.type === "CPU");
+  assert.ok(cpu);
+  assert.equal(
+    candidateCompatibility("CPU", cpu, { ...build, parts: { Mainboard: board.id } }, [board, cpu]).ok,
+    true,
   );
 });

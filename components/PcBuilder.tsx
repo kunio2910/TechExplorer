@@ -6,6 +6,7 @@ import {
   validateBuild,
   checkBuild,
   selectedParts,
+  candidateCompatibility,
   type PcBuild,
   type BuildSlot,
 } from "@/lib/pc-build";
@@ -16,10 +17,14 @@ export default function PcBuilder({
   devices,
   onOpen,
   onNotice,
+  initialItem,
+  onInitialItemConsumed,
 }: {
   devices: Device[];
   onOpen: (item: Device) => void;
   onNotice: (message: string) => void;
+  initialItem?: Device | null;
+  onInitialItemConsumed?: () => void;
 }) {
   const [build, setBuild] = useState<PcBuild | null>(null),
     [saved, setSaved] = useState<PcBuild[]>([]),
@@ -27,6 +32,7 @@ export default function PcBuilder({
     [search, setSearch] = useState("");
   const [ready, setReady] = useState(false),
     [link, setLink] = useState("");
+  const [compatibleOnly, setCompatibleOnly] = useState(true);
   useEffect(() => {
     let next = newBuild();
     try {
@@ -75,6 +81,18 @@ export default function PcBuilder({
         onNotice("Không thể tự lưu cấu hình trên trình duyệt.");
       }
   }, [build, ready]);
+  useEffect(() => {
+    if (!ready || !build || !initialItem) return;
+    const slotType = deviceType(initialItem) as BuildSlot;
+    if (!buildSlots.includes(slotType)) return;
+    setBuild((current) =>
+      current
+        ? { ...current, parts: { ...current.parts, [slotType]: initialItem.id } }
+        : current,
+    );
+    onNotice(`Đã thêm ${initialItem.name} vào cấu hình.`);
+    onInitialItemConsumed?.();
+  }, [initialItem, ready]);
   function persist(list: PcBuild[]) {
     try {
       localStorage.setItem("tech-explorer-builds-v1", JSON.stringify(list));
@@ -83,6 +101,24 @@ export default function PcBuilder({
     } catch {
       onNotice("Không thể lưu cấu hình trên trình duyệt.");
       return false;
+    }
+  }
+  function repairCheck(title: string) {
+    if (!build) return;
+    const next = { ...build.parts };
+    const slot = title.includes("Socket")
+      ? "CPU"
+      : title.includes("bộ nhớ") || title.includes("khe RAM")
+        ? "RAM"
+        : title.includes("SSD")
+          ? "SSD"
+          : title.includes("Nguồn")
+            ? "PSU"
+            : undefined;
+    if (slot && next[slot]) {
+      delete next[slot];
+      update({ parts: next });
+      onNotice(`Đã bỏ ${categoryLabel(slot)} để bạn chọn lại linh kiện tương thích.`);
     }
   }
   if (!build)
@@ -274,6 +310,11 @@ export default function PcBuilder({
                   {check.title}
                 </strong>
                 <p>{check.detail}</p>
+                {check.status === "incompatible" && (
+                  <button className="text-button" onClick={() => repairCheck(check.title)}>
+                    Gợi ý sửa lỗi →
+                  </button>
+                )}
               </div>
             ))}
           </section>
@@ -351,6 +392,14 @@ export default function PcBuilder({
                 onChange={(e) => setSearch(e.target.value)}
               />
             </label>
+            <label className="builder-filter-toggle">
+              <input
+                type="checkbox"
+                checked={compatibleOnly}
+                onChange={(event) => setCompatibleOnly(event.target.checked)}
+              />
+              Chỉ hiển thị thiết bị tương thích với lựa chọn hiện tại
+            </label>
             <div className="build-options">
               {devices
                 .filter(
@@ -359,6 +408,11 @@ export default function PcBuilder({
                     `${x.name} ${x.brand}`
                       .toLowerCase()
                       .includes(search.toLowerCase()),
+                )
+                .filter(
+                  (item) =>
+                    !compatibleOnly ||
+                    candidateCompatibility(slot, item, build, devices).ok,
                 )
                 .map((item) => (
                   <button
@@ -369,6 +423,11 @@ export default function PcBuilder({
                     }}
                   >
                     <strong>{item.name}</strong>
+                    {compatibleOnly && (
+                      <small className="compatibility-hint">
+                        ✓ Phù hợp với cấu hình hiện tại
+                      </small>
+                    )}
                     <small>
                       {Object.entries(item.spec)
                         .slice(0, 3)
@@ -381,6 +440,20 @@ export default function PcBuilder({
             {!devices.some((x) => deviceType(x) === slot) && (
               <p>Chưa có thiết bị được xuất bản trong nhóm này.</p>
             )}
+            {compatibleOnly &&
+              devices.some((x) => deviceType(x) === slot) &&
+              !devices.some(
+                (x) =>
+                  deviceType(x) === slot &&
+                  candidateCompatibility(slot, x, build, devices).ok,
+              ) && (
+                <div className="empty-builder-options">
+                  <p>Không có lựa chọn tương thích với cấu hình hiện tại.</p>
+                  <button onClick={() => setCompatibleOnly(false)}>
+                    Hiển thị tất cả thiết bị
+                  </button>
+                </div>
+              )}
           </section>
         </div>
       )}
