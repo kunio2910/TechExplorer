@@ -223,6 +223,9 @@ export default function ProductImport({
             onClick={() => {
               setMode("local");
               setError("");
+              setPreview(null);
+              setSelected([]);
+              setImages([]);
             }}
             role="tab"
             aria-selected={mode === "local"}
@@ -235,6 +238,9 @@ export default function ProductImport({
             onClick={() => {
               setMode("file");
               setError("");
+              setPreview(null);
+              setSelected([]);
+              setImages([]);
             }}
             role="tab"
             aria-selected={mode === "file"}
@@ -248,6 +254,9 @@ export default function ProductImport({
             onClick={() => {
               setMode("paste");
               setError("");
+              setPreview(null);
+              setSelected([]);
+              setImages([]);
             }}
           >
             Dán thông số

@@ -84,6 +84,31 @@ test("ASUS-style section headings are mapped to mainboard fields", () => {
   assert.match(fields["spec.Form factor"], /ATX/);
 });
 
+test("ASUS generated rowTable markup is mapped to mainboard fields", () => {
+  const html = `<section>
+    <div class="rowTable"><div class="rowTableTitle">CPU</div><div class="rowTableItemViewBox"><div class="rowTableItemBox"><div class="rowTableItems"><p>AMD AM5 socket for AMD Ryzen 9000 Series Desktop Processors</p></div></div></div></div>
+    <div class="rowTable"><div class="rowTableTitle">Chipset</div><div class="rowTableItemViewBox"><div class="rowTableItems"><p>AMD B850 Chipset</p></div></div></div>
+    <div class="rowTable"><div class="rowTableTitle">Memory</div><div class="rowTableItemViewBox"><div class="rowTableItems"><p>4 x DIMM slots, max. 256GB, DDR5</p></div></div></div>
+    <div class="rowTable"><div class="rowTableTitle">Storage</div><div class="rowTableItemViewBox"><div class="rowTableItems"><p>2 x M.2 slots with PCIe mode and 4 x SATA 6Gb/s ports</p></div></div></div>
+    <div class="rowTable"><div class="rowTableTitle">Form Factor</div><div class="rowTableItemViewBox"><div class="rowTableItems"><p>micro-ATX Form Factor</p></div></div></div>
+  </section>`;
+  const result = extractProduct(
+    html,
+    "https://www.asus.com/motherboards-components/motherboards/tuf-gaming/tuf-gaming-b850m-wifi/techspec/",
+    "Mainboard",
+  );
+  const fields = Object.fromEntries(result.fields.map((field) => [field.key, field.value]));
+  assert.equal(fields["spec.Socket"], "AM5");
+  assert.equal(fields["spec.Chipset"], "AMD B850 Chipset");
+  assert.equal(fields["spec.Memory type"], "DDR5");
+  assert.equal(fields["spec.Max memory"], "256GB");
+  assert.equal(fields["spec.Memory slots"], "4 x DIMM slots");
+  assert.equal(fields["spec.M.2 slots"], "2 x M.2 slots");
+  assert.equal(fields["spec.SATA"], "4 x SATA 6Gb/s ports");
+  assert.equal(fields["spec.SSD type"], "M.2 NVMe, SATA");
+  assert.match(fields["spec.Form factor"], /micro-ATX/);
+});
+
 test("vendor-neutral heading aliases map non-ASUS mainboard pages", () => {
   const result = extractProduct(
     `<h1>MAG BOARD</h1><h3>Processor</h3><div>AMD AM5 Socket</div>

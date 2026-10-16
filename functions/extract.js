@@ -187,6 +187,19 @@ export function extractProduct(html, sourceUrl, type) {
     const value = $(el).find(".value, .content, .spec-content").first();
     if (key.length && value.length) pairs.push([key.text(), value.text()]);
   });
+  // ASUS tech-spec pages use generated class names around rows rather than
+  // semantic table elements. The stable class fragments below let us read
+  // those rows without depending on the generated hash suffixes.
+  $("[class*='rowTableTitle']").each((_, el) => {
+    // `closest` would match the title element itself because its generated
+    // class also contains the `rowTable` fragment; use the parent row.
+    const row = $(el).parents("[class*='rowTable']").first();
+    const value = row
+      .find("[class*='rowTableItem'] p, [class*='rowTableItem'] li")
+      .first();
+    if (value.length && $(el).text().trim())
+      pairs.push([$(el).text(), value.text()]);
+  });
   // Newer MSI pages render the compact specification as text pairs separated
   // by a pipe instead of table rows (for example: "Chipset | AMD B650").
   const bodyText = $("body")
@@ -295,7 +308,11 @@ export function extractProduct(html, sourceUrl, type) {
       if (section === "cpu")
         addSection("Socket", /\b((?:LGA|AM|sTRX|SP|TR)\s*\d+[A-Z0-9-]*)/i, value);
       if (section === "memory") {
-        addSection("Memory type", /\b(DDR[3-6](?:\s*\w*)?)/i, value);
+        addSection(
+          "Memory type",
+          /\b(DDR[3-6](?:\s+(?:UDIMM|SO-DIMM|DIMM))?)/i,
+          value,
+        );
         addSection(
           "Max memory",
           /\b(?:max(?:imum)?\s*)?(\d+\s*(?:GB|TB))\b/i,
@@ -317,7 +334,11 @@ export function extractProduct(html, sourceUrl, type) {
           /\b(\d+\s*x\s*M\.2(?:\s*slots?|\s*\(Qty\)))/i,
           value,
         );
-        addSection("SATA", /\b(\d+\s*x\s*SATA\s*[^,.;]*)/i, value);
+        addSection(
+          "SATA",
+          /\b(\d+\s*x\s*SATA(?:\s+\d+(?:G(?:b\/s)?|Gbps))?(?:\s*\(Qty\))?(?:\s+ports?)?)/i,
+          value,
+        );
         if (
           !fields.some((item) => item.key === "spec.SSD type") &&
           /M\.2[\s\S]*PCIe/i.test(value)
@@ -364,6 +385,31 @@ export function extractProduct(html, sourceUrl, type) {
         images.push(url.href);
     } catch {}
   }
+  // Some vendor pages omit JSON-LD images and expose the product gallery only
+  // through picture/img elements. Keep only likely product images and cap the
+  // result in the same way as the structured sources above.
+  $("img[src], img[data-src], source[srcset], source[data-srcset]").each(
+    (_, el) => {
+      const srcSet = $(el).attr("srcset") ?? $(el).attr("data-srcset");
+      // The last srcset candidate is normally the largest product image.
+      const raw =
+        srcSet?.split(",").at(-1)?.trim().split(/\s+/)[0] ??
+        $(el).attr("data-src") ??
+        $(el).attr("src");
+      if (!raw || /(?:logo|icon|sprite|avatar|favicon)/i.test(raw)) return;
+      try {
+        const url = new URL(raw, sourceUrl);
+        const path = url.pathname.toLowerCase();
+        if (
+          url.protocol !== "https:" ||
+          /\.svg(?:$|\?)/i.test(path) ||
+          /(?:\/header\/|\/sitesetting\/|\/media\/odin\/)/i.test(path)
+        )
+          return;
+        if (!images.includes(url.href)) images.push(url.href);
+      } catch {}
+    },
+  );
   return {
     type,
     sourceUrl,
