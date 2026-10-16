@@ -91,7 +91,7 @@ export default function ComponentDetailPanel({
                         <span>
                           <Icon size={21} />
                         </span>
-                        <b>{value || "—"}</b>
+                        <b title={value || "—"}>{value || "—"}</b>
                         <small>{specLabel(key)}</small>
                       </div>
                     );

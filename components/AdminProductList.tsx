@@ -35,14 +35,16 @@ function searchableText(item: Product | CatalogComponent) {
 export default function AdminProductList({
   products,
   components,
-  onOpen,
+  onView,
+  onEdit,
   onDuplicate,
   onDelete,
   onAdd,
 }: {
   products: Product[];
   components: CatalogComponent[];
-  onOpen: (item: Device) => void;
+  onView: (item: Device) => void;
+  onEdit: (item: Device) => void;
   onDuplicate: (item: Device) => void;
   onDelete: (item: Device) => void;
   onAdd: (type: Exclude<ProductListType, "Tất cả">) => void;
@@ -141,7 +143,11 @@ export default function AdminProductList({
             const image = imageOf(item);
             const specs = Object.entries(item.spec).filter(([, value]) => value).slice(0, 4);
             return (
-              <article className="admin-product-card" key={`${itemType}-${item.id}`}>
+              <article
+                className="admin-product-card"
+                key={`${itemType}-${item.id}`}
+                onDoubleClick={() => onView(item)}
+              >
                 <div className="admin-product-card-image">
                   {image ? <img src={assetUrl(image)} alt="" loading="lazy" /> : <span>{itemType}</span>}
                   <span className={`admin-product-status ${item.status}`}>{statusLabel(item.status)}</span>
@@ -153,8 +159,8 @@ export default function AdminProductList({
                     {specs.length ? specs.map(([key, value]) => <span key={key}><b>{specLabel(key)}:</b> {value}</span>) : <span>Chưa có thông số</span>}
                   </div>
                   <div className="admin-product-card-actions">
-                    <button onClick={() => onOpen(item)}><Eye size={15} /> Xem chi tiết</button>
-                    <button onClick={() => onOpen(item)}><Pencil size={15} /> Chỉnh sửa</button>
+                    <button onClick={() => onView(item)}><Eye size={15} /> Xem chi tiết</button>
+                    <button onClick={() => onEdit(item)}><Pencil size={15} /> Chỉnh sửa</button>
                     <button aria-label={`Nhân đôi ${item.name}`} title="Nhân đôi" onClick={() => onDuplicate(item)}><Copy size={16} /></button>
                     <button className="danger-icon" aria-label={`Xóa ${item.name}`} title="Xóa" onClick={() => onDelete(item)}><Trash2 size={16} /></button>
                   </div>

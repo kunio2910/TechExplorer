@@ -131,6 +131,15 @@ const assert = require("node:assert/strict");
     assert.ok((await page.locator(".admin-product-card").count()) >= 1);
     await page.locator(".admin-search-field input").fill("ASUS");
     assert.ok((await page.locator(".admin-product-card").count()) >= 1);
+    await page
+      .locator(".admin-product-card")
+      .first()
+      .getByRole("button", { name: /Xem chi tiết/ })
+      .click();
+    await page.getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI", exact: true }).waitFor();
+    assert.ok((await page.locator(".admin-detail-spec-table > div").count()) > 0);
+    await page.getByRole("button", { name: /Quay lại danh sách/ }).click();
+    await page.getByRole("heading", { name: "Danh sách sản phẩm", exact: true }).waitFor();
     await page.getByRole("button", { name: "Mở cài đặt", exact: true }).click();
     await page.getByRole("heading", { name: "Cài đặt quản lý", exact: true }).waitFor();
     await page.getByRole("button", { name: /Về trình chỉnh sửa/ }).click();

@@ -27,6 +27,7 @@ import AdminRecovery from "./AdminRecovery";
 import ProductImport from "./ProductImport";
 import AdminVersions from "./AdminVersions";
 import AdminProductList from "./AdminProductList";
+import AdminProductDetail from "./AdminProductDetail";
 import { linkComponent } from "@/lib/linked-components";
 import { normalizeSpecs, normalizeSpecValue } from "@/lib/spec-units";
 import { categoryLabel } from "@/lib/labels";
@@ -62,7 +63,7 @@ import {
 } from "@/lib/catalog-tools";
 
 type AdminTab = "Mainboard" | CatalogComponentType;
-type AdminView = "editor" | "list" | "settings";
+type AdminView = "editor" | "list" | "settings" | "detail";
 const tabs: AdminTab[] = ["Mainboard", "CPU", "RAM", "SSD", "GPU", "PSU"];
 const statuses: AssociatedComponent["compatibility"][] = [
   "compatible",
@@ -144,6 +145,7 @@ export default function StaticAdmin({
   const [password, setPassword] = useState("");
   const [tab, setTab] = useState<AdminTab>("Mainboard");
   const [adminView, setAdminView] = useState<AdminView>("editor");
+  const [detailDevice, setDetailDevice] = useState<Device | null>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [components, setComponents] = useState<CatalogComponent[]>([]);
   const [product, setProduct] = useState<Product>(() =>
@@ -808,6 +810,16 @@ export default function StaticAdmin({
     setAdminView("editor");
   }
 
+  function viewDevice(item: Device) {
+    setDetailDevice(copy(item));
+    setAdminView("detail");
+  }
+
+  function backToProductList() {
+    setDetailDevice(null);
+    setAdminView("list");
+  }
+
   function addDevice(type: Exclude<AdminTab, never>) {
     if (type === "Mainboard") {
       setTab("Mainboard");
@@ -993,7 +1005,7 @@ export default function StaticAdmin({
         <div className="admin-header-actions">
           <span className="admin-user">{user.email}</span>
           <button
-            className={`admin-header-nav ${adminView === "list" ? "active" : ""}`}
+            className={`admin-header-nav ${adminView === "list" || adminView === "detail" ? "active" : ""}`}
             onClick={() => setAdminView("list")}
           >
             <ListIcon size={16} /> Danh sách
@@ -2087,7 +2099,8 @@ export default function StaticAdmin({
         <AdminProductList
           products={products}
           components={components}
-          onOpen={openDevice}
+          onView={viewDevice}
+          onEdit={openDevice}
           onDuplicate={(item) => {
             if ("media" in item) void duplicateProduct(item);
             else void duplicateComponent(item);
@@ -2097,6 +2110,13 @@ export default function StaticAdmin({
             else void removeComponentById(item.id, item.name);
           }}
           onAdd={addDevice}
+        />
+      )}
+      {adminView === "detail" && detailDevice && (
+        <AdminProductDetail
+          item={detailDevice}
+          onBack={backToProductList}
+          onEdit={openDevice}
         />
       )}
       {adminView === "settings" && (

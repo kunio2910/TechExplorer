@@ -109,7 +109,7 @@ export default function DetailPanel({
                         <span>
                           <Icon size={21} />
                         </span>
-                        <b>{product.spec[k] || "—"}</b>
+                        <b title={product.spec[k] || "—"}>{product.spec[k] || "—"}</b>
                         <small>{specLabel(k)}</small>
                       </div>
                     );
