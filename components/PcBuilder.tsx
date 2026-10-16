@@ -108,7 +108,7 @@ export default function PcBuilder({
     const next = { ...build.parts };
     const slot = title.includes("Socket")
       ? "CPU"
-      : title.includes("bộ nhớ") || title.includes("khe RAM")
+      : title.includes("bộ nhớ") || title.includes("khe RAM") || title.includes("Dung lượng RAM")
         ? "RAM"
         : title.includes("SSD")
           ? "SSD"
