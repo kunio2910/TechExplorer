@@ -22,6 +22,7 @@ export default function DeviceCanvas({
   expert,
   compareLabel,
   onCompare,
+  onViewDetails,
 }: {
   product: Product;
   active: string | null;
@@ -30,6 +31,7 @@ export default function DeviceCanvas({
   expert: boolean;
   compareLabel?: string;
   onCompare?: () => void;
+  onViewDetails?: () => void;
 }) {
   const [ratio, setRatio] = useState(720 / 950);
   const [zoom, setZoom] = useState(1);
@@ -84,6 +86,11 @@ export default function DeviceCanvas({
       {onCompare && (
         <button className="canvas-compare-toggle" onClick={onCompare}>
           {compareLabel ?? "＋ Thêm vào so sánh"}
+        </button>
+      )}
+      {onViewDetails && (
+        <button className="mobile-details-button" onClick={onViewDetails}>
+          Xem thông số ↓
         </button>
       )}
       {source && (

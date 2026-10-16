@@ -468,6 +468,14 @@ export default function Explorer({
     setWorkspaceMode("builder");
     setMobileMenu(false);
   }
+  function scrollToDetails() {
+    requestAnimationFrame(() =>
+      document.querySelector(".detail-panel")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      }),
+    );
+  }
   function reportDevice(item: Device) {
     const note = window.prompt(
       `Mô tả thông tin chưa đúng của “${item.name}”`,
@@ -1067,6 +1075,7 @@ export default function Explorer({
                 <ComponentCanvas
                   key={activeComponent.id}
                   component={activeComponent}
+                  onViewDetails={scrollToDetails}
                   onCompare={() => toggleComparison(activeComponent)}
                   compareLabel={
                     comparison.some((i) => i.id === activeComponent.id)
@@ -1256,6 +1265,7 @@ export default function Explorer({
                 active={active}
                 view={view}
                 expert={true}
+                onViewDetails={scrollToDetails}
                 onSelect={(h) => {
                   setActive(h.id);
                   setTab("Overview");

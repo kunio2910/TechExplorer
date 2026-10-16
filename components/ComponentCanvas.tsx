@@ -21,10 +21,12 @@ export default function ComponentCanvas({
   component,
   compareLabel,
   onCompare,
+  onViewDetails,
 }: {
   component: CatalogComponent;
   compareLabel?: string;
   onCompare?: () => void;
+  onViewDetails?: () => void;
 }) {
   const [ratio, setRatio] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -62,6 +64,11 @@ export default function ComponentCanvas({
       {onCompare && (
         <button className="canvas-compare-toggle" onClick={onCompare}>
           {compareLabel ?? "＋ Thêm vào so sánh"}
+        </button>
+      )}
+      {onViewDetails && (
+        <button className="mobile-details-button" onClick={onViewDetails}>
+          Xem thông số ↓
         </button>
       )}
       <div className="canvas-media-stack">

@@ -678,6 +678,9 @@
   gap: 8px;
   margin: 14px 0 18px;
 }
+.mobile-details-button {
+  display: none;
+}
 .detail-action-row .primary {
   min-height: 36px;
 }
@@ -766,6 +769,21 @@
   }
   .detail-action-row button {
     width: 100%;
+  }
+  .mobile-details-button {
+    display: inline-flex;
+    position: absolute;
+    top: 54px;
+    right: 16px;
+    z-index: 4;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border-bright);
+    border-radius: 7px;
+    background: var(--panel);
+    color: var(--cyan);
+    font-size: 11px;
   }
 }
 * {
