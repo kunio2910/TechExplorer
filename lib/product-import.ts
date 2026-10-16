@@ -8,7 +8,98 @@ export type ImportPreview = {
   detectedBrand?: string;
   detectedLine?: string;
   parser?: string;
+  completeness?: { found: number; total: number };
+  attempts?: {
+    url: string;
+    method: string;
+    status: string;
+    message?: string;
+  }[];
 };
+
+const pastedFields: Record<string, string> = {
+  "tên sản phẩm": "name",
+  "product name": "name",
+  name: "name",
+  "thương hiệu": "brand",
+  brand: "brand",
+  model: "model",
+  socket: "spec.Socket",
+  "socket cpu": "spec.Socket",
+  "cpu socket": "spec.Socket",
+  chipset: "spec.Chipset",
+  "loại ram": "spec.Memory type",
+  "memory type": "spec.Memory type",
+  memory: "spec.Memory type",
+  "ram tối đa": "spec.Max memory",
+  "max memory": "spec.Max memory",
+  "maximum memory capacity": "spec.Max memory",
+  "memory slots": "spec.Memory slots",
+  "dimm slots": "spec.Memory slots",
+  "m.2 slots": "spec.M.2 slots",
+  sata: "spec.SATA",
+  "sata ports": "spec.SATA",
+  "loại ssd": "spec.SSD type",
+  "ssd type": "spec.SSD type",
+  "form factor": "spec.Form factor",
+  capacity: "spec.Capacity",
+  "dung lượng": "spec.Capacity",
+  speed: "spec.Speed",
+  interface: "spec.Interface",
+  "read speed": "spec.Read speed",
+  "write speed": "spec.Write speed",
+  cores: "spec.Cores",
+  threads: "spec.Threads",
+  "boost clock": "spec.Boost clock",
+  tdp: "spec.TDP",
+  vram: "spec.VRAM",
+  wattage: "spec.Wattage",
+  efficiency: "spec.Efficiency",
+  modular: "spec.Modular",
+  modules: "spec.Modules",
+  "recommended psu": "spec.Recommended PSU",
+};
+
+export function parsePastedSpecs(text: string, type: string): ImportPreview {
+  if (text.length > 100000) throw new Error("Nội dung tối đa 100.000 ký tự.");
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const fields = new Map<string, string>();
+  const unknown: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const parts = lines[i].split(/\t+|\s*\|\s*|\s*[:：]\s*/, 2);
+    const key = pastedFields[parts[0].toLowerCase()];
+    if (key) {
+      const value =
+        parts[1] ||
+        (lines[i + 1] && !pastedFields[lines[i + 1].toLowerCase()]
+          ? lines[++i]
+          : "");
+      if (value) fields.set(key, value);
+    } else unknown.push(lines[i]);
+  }
+  if (!fields.size)
+    throw new Error(
+      "Chưa nhận diện được trường. Dùng mỗi dòng theo dạng Socket: AM5 hoặc Loại RAM: DDR5.",
+    );
+  const result = parseProductFile(
+    JSON.stringify({
+      type,
+      fields: [...fields].map(([key, value]) => ({ key, value })),
+    }),
+    "paste.json",
+    type,
+  );
+  result.parser = "pasted-specs";
+  result.warnings = unknown.length
+    ? [
+        `Có ${unknown.length} dòng chưa ánh xạ. Hãy đối chiếu và bổ sung thủ công.`,
+      ]
+    : [];
+  return result;
+}
 function csvRows(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [],

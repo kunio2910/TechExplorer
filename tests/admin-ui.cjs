@@ -511,7 +511,7 @@ const assert = require("node:assert/strict");
           "type,name,model,spec.Capacity\nRAM,RAM nhập QA,Import model,64gb",
         ),
       });
-    await admin.getByLabel("Chỉ điền ô trống", { exact: false }).uncheck();
+    assert.equal(await admin.getByLabel("Chỉ điền ô trống", { exact: false }).isChecked(), false);
     await admin
       .getByRole("button", { name: "Áp dụng vào bản nháp", exact: true })
       .click();

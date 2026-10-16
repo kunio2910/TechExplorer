@@ -155,12 +155,15 @@ export function extractProduct(html, sourceUrl, type) {
   function walk(value) {
     if (!value || typeof value !== "object") return;
     if ([value["@type"]].flat().includes("Product")) products.push(value);
+    const label = value.label ?? value.specName ?? value.title ?? value.name;
+    const content = value.value ?? value.specValue ?? value.content;
+    if (typeof label === "string" && ["string", "number"].includes(typeof content)) pairs.push([label, String(content)]);
     for (const entry of Object.values(value)) {
       if (Array.isArray(entry)) entry.forEach(walk);
       else if (entry && typeof entry === "object") walk(entry);
     }
   }
-  $('script[type="application/ld+json"]').each((_, el) => {
+  $('script[type="application/ld+json"], script[type="application/json"]').each((_, el) => {
     try {
       walk(JSON.parse($(el).text()));
     } catch {}

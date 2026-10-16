@@ -1,9 +1,16 @@
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { officialUrl, extractProduct } from "../functions/extract.js";
+import {
+  configuredCandidates,
+  specificationLinks,
+} from "./vendor-profiles.mjs";
+import { renderProduct } from "./browser-extract.mjs";
 
 const HOST = "127.0.0.1";
-const PORT = Number(process.env.TECH_EXPLORER_IMPORT_PORT || process.env.PORT || 8787);
+const PORT = Number(
+  process.env.TECH_EXPLORER_IMPORT_PORT || process.env.PORT || 8787,
+);
 const MAX_REQUEST_BYTES = 32_000;
 const MAX_HTML_BYTES = 3_000_000;
 const FETCH_TIMEOUT_MS = 25_000;
@@ -42,7 +49,8 @@ async function readRequest(request) {
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > MAX_REQUEST_BYTES) throw new Error("Dữ liệu yêu cầu vượt quá 32 KB.");
+    if (size > MAX_REQUEST_BYTES)
+      throw new Error("Dữ liệu yêu cầu vượt quá 32 KB.");
     chunks.push(chunk);
   }
   try {
@@ -77,17 +85,20 @@ async function readHtml(response) {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export async function fetchProduct(urlInput, type) {
+export async function fetchProduct(urlInput, type, options = {}) {
   const original = officialUrl(urlInput).url;
   if (!TYPES.has(type)) throw new Error("Loại linh kiện không hợp lệ.");
   const candidates = sourceCandidates(original);
-  const isMsi = original.hostname === "msi.com" || original.hostname.endsWith(".msi.com");
   let firstResult = null;
   let bestResult = null;
   let bestSpecCount = -1;
   const candidateImages = [];
+  const mergedFields = new Map();
+  const attempts = [];
+  const deadline = Date.now() + 65000;
   let lastError;
   for (const candidate of candidates) {
+    if (attempts.length >= 7 || Date.now() > deadline) break;
     let url = new URL(candidate);
     const signal = AbortSignal.timeout(
       candidate === original.href
@@ -117,6 +128,17 @@ export async function fetchProduct(urlInput, type) {
       }
       if (!html) throw new Error("Nguồn chuyển hướng quá nhiều lần.");
       const result = extractProduct(html, url.href, type);
+      attempts.push({ url: url.href, method: "html", status: "ok" });
+      const discovered = specificationLinks(html, url.href).filter(
+        (link) => !candidates.includes(link),
+      );
+      candidates.splice(candidates.indexOf(candidate) + 1, 0, ...discovered);
+      for (const field of result.fields)
+        if (!mergedFields.has(field.key)) mergedFields.set(field.key, field);
+      result.fields = [...mergedFields.values()];
+      result.missing = result.missing.filter(
+        (key) => !mergedFields.has(`spec.${key}`),
+      );
       if (!firstResult) firstResult = result;
       candidateImages.push(...result.images);
       const specCount = result.fields.filter((field) =>
@@ -126,9 +148,8 @@ export async function fetchProduct(urlInput, type) {
         bestResult = result;
         bestSpecCount = specCount;
       }
-      const enoughSpecs =
-        specCount > 0 && (type !== "Mainboard" || specCount >= 3);
-      if (enoughSpecs || !isMsi) {
+      const enoughSpecs = result.missing.length === 0;
+      if (enoughSpecs) {
         result.images = [...new Set(candidateImages)].slice(0, 12);
         if (url.href !== original.href) {
           result.sourceUrl = original.href;
@@ -136,23 +157,78 @@ export async function fetchProduct(urlInput, type) {
           result.warnings = [
             ...(result.warnings ?? []),
             switchedHost
-              ? `MSI không trả đủ HTML ở ${original.hostname}; đã dùng bản chính hãng ${url.hostname}.`
-              : "MSI yêu cầu trang Specification riêng; hệ thống đã tự chuyển sang URL thông số.",
+              ? `Đã bổ sung từ trang chính hãng ${url.hostname}.`
+              : "Đã tự tìm và đọc trang thông số của sản phẩm.",
           ];
         }
-        return result;
+        return {
+          ...result,
+          attempts,
+          completeness: {
+            found: specCount,
+            total: specCount + result.missing.length,
+          },
+        };
       }
     } catch (error) {
       lastError = error;
+      attempts.push({
+        url: candidate,
+        method: "html",
+        status: "error",
+        message: error.message,
+      });
+    }
+  }
+  if (options.browser !== false && Date.now() < deadline) {
+    const target =
+      attempts.find((item) =>
+        /specification|techspec|\/spec\b|#Specification/i.test(item.url),
+      )?.url ?? original.href;
+    try {
+      const rendered = await renderProduct(target);
+      const result = extractProduct(rendered.html, rendered.url, type);
+      for (const field of result.fields)
+        if (!mergedFields.has(field.key)) mergedFields.set(field.key, field);
+      candidateImages.push(...result.images);
+      if (!bestResult) bestResult = result;
+      attempts.push({ url: rendered.url, method: "browser", status: "ok" });
+    } catch (error) {
+      attempts.push({
+        url: target,
+        method: "browser",
+        status: "error",
+        message: error.message,
+      });
     }
   }
   if (bestResult ?? firstResult) {
     const result = bestResult ?? firstResult;
+    result.fields = [...mergedFields.values()];
+    result.missing = result.missing.filter(
+      (key) => !mergedFields.has(`spec.${key}`),
+    );
+    result.attempts = attempts;
+    const found = result.fields.filter((field) =>
+      field.key.startsWith("spec."),
+    ).length;
+    result.completeness = { found, total: found + result.missing.length };
     result.images = [...new Set(candidateImages)].slice(0, 12);
     if (result.sourceUrl !== original.href) result.sourceUrl = original.href;
     result.warnings = [
       ...(result.warnings ?? []),
-      "Nguồn chỉ trả về tiêu đề và ảnh; MSI có thể đang chặn nội dung thông số theo khu vực hoặc yêu cầu JavaScript.",
+      ...(result.missing.length
+        ? [
+            "Một số thông số chưa được nguồn công bố hoặc chưa đọc được. Bạn có thể bổ sung bằng tab Dán thông số.",
+          ]
+        : []),
+      ...(attempts.some(
+        (item) => item.method === "browser" && item.status === "error",
+      )
+        ? [
+            "Trình duyệt dự phòng không chạy được. Nếu chưa cài Chromium, chạy npx playwright install chromium trên máy chạy dịch vụ.",
+          ]
+        : []),
     ];
     return result;
   }
@@ -160,28 +236,7 @@ export async function fetchProduct(urlInput, type) {
 }
 
 export function sourceCandidates(original) {
-  const candidates = [];
-  const add = (url) => {
-    if (!candidates.includes(url.href)) candidates.push(url.href);
-  };
-  add(original);
-  const isMsi = original.hostname === "msi.com" || original.hostname.endsWith(".msi.com");
-  if (!isMsi) return candidates;
-  const paths = [original.pathname.replace(/\/+$/, "") || "/"];
-  if (!/\/specification$/i.test(paths[0])) paths.push(`${paths[0]}/Specification`);
-  const hosts = [original.hostname];
-  for (const host of ["www.msi.com", "us.msi.com", "vn.msi.com", "uk.msi.com"])
-    if (!hosts.includes(host)) hosts.push(host);
-  for (const host of hosts)
-    for (const pathname of paths) {
-      const url = new URL(original.href);
-      url.hostname = host;
-      url.pathname = pathname;
-      url.search = "";
-      url.hash = "";
-      add(url);
-    }
-  return candidates;
+  return configuredCandidates(original);
 }
 
 export function createImporterServer() {
@@ -195,7 +250,12 @@ export function createImporterServer() {
     }
     const path = new URL(request.url || "/", `http://${HOST}:${PORT}`).pathname;
     if (request.method === "GET" && path === "/health") {
-      writeJson(response, 200, { ok: true, service: "techexplorer-importer", version: 1 }, origin);
+      writeJson(
+        response,
+        200,
+        { ok: true, service: "techexplorer-importer", version: 1 },
+        origin,
+      );
       return;
     }
     if (request.method !== "POST" || path !== "/extract") {
@@ -213,13 +273,19 @@ export function createImporterServer() {
       const result = await fetchProduct(url, type);
       writeJson(response, 200, result, origin);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Không thể đọc nguồn sản phẩm.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Không thể đọc nguồn sản phẩm.";
       writeJson(response, 400, { error: message }, origin);
     }
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   const server = createImporterServer();
   server.on("error", (error) => {
     if (error?.code === "EADDRINUSE") {
@@ -227,12 +293,17 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         `Cổng ${HOST}:${PORT} đang được sử dụng. Dịch vụ có thể đã chạy ở cửa sổ Terminal khác; hãy kiểm tra http://${HOST}:${PORT}/health trước khi khởi động lại.`,
       );
     } else {
-      console.error("Không thể khởi động dịch vụ nhập dữ liệu:", error?.message ?? error);
+      console.error(
+        "Không thể khởi động dịch vụ nhập dữ liệu:",
+        error?.message ?? error,
+      );
     }
     process.exitCode = 1;
   });
   server.listen(PORT, HOST, () => {
-    console.log(`TechExplorer local importer listening on http://${HOST}:${PORT}`);
+    console.log(
+      `TechExplorer local importer listening on http://${HOST}:${PORT}`,
+    );
     console.log("Giữ cửa sổ này mở trong khi nhập URL tại trang quản trị.");
   });
   const close = () => server.close(() => process.exit(0));

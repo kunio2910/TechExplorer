@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   parseProductFile,
+  parsePastedSpecs,
   type ImportPreview as Preview,
 } from "@/lib/product-import";
 import { specLabel, type Device } from "@/lib/catalog-tools";
@@ -36,7 +37,8 @@ export default function ProductImport({
   const [selected, setSelected] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [onlyEmpty, setOnlyEmpty] = useState(false);
-  const [mode, setMode] = useState<"local" | "file">("local");
+  const [mode, setMode] = useState<"local" | "file" | "paste">("local");
+  const [pasted, setPasted] = useState("");
   const [url, setUrl] = useState("");
   const [localStatus, setLocalStatus] = useState<
     "checking" | "connected" | "offline"
@@ -160,7 +162,8 @@ export default function ProductImport({
       (!next.slug.trim() || next.slug === "mainboard-moi")
     ) {
       const importedName =
-        preview.fields.find((field) => field.key === "name")?.value || next.name;
+        preview.fields.find((field) => field.key === "name")?.value ||
+        next.name;
       const generatedSlug = importSlug(importedName);
       if (generatedSlug) next.slug = generatedSlug;
     }
@@ -209,7 +212,11 @@ export default function ProductImport({
           JSON/CSV. Dữ liệu chỉ được áp dụng vào bản nháp để bạn kiểm tra trước
           khi lưu lên Firestore.
         </p>
-        <div className="import-mode-switch" role="tablist" aria-label="Cách nhập dữ liệu">
+        <div
+          className="import-mode-switch"
+          role="tablist"
+          aria-label="Cách nhập dữ liệu"
+        >
           <button
             type="button"
             className={mode === "local" ? "primary" : ""}
@@ -234,6 +241,17 @@ export default function ProductImport({
           >
             Nhập file JSON/CSV
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "paste"}
+            onClick={() => {
+              setMode("paste");
+              setError("");
+            }}
+          >
+            Dán thông số
+          </button>
         </div>
         {mode === "local" ? (
           <form onSubmit={loadFromUrl}>
@@ -257,18 +275,63 @@ export default function ProductImport({
                     ? "○ Đang kiểm tra dịch vụ trên máy…"
                     : "○ Dịch vụ trên máy chưa chạy"}
               </span>
-              <button type="button" onClick={() => void checkLocalService()} disabled={busy}>
+              <button
+                type="button"
+                onClick={() => void checkLocalService()}
+                disabled={busy}
+              >
                 Kiểm tra lại
               </button>
             </div>
             <small>
-              Cài một lần bằng <code>npm ci --prefix functions</code>, sau đó
+              Cài một lần bằng <code>npm ci</code>, <code>npm ci --prefix functions</code> và <code>npx playwright install chromium</code>, sau đó
               chạy <code>npm run import-server</code> tại thư mục dự án. Dịch vụ
               chỉ nghe trên máy này, không cần Firebase hoặc Blaze.
             </small>
-            <button className="primary" type="submit" disabled={busy || localStatus !== "connected"}>
+            <button
+              className="primary"
+              type="submit"
+              disabled={busy || localStatus !== "connected"}
+            >
               {busy ? "Đang lấy dữ liệu…" : "Nhận diện và xem trước"}
             </button>
+          </form>
+        ) : mode === "paste" ? (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              try {
+                const result = parsePastedSpecs(pasted, type);
+                setPreview(result);
+                setSelected(result.fields.map((f) => f.key));
+                setImages([]);
+                setError("");
+              } catch (error) {
+                setError(
+                  error instanceof Error
+                    ? error.message
+                    : "Không đọc được thông số.",
+                );
+              }
+            }}
+          >
+            <label>
+              Nội dung thông số từ nhà sản xuất
+              <textarea
+                rows={9}
+                value={pasted}
+                maxLength={100000}
+                onChange={(event) => setPasted(event.target.value)}
+                placeholder={"Socket: AM5\nChipset: AMD B650\nLoại RAM: DDR5"}
+                required
+              />
+            </label>
+            <small>
+              Dán bảng đã copy, hoặc mỗi dòng theo dạng Tên trường: Giá trị. Có
+              thể dùng dấu tab, dấu | hoặc tên trường và giá trị ở hai dòng liên
+              tiếp. Không cần chạy dịch vụ local.
+            </small>
+            <button type="submit">Phân tích và xem trước</button>
           </form>
         ) : (
           <div>
@@ -308,7 +371,35 @@ export default function ProductImport({
         )}
         {preview && (
           <>
-            {(preview.detectedBrand || preview.detectedLine || preview.parser) && (
+            {preview.completeness && (
+              <p role="status">
+                <strong>
+                  Đã lấy {preview.completeness.found}/
+                  {preview.completeness.total} trường thông số
+                </strong>{" "}
+                · {preview.images.length} ảnh sản phẩm
+              </p>
+            )}
+            {!!preview.attempts?.length && (
+              <details>
+                <summary>Các nguồn đã thử ({preview.attempts.length})</summary>
+                <ul>
+                  {preview.attempts.map((item, index) => (
+                    <li key={index}>
+                      <a href={item.url} target="_blank" rel="noreferrer">
+                        {item.url}
+                      </a>{" "}
+                      · {item.method === "browser" ? "Trình duyệt" : "HTML"} ·{" "}
+                      {item.status === "ok" ? "Đã đọc" : "Không đọc được"}
+                      {item.message && <small> — {item.message}</small>}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            {(preview.detectedBrand ||
+              preview.detectedLine ||
+              preview.parser) && (
               <p className="import-detection" role="status">
                 Nhận diện: <strong>{preview.detectedBrand || "—"}</strong>
                 {preview.detectedLine && ` · Dòng ${preview.detectedLine}`}

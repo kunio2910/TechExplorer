@@ -24,6 +24,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm ci --prefix functions
+      - run: node --test tests/import-pipeline.test.mjs
       - run: npm run build
       - run: npm run typecheck
       - run: npx playwright install --with-deps chromium

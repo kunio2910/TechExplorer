@@ -1,6 +1,25 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseProductFile } from "../lib/product-import";
+import { parseProductFile, parsePastedSpecs } from "../lib/product-import";
+
+test("pasted specs accept table delimiters and paired lines without HTML execution", () => {
+  const result = parsePastedSpecs(
+    "Socket: AM5\nLoại RAM\nDDR5\nChipset\tAMD B650\nDòng không xác định",
+    "Mainboard",
+  );
+  assert.equal(
+    result.fields.find((field) => field.key === "spec.Socket")?.value,
+    "AM5",
+  );
+  assert.equal(
+    result.fields.find((field) => field.key === "spec.Memory type")?.value,
+    "DDR5",
+  );
+  assert.equal(result.warnings.length, 1);
+  assert.throws(() =>
+    parsePastedSpecs("<script>alert(1)</script>", "Mainboard"),
+  );
+});
 
 test("imports nested specs, numeric values, safe images and source", () => {
   const p = parseProductFile(

@@ -11,6 +11,8 @@ Cài Node.js 22 hoặc mới hơn. Tại thư mục repository chạy:
 
 ```powershell
 npm ci --prefix functions
+npm ci
+npx playwright install chromium
 npm run import-server
 ```
 
@@ -26,14 +28,25 @@ sang URL thông số tương ứng. Nếu CDN trả thiếu nội dung, dịch v
 phiên bản chính hãng theo khu vực (`us.msi.com`, `vn.msi.com`, `uk.msi.com`) và
 giữ lại URL người dùng đã nhập làm nguồn sản phẩm.
 
-Trang chống bot, chỉ dựng thông số bằng JavaScript hoặc có cấu trúc riêng vẫn có
-thể trả về ít trường. Khi đó kiểm tra cảnh báo và dùng file JSON/CSV để bổ sung
-thông tin còn thiếu.
+Hệ thống tìm liên kết thông số ngay trong trang, áp dụng URL dự phòng từ
+`scripts/vendor-profiles.mjs`, đọc JSON-LD, JSON nhúng, bảng HTML và các mục
+thông số, rồi hợp nhất các trường và ảnh. Nếu vẫn thiếu dữ liệu, trình duyệt
+Chromium sẽ dựng trang bằng JavaScript để đọc lại. Quá trình giới hạn số nguồn
+và thời gian; website chặn bot hoặc không công bố thông số vẫn có thể thiếu.
+
+Bản xem trước hiển thị số trường đã lấy/tổng trường thông số, danh sách thiếu
+và các URL đã thử (HTML hoặc trình duyệt). Các nguồn mâu thuẫn giữ giá trị
+đọc được đầu tiên; cần đối chiếu trước khi áp dụng. Không suy đoán giá trị thiếu.
+
+Tab **Dán thông số** hoạt động ngay trên trình duyệt, không cần dịch vụ local.
+Copy bảng từ hãng hoặc nhập mỗi dòng `Socket: AM5`, `Loại RAM: DDR5`.
+Hỗ trợ cột ngăn bằng tab, dấu `|`, dấu `:` và cặp tên/giá trị ở hai dòng.
+Dòng chưa ánh xạ sẽ được báo để bổ sung thủ công.
 
 1. Chọn **Thêm** để tạo bản nháp hoặc chọn thẻ đang có.
 2. Chọn **Nhận diện từ URL** để lấy dữ liệu từ dịch vụ trên máy, hoặc chọn
    **Nhập JSON/CSV** để tải file và xem trước từng trường, từng ảnh.
-3. Mặc định chỉ điền ô trống; bỏ chọn nếu muốn thay thông tin đã có.
+3. Mặc định cập nhật các trường đã chọn; tick **Chỉ điền ô trống** nếu muốn giữ thông tin đã có.
 4. Chọn **Áp dụng vào bản nháp**, kiểm tra rồi chọn **Lưu lên Firestore**.
 
 JSON mẫu (tên khóa thông số giữ theo schema hiện tại):
