@@ -490,7 +490,7 @@ const assert = require("node:assert/strict");
       .click();
     assert.equal(
       await admin.getByLabel("Tên linh kiện", { exact: true }).inputValue(),
-      "RAM khôi phục QA",
+      "RAM nhập QA",
     );
     assert.equal(
       await admin.getByLabel("Mã sản phẩm", { exact: true }).inputValue(),

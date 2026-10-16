@@ -19,8 +19,12 @@ import ImageLightbox from "./ImageLightbox";
 
 export default function ComponentCanvas({
   component,
+  compareLabel,
+  onCompare,
 }: {
   component: CatalogComponent;
+  compareLabel?: string;
+  onCompare?: () => void;
 }) {
   const [ratio, setRatio] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -55,6 +59,11 @@ export default function ComponentCanvas({
         </span>
         <span>{component.type} · KHÔNG CÓ HOTSPOT</span>
       </div>
+      {onCompare && (
+        <button className="canvas-compare-toggle" onClick={onCompare}>
+          {compareLabel ?? "＋ Thêm vào so sánh"}
+        </button>
+      )}
       <div className="canvas-media-stack">
         <div
           className="image-stage component-image-stage"

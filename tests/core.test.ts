@@ -9,11 +9,11 @@ const seed = seedProducts[0];
 test("AM5 DDR5 pass and mismatched sockets/types fail", () => {
   assert.deepEqual(
     evaluateCompatibility(seed.spec, "AM5", "DDR5").map((r) => r.status),
-    ["compatible", "compatible", "warning"],
+    ["compatible", "compatible"],
   );
   assert.deepEqual(
     evaluateCompatibility(seed.spec, "AM4", "DDR4").map((r) => r.status),
-    ["incompatible", "incompatible", "warning"],
+    ["incompatible", "incompatible"],
   );
 });
 test("publishing requires image, metadata and five hotspots", () => {

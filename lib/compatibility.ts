@@ -33,11 +33,6 @@ export function evaluateCompatibility(
           status: "incompatible",
           message: `Không thể lắp ${memoryType} vào khe ${spec['Memory type'] ?? 'chưa xác định'}.`,
         },
-    {
-      status: "warning",
-      message:
-        "Hãy xác minh BIOS hỗ trợ CPU và danh sách RAM QVL trước khi mua.",
-    },
   ];
   if (ssdType) {
     const supported = (spec["SSD type"] ?? spec["SSD types"] ?? "")

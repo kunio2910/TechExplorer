@@ -21,12 +21,16 @@ export default function DeviceCanvas({
   onSelect,
   view,
   expert,
+  compareLabel,
+  onCompare,
 }: {
   product: Product;
   active: string | null;
   onSelect: (h: Hotspot) => void;
   view: string;
   expert: boolean;
+  compareLabel?: string;
+  onCompare?: () => void;
 }) {
   const [ratio, setRatio] = useState(720 / 950);
   const [zoom, setZoom] = useState(1);
@@ -78,6 +82,11 @@ export default function DeviceCanvas({
       >
         {showLabels ? "Ẩn chú thích" : "Hiện chú thích"}
       </button>
+      {onCompare && (
+        <button className="canvas-compare-toggle" onClick={onCompare}>
+          {compareLabel ?? "＋ Thêm vào so sánh"}
+        </button>
+      )}
       {source && (
         <ImageLightbox
           images={gallery.length ? gallery : [source]}

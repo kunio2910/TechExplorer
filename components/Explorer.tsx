@@ -1003,13 +1003,6 @@ export default function Explorer({
           ) : isCatalogComponent && activeComponent ? (
             <>
               <main className="explorer-main component-review">
-                <div className="review-actions">
-                  <button onClick={() => toggleComparison(activeComponent)}>
-                    {comparison.some((i) => i.id === activeComponent.id)
-                      ? "Bỏ khỏi so sánh"
-                      : "＋ Thêm vào so sánh"}
-                  </button>
-                </div>
                 <div className="breadcrumb">
                   <button type="button" onClick={browseComponents}>
                     Linh kiện
@@ -1039,6 +1032,12 @@ export default function Explorer({
                 <ComponentCanvas
                   key={activeComponent.id}
                   component={activeComponent}
+                  onCompare={() => toggleComparison(activeComponent)}
+                  compareLabel={
+                    comparison.some((i) => i.id === activeComponent.id)
+                      ? "Bỏ khỏi so sánh"
+                      : "＋ Thêm vào so sánh"
+                  }
                 />
                 <div className="explorer-footer">
                   <span>
@@ -1193,13 +1192,6 @@ export default function Explorer({
         ) : product ? (
           <>
             <main className="explorer-main">
-              <div className="review-actions">
-                <button onClick={() => toggleComparison(product)}>
-                  {comparison.some((i) => i.id === product.id)
-                    ? "Bỏ khỏi so sánh"
-                    : "＋ Thêm vào so sánh"}
-                </button>
-              </div>
               <div className="breadcrumb">
                 <button type="button" onClick={browseComponents}>
                   Linh kiện
@@ -1231,6 +1223,12 @@ export default function Explorer({
                   setActive(h.id);
                   setTab("Overview");
                 }}
+                onCompare={() => toggleComparison(product)}
+                compareLabel={
+                  comparison.some((i) => i.id === product.id)
+                    ? "Bỏ khỏi so sánh"
+                    : "＋ Thêm vào so sánh"
+                }
               />
               <div className="mode-heading">
                 <span className="eyebrow">CHỌN GÓC NHÌN</span>

@@ -200,6 +200,16 @@
   padding: 6px 10px;
   font-size: 11px;
 }
+.canvas-compare-toggle {
+  position: absolute;
+  top: 83px;
+  right: 18px;
+  z-index: 8;
+  min-height: 31px;
+  padding: 6px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
 .hide-callouts .hotspot .callout {
   visibility: hidden;
   opacity: 0;
@@ -446,6 +456,10 @@
   }
   .callout-toggle {
     top: 40px;
+    right: 10px;
+  }
+  .canvas-compare-toggle {
+    top: 78px;
     right: 10px;
   }
   .admin-validation {
@@ -696,7 +710,7 @@ select {
   display: grid;
   grid-template-columns: 218px minmax(0, 1fr) 344px;
   gap: 18px;
-  padding: 22px 22px 0;
+  padding: 12px 22px 0;
   max-width: 1900px;
   margin: auto;
 }

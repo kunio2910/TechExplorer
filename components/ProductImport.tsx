@@ -35,7 +35,7 @@ export default function ProductImport({
   const [preview, setPreview] = useState<Preview | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
-  const [onlyEmpty, setOnlyEmpty] = useState(true);
+  const [onlyEmpty, setOnlyEmpty] = useState(false);
   const [mode, setMode] = useState<"local" | "file">("local");
   const [url, setUrl] = useState("");
   const [localStatus, setLocalStatus] = useState<
