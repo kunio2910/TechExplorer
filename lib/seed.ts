@@ -125,7 +125,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "AMD Ryzen 7 9800X3D",
     brand: "AMD",
     model: "100-000001084WOF",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-cpu-9800x3d.svg",
     gallery: [],
     description: "Bộ xử lý gaming 8 nhân với bộ nhớ đệm 3D V-Cache cho socket AM5.",
     spec: {
@@ -146,7 +146,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "Intel Core i7-14700K",
     brand: "Intel",
     model: "BX8071514700K",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-cpu-i7-14700k.svg",
     gallery: [],
     description: "Bộ xử lý Intel Core thế hệ 14 dành cho socket LGA1700.",
     spec: {
@@ -167,7 +167,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "Corsair Vengeance 32GB DDR5",
     brand: "Corsair",
     model: "CMK32GX5M2B6000Z30",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-ram-corsair.svg",
     gallery: [],
     description: "Bộ nhớ DDR5 hai thanh, tối ưu cho cấu hình gaming hiện đại.",
     spec: {
@@ -187,7 +187,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "Kingston FURY Beast 32GB DDR5",
     brand: "Kingston",
     model: "KF560C36BBEK2-32",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-ram-kingston.svg",
     gallery: [],
     description: "Kit RAM DDR5 32GB có tản nhiệt thấp, dễ lắp cùng nhiều loại tản CPU.",
     spec: {
@@ -207,7 +207,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "Samsung 990 PRO 2TB",
     brand: "Samsung",
     model: "MZ-V9P2T0BW",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-ssd-990pro.svg",
     gallery: [],
     description: "SSD NVMe PCIe 4.0 tốc độ cao cho hệ điều hành và thư viện game.",
     spec: {
@@ -228,7 +228,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "Crucial T500 1TB",
     brand: "Crucial",
     model: "CT1000T500SSD8",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-ssd-t500.svg",
     gallery: [],
     description: "SSD M.2 NVMe PCIe 4.0 cân bằng giữa tốc độ và dung lượng.",
     spec: {
@@ -249,7 +249,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "ASUS TUF Gaming GeForce RTX 4070 SUPER",
     brand: "ASUS",
     model: "TUF-RTX4070S-O12G-GAMING",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-gpu-rtx4070-super.svg",
     gallery: [],
     description: "Card đồ họa RTX 4070 SUPER 12GB cho gaming 1440p và sáng tạo nội dung.",
     spec: {
@@ -270,7 +270,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "GIGABYTE Radeon RX 7800 XT GAMING OC",
     brand: "GIGABYTE",
     model: "GV-R78XTGAMING OC-16GD",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-gpu-rx7800xt.svg",
     gallery: [],
     description: "Card đồ họa Radeon 16GB hướng đến trải nghiệm gaming 1440p.",
     spec: {
@@ -291,7 +291,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "Corsair RM850e 850W",
     brand: "Corsair",
     model: "CP-9020263-NA",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-psu-rme.svg",
     gallery: [],
     description: "Nguồn 850W chuẩn ATX 3.0, dây modular, phù hợp cấu hình gaming cao cấp.",
     spec: {
@@ -311,7 +311,7 @@ const originalSeedComponents: CatalogComponent[] = [
     name: "Seasonic FOCUS GX-750",
     brand: "Seasonic",
     model: "FOCUS-GX-750",
-    imageUrl: "/media/mainboard.webp",
+    imageUrl: "/media/sample-psu-focus.svg",
     gallery: [],
     description: "Nguồn 750W chuẩn 80 PLUS Gold cho cấu hình gaming phổ thông và trung cấp.",
     spec: {

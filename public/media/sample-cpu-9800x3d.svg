@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="title desc">
+  <title id="title">AMD Ryzen 7 9800X3D</title><desc id="desc">Ảnh minh họa bộ xử lý AMD Ryzen 7 9800X3D.</desc>
+  <defs><linearGradient id="bg" x1="0" x2="1"><stop stop-color="#061724"/><stop offset="1" stop-color="#0d3045"/></linearGradient><linearGradient id="chip" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1bd5ff"/><stop offset="1" stop-color="#14759b"/></linearGradient></defs>
+  <rect width="640" height="480" rx="24" fill="url(#bg)"/><g stroke="#1d91b8" opacity=".35"><path d="M50 110h120M470 110h120M50 370h120M470 370h120"/><path d="M110 50v80M530 50v80M110 350v80M530 350v80"/></g>
+  <g fill="none" stroke="#6be5ff" stroke-width="8"><path d="M183 160h-30v-28M457 160h30v-28M183 320h-30v28M457 320h30v28"/></g>
+  <rect x="190" y="130" width="260" height="220" rx="20" fill="#0a1f2f" stroke="#45d9ff" stroke-width="5"/><rect x="235" y="175" width="170" height="130" rx="10" fill="url(#chip)" stroke="#c4f7ff" stroke-width="4"/><g stroke="#7beaff" stroke-width="5"><path d="M215 145v-28M245 145v-28M275 145v-28M305 145v-28M335 145v-28M365 145v-28M395 145v-28M425 145v-28M215 335v28M245 335v28M275 335v28M305 335v28M335 335v28M365 335v28M395 335v28M425 335v28"/></g>
+  <text x="320" y="247" text-anchor="middle" fill="#04111b" font-family="Arial,sans-serif" font-size="25" font-weight="700">RYZEN 7</text><text x="320" y="278" text-anchor="middle" fill="#04111b" font-family="Arial,sans-serif" font-size="28" font-weight="700">9800X3D</text><text x="320" y="420" text-anchor="middle" fill="#9ceeff" font-family="Arial,sans-serif" font-size="18">AMD · AM5 · 8C / 16T</text>
+</svg>
