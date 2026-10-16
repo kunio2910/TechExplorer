@@ -272,7 +272,10 @@ async function deleteDeviceWithVersions(
   await deleteDoc(doc(firestore, group, id));
 }
 
-export async function seedProductsToFirestore(products: Product[]) {
+export async function seedProductsToFirestore(
+  products: Product[],
+  sampleComponents: CatalogComponent[] = [],
+) {
   const components = new Map<string, CatalogComponent>();
   await Promise.all(
     products.map(async (product) => {
@@ -293,6 +296,7 @@ export async function seedProductsToFirestore(products: Product[]) {
       });
     }),
   );
+  for (const component of sampleComponents) components.set(component.id, component);
   await Promise.all(
     [...components.values()].map((component) =>
       saveCatalogComponent(component),

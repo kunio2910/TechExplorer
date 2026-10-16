@@ -31,6 +31,7 @@ import AdminProductDetail from "./AdminProductDetail";
 import { linkComponent } from "@/lib/linked-components";
 import { normalizeSpecs, normalizeSpecValue } from "@/lib/spec-units";
 import { categoryLabel } from "@/lib/labels";
+import { seedCatalogComponents } from "@/lib/seed";
 import type {
   AssociatedComponent,
   CatalogComponent,
@@ -702,7 +703,10 @@ export default function StaticAdmin({
       return;
     setBusy(true);
     try {
-      const result = await seedProductsToFirestore(initialProducts);
+      const result = await seedProductsToFirestore(
+        initialProducts,
+        seedCatalogComponents,
+      );
       await reloadFromFirestore();
       setMessage(
         `Đã đồng bộ ${result.products} mainboard và ${result.components} linh kiện mẫu lên Firestore.`,
