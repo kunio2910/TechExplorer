@@ -26,6 +26,7 @@ import {
 import AdminRecovery from "./AdminRecovery";
 import ProductImport from "./ProductImport";
 import AdminVersions from "./AdminVersions";
+import AdminProductList from "./AdminProductList";
 import { linkComponent } from "@/lib/linked-components";
 import { normalizeSpecs, normalizeSpecValue } from "@/lib/spec-units";
 import { categoryLabel } from "@/lib/labels";
@@ -36,7 +37,16 @@ import type {
   Hotspot,
   Product,
 } from "@/lib/types";
-import { CircleX, Copy as CopyIcon, Plus } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleX,
+  Copy as CopyIcon,
+  Download,
+  List as ListIcon,
+  Plus,
+  Settings as SettingsIcon,
+  Upload,
+} from "lucide-react";
 import ComponentCanvas from "./ComponentCanvas";
 import ImageGallery from "./ImageGallery";
 import MediaEditor from "./MediaEditor";
@@ -52,6 +62,7 @@ import {
 } from "@/lib/catalog-tools";
 
 type AdminTab = "Mainboard" | CatalogComponentType;
+type AdminView = "editor" | "list" | "settings";
 const tabs: AdminTab[] = ["Mainboard", "CPU", "RAM", "SSD", "GPU", "PSU"];
 const statuses: AssociatedComponent["compatibility"][] = [
   "compatible",
@@ -132,6 +143,7 @@ export default function StaticAdmin({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tab, setTab] = useState<AdminTab>("Mainboard");
+  const [adminView, setAdminView] = useState<AdminView>("editor");
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [components, setComponents] = useState<CatalogComponent[]>([]);
   const [product, setProduct] = useState<Product>(() =>
@@ -763,6 +775,7 @@ export default function StaticAdmin({
   }
 
   function chooseTab(nextTab: AdminTab) {
+    setAdminView("editor");
     setShowTrash(false);
     setTab(nextTab);
     setQueryText("");
@@ -775,6 +788,37 @@ export default function StaticAdmin({
         ),
       );
     }
+  }
+
+  function openDevice(item: Device) {
+    if (
+      dirty &&
+      !window.confirm("Có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?")
+    )
+      return;
+    if ("media" in item) {
+      setTab("Mainboard");
+      setProduct(copy(item));
+    } else {
+      setTab(item.type);
+      setComponent(copy(item));
+    }
+    setShowTrash(false);
+    setSelectedHotspot(null);
+    setAdminView("editor");
+  }
+
+  function addDevice(type: Exclude<AdminTab, never>) {
+    if (type === "Mainboard") {
+      setTab("Mainboard");
+      setProduct(blankProduct());
+    } else {
+      setTab(type);
+      setComponent(blankComponent(type));
+    }
+    setShowTrash(false);
+    setSelectedHotspot(null);
+    setAdminView("editor");
   }
 
   function addHotspot(event: React.MouseEvent<HTMLDivElement>) {
@@ -917,7 +961,7 @@ export default function StaticAdmin({
         if (
           busy &&
           target.closest(
-            ".admin-card, .add-record, .admin-tabs button, .admin-header-actions a, .admin-header-actions button",
+            ".admin-card, .admin-product-card, .add-record, .admin-tabs button, .admin-header-actions a, .admin-header-actions button",
           )
         ) {
           event.preventDefault();
@@ -927,7 +971,7 @@ export default function StaticAdmin({
         if (
           dirty &&
           target.closest(
-            ".admin-card, .admin-card-duplicate, .add-record, .admin-tabs button, .admin-header-actions a, .admin-header-actions button",
+            ".admin-card, .admin-card-duplicate, .admin-product-card, .add-record, .admin-tabs button, .admin-header-actions a, .admin-header-actions button",
           ) &&
           !window.confirm(
             "Có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?",
@@ -948,10 +992,25 @@ export default function StaticAdmin({
         </div>
         <div className="admin-header-actions">
           <span className="admin-user">{user.email}</span>
+          <button
+            className={`admin-header-nav ${adminView === "list" ? "active" : ""}`}
+            onClick={() => setAdminView("list")}
+          >
+            <ListIcon size={16} /> Danh sách
+          </button>
+          <button
+            className={`admin-header-nav admin-settings-icon ${adminView === "settings" ? "active" : ""}`}
+            aria-label="Mở cài đặt"
+            title="Cài đặt"
+            onClick={() => setAdminView("settings")}
+          >
+            <SettingsIcon size={18} />
+          </button>
           <button onClick={() => void signOut(auth)}>Đăng xuất</button>
           <a href={`${basePath}/`}>← Về Explorer</a>
         </div>
       </div>
+      <div className="admin-editor-view" hidden={adminView !== "editor"}>
       <div className="admin-toolbar">
         {importTarget && (
           <ProductImport
@@ -1017,22 +1076,6 @@ export default function StaticAdmin({
               Thử tải lại
             </button>
           )}
-          <label className="backup-upload">
-            Khôi phục JSON
-            <input
-              type="file"
-              accept=".json,application/json"
-              disabled={busy || !loaded}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void previewBackup(file);
-                e.target.value = "";
-              }}
-            />
-          </label>
-          <button disabled={busy} onClick={downloadBackup}>
-            ↓ Backup JSON
-          </button>
           <button disabled={busy} onClick={() => void seedFirestore()}>
             ↥ Đồng bộ dữ liệu mẫu
           </button>
@@ -1064,41 +1107,6 @@ export default function StaticAdmin({
             setSelectedHotspot(null);
           }}
         />
-      )}
-      {backup && (
-        <section className="backup-preview">
-          <h2>Xem trước khôi phục</h2>
-          <p>
-            {backup.products.length} mainboard · {backup.components.length} linh
-            kiện
-          </p>
-          <ul>
-            {[...backup.products, ...backup.components].map((item, index) => (
-              <li key={index}>
-                {item.name} · {statusLabel(item.status)}
-              </li>
-            ))}
-          </ul>
-          <label>
-            Cách nhập
-            <select
-              value={restoreMode}
-              onChange={(e) =>
-                setRestoreMode(e.target.value as "add" | "update")
-              }
-            >
-              <option value="add">Chỉ thêm ID mới, bỏ qua ID đã tồn tại</option>
-              <option value="update">Thêm mới và cập nhật ID đã tồn tại</option>
-            </select>
-          </label>
-          <p>Cập nhật sẽ ghi đè toàn bộ thông tin của sản phẩm có cùng ID.</p>
-          <button disabled={busy} onClick={() => void applyBackup()}>
-            Xác nhận khôi phục
-          </button>
-          <button disabled={busy} onClick={() => setBackup(null)}>
-            Hủy
-          </button>
-        </section>
       )}
       {showTrash && (
         <section className="backup-preview">
@@ -2069,6 +2077,105 @@ export default function StaticAdmin({
           )}
         </aside>
       </div>
+      </div>
+      {adminView !== "editor" && message && (
+        <div className="admin-message" role="status">
+          {message}
+        </div>
+      )}
+      {adminView === "list" && (
+        <AdminProductList
+          products={products}
+          components={components}
+          onOpen={openDevice}
+          onDuplicate={(item) => {
+            if ("media" in item) void duplicateProduct(item);
+            else void duplicateComponent(item);
+          }}
+          onDelete={(item) => {
+            if ("media" in item) void removeProductById(item.id, item.name);
+            else void removeComponentById(item.id, item.name);
+          }}
+          onAdd={addDevice}
+        />
+      )}
+      {adminView === "settings" && (
+        <section className="admin-settings" aria-labelledby="admin-settings-title">
+          <div className="admin-view-heading">
+            <div>
+              <span className="eyebrow">TECH EXPLORER / CẤU HÌNH</span>
+              <h2 id="admin-settings-title">Cài đặt quản lý</h2>
+              <p>Backup và khôi phục dữ liệu catalog bằng tệp JSON.</p>
+            </div>
+            <button className="admin-header-nav" onClick={() => setAdminView("editor")}>
+              <ArrowLeft size={16} /> Về trình chỉnh sửa
+            </button>
+          </div>
+          <div className="admin-settings-grid">
+            <section className="admin-settings-card">
+              <h3><Download size={18} /> Backup dữ liệu</h3>
+              <p>
+                Tải toàn bộ mainboard, CPU, RAM, SSD, GPU và PSU hiện có, bao
+                gồm cả các bản ghi trong thùng rác.
+              </p>
+              <button disabled={busy || !loaded} onClick={downloadBackup}>
+                ↓ Backup JSON
+              </button>
+            </section>
+            <section className="admin-settings-card">
+              <h3><Upload size={18} /> Khôi phục dữ liệu</h3>
+              <p>
+                Chọn file JSON đã backup để kiểm tra trước. Bạn có thể chỉ
+                thêm ID mới hoặc cập nhật cả sản phẩm đã tồn tại.
+              </p>
+              <label className="backup-upload">
+                Chọn file JSON
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  disabled={busy || !loaded}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void previewBackup(file);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+            </section>
+          </div>
+          {backup && (
+            <section className="backup-preview">
+              <h2>Xem trước khôi phục</h2>
+              <p>
+                {backup.products.length} mainboard · {backup.components.length} linh
+                kiện
+              </p>
+              <ul>
+                {[...backup.products, ...backup.components].map((item, index) => (
+                  <li key={index}>{item.name} · {statusLabel(item.status)}</li>
+                ))}
+              </ul>
+              <label>
+                Cách nhập
+                <select
+                  value={restoreMode}
+                  onChange={(event) =>
+                    setRestoreMode(event.target.value as "add" | "update")
+                  }
+                >
+                  <option value="add">Chỉ thêm ID mới, bỏ qua ID đã tồn tại</option>
+                  <option value="update">Thêm mới và cập nhật ID đã tồn tại</option>
+                </select>
+              </label>
+              <p>Cập nhật sẽ ghi đè toàn bộ thông tin của sản phẩm có cùng ID.</p>
+              <button disabled={busy} onClick={() => void applyBackup()}>
+                Xác nhận khôi phục
+              </button>
+              <button disabled={busy} onClick={() => setBackup(null)}>Hủy</button>
+            </section>
+          )}
+        </section>
+      )}
     </main>
   );
 }

@@ -126,6 +126,15 @@ const assert = require("node:assert/strict");
       ),
       0,
     );
+    await page.getByRole("button", { name: "Danh sách", exact: true }).click();
+    await page.getByRole("heading", { name: "Danh sách sản phẩm", exact: true }).waitFor();
+    assert.ok((await page.locator(".admin-product-card").count()) >= 1);
+    await page.locator(".admin-search-field input").fill("ASUS");
+    assert.ok((await page.locator(".admin-product-card").count()) >= 1);
+    await page.getByRole("button", { name: "Mở cài đặt", exact: true }).click();
+    await page.getByRole("heading", { name: "Cài đặt quản lý", exact: true }).waitFor();
+    await page.getByRole("button", { name: /Về trình chỉnh sửa/ }).click();
+    await page.getByRole("heading", { name: "Thông tin mainboard", exact: true }).waitFor();
     await page
       .locator(".admin-tabs")
       .getByRole("button", { name: "CPU", exact: true })
