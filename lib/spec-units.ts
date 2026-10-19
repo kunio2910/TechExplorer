@@ -10,6 +10,9 @@ const units: Record<string, string> = {
   "Memory speed": "MT/s",
   "Read speed": "MB/s",
   "Write speed": "MB/s",
+  Voltage: "V",
+  Length: "mm",
+  TBW: "TBW",
 };
 const canonical: Record<string, string> = {
   gb: "GB",
@@ -25,6 +28,8 @@ const canonical: Record<string, string> = {
   "mb/s": "MB/s",
   "gb/s": "GB/s",
   mm: "mm",
+  v: "V",
+  tbw: "TBW",
 };
 export function normalizeSpecValue(key: string, input: string): string {
   let value = input.trim().replace(/\s+/g, " ");
@@ -56,7 +61,7 @@ export function normalizeSpecValue(key: string, input: string): string {
   if (/^\d+,\d{1,2}(\s*[a-z/]+)?$/i.test(value))
     value = value.replace(",", ".");
   value = value.replace(
-    /(\d(?:[\d.]*\d)?)(\s*)(GiB|MiB|GB|TB|MB|kW|W|GHz|MHz|MT\/s|MB\/s|GB\/s|mm)\b/gi,
+    /(\d(?:[\d.]*\d)?)(\s*)(GiB|MiB|GB|TB|MB|kW|W|GHz|MHz|MT\/s|MB\/s|GB\/s|mm|V|TBW)\b/gi,
     (_, number: string, _space: string, unit: string) =>
       `${number} ${canonical[unit.toLowerCase()]}`,
   );

@@ -58,6 +58,7 @@ import {
   unarchive,
   stamp,
   specTemplates,
+  suggestionsForSpec,
   specLabel,
   publishChecks,
   type Device,
@@ -134,6 +135,42 @@ function duplicateSlug(slug: string, products: Product[]) {
     suffix += 1;
   }
   return candidate;
+}
+
+function SpecInput({
+  type,
+  field,
+  value,
+  onChange,
+  onBlur,
+}: {
+  type: string;
+  field: string;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur: (value: string) => void;
+}) {
+  const options = suggestionsForSpec(type, field);
+  const listId = `spec-options-${type}-${field}`.replace(/[^a-z0-9-]/gi, "-");
+  return (
+    <label>
+      {specLabel(field)}
+      <input
+        list={options.length ? listId : undefined}
+        value={value}
+        placeholder={options.length ? "Chọn hoặc nhập giá trị khác" : undefined}
+        onBlur={(event) => onBlur(event.target.value)}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {options.length > 0 && (
+        <datalist id={listId}>
+          {options.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      )}
+    </label>
+  );
 }
 
 export default function StaticAdmin({
@@ -1371,31 +1408,25 @@ export default function StaticAdmin({
                     ...specTemplates.Mainboard,
                     ...product.spec,
                   }).map(([key, value]) => (
-                    <label key={key}>
-                      {specLabel(key)}
-                      <input
-                        value={value}
-                        onBlur={(event) =>
-                          updateProduct({
-                            spec: {
-                              ...product.spec,
-                              [key]: normalizeSpecValue(
-                                key,
-                                event.target.value,
-                              ),
-                            },
-                          })
-                        }
-                        onChange={(event) =>
-                          updateProduct({
-                            spec: {
-                              ...product.spec,
-                              [key]: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
+                    <SpecInput
+                      key={key}
+                      type="Mainboard"
+                      field={key}
+                      value={value}
+                      onBlur={(next) =>
+                        updateProduct({
+                          spec: {
+                            ...product.spec,
+                            [key]: normalizeSpecValue(key, next),
+                          },
+                        })
+                      }
+                      onChange={(next) =>
+                        updateProduct({
+                          spec: { ...product.spec, [key]: next },
+                        })
+                      }
+                    />
                   ))}
                 </div>
                 <button
@@ -1812,31 +1843,25 @@ export default function StaticAdmin({
                     ...specTemplates[tab],
                     ...component.spec,
                   }).map(([key, value]) => (
-                    <label key={key}>
-                      {specLabel(key)}
-                      <input
-                        value={value}
-                        onBlur={(event) =>
-                          updateComponentDraft({
-                            spec: {
-                              ...component.spec,
-                              [key]: normalizeSpecValue(
-                                key,
-                                event.target.value,
-                              ),
-                            },
-                          })
-                        }
-                        onChange={(event) =>
-                          updateComponentDraft({
-                            spec: {
-                              ...component.spec,
-                              [key]: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
+                    <SpecInput
+                      key={key}
+                      type={tab}
+                      field={key}
+                      value={value}
+                      onBlur={(next) =>
+                        updateComponentDraft({
+                          spec: {
+                            ...component.spec,
+                            [key]: normalizeSpecValue(key, next),
+                          },
+                        })
+                      }
+                      onChange={(next) =>
+                        updateComponentDraft({
+                          spec: { ...component.spec, [key]: next },
+                        })
+                      }
+                    />
                   ))}
                 </div>
                 <button
