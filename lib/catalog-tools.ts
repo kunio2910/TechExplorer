@@ -179,22 +179,26 @@ const typeSpecificSuggestions: Record<string, Record<string, string[]>> = {
   },
   RAM: {
     "Memory type": ["DDR4", "DDR5", "LPDDR5", "LPDDR5X"],
+    Capacity: ["4 GB", "8 GB", "16 GB", "24 GB", "32 GB", "48 GB", "64 GB", "96 GB", "128 GB"],
     "Form factor": ["DIMM", "SO-DIMM"],
     Cache: [],
   },
   SSD: {
+    Capacity: ["250 GB", "500 GB", "1 TB", "2 TB", "4 TB", "8 TB"],
     "Memory type": [],
     Interface: ["SATA III 6Gb/s", "NVMe PCIe 3.0 x4", "NVMe PCIe 4.0 x4", "NVMe PCIe 5.0 x4"],
     "Form factor": ["M.2 2230", "M.2 2242", "M.2 2260", "M.2 2280", "2.5 inch"],
     Cache: ["Không có", "DRAM", "HMB"],
   },
   GPU: {
+    "Boost clock": ["1800 MHz", "2200 MHz", "2500 MHz", "2800 MHz"],
     "Memory type": ["GDDR6", "GDDR6X", "GDDR7"],
     "Base clock": ["1200 MHz", "1500 MHz", "1800 MHz", "2200 MHz"],
     Interface: ["PCIe 3.0 x16", "PCIe 4.0 x16", "PCIe 5.0 x16"],
     Cache: [],
   },
   PSU: {
+    "Form factor": ["ATX", "SFX", "SFX-L", "TFX", "Flex ATX"],
     "Memory type": [],
     Cache: [],
   },

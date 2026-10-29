@@ -80,12 +80,14 @@ export function candidateCompatibility(
   candidate: Device,
   build: PcBuild,
   devices: Device[],
-): { ok: boolean; reason?: string } {
+): { ok: boolean; reason?: string; unknown?: boolean } {
   const selected = selectedParts(build, devices);
   const mismatch = (label: string, left?: string, right?: string) =>
     left && right && !specMatches(label === "Socket" ? "Socket" : "Memory type", left, right)
       ? { ok: false, reason: `${left} không khớp ${right}` }
-      : { ok: true };
+      : !left || !right
+        ? { ok: true, unknown: true, reason: "Chưa đủ thông số để xác định." }
+        : { ok: true };
   if (slot === "CPU" && selected.Mainboard)
     return mismatch("Socket", candidate.spec.Socket, selected.Mainboard.spec.Socket);
   if (slot === "RAM" && selected.Mainboard)
@@ -133,7 +135,7 @@ export function candidateCompatibility(
     if (target && wattage && wattage < target)
       return { ok: false, reason: `Cần khoảng ${target} W cho CPU/GPU hiện tại` };
   }
-  return { ok: true };
+  return { ok: true, unknown: true, reason: "Chưa đủ kiểm tra để xác nhận. Cần đối chiếu thông số." };
 }
 export function checkBuild(build: PcBuild, devices: Device[]): BuildCheck[] {
   const p = selectedParts(build, devices),

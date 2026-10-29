@@ -105,7 +105,6 @@ export default function PcBuilder({
   }
   function repairCheck(title: string) {
     if (!build) return;
-    const next = { ...build.parts };
     const slot = title.includes("Socket")
       ? "CPU"
       : title.includes("bộ nhớ") || title.includes("khe RAM") || title.includes("Dung lượng RAM")
@@ -115,10 +114,11 @@ export default function PcBuilder({
           : title.includes("Nguồn")
             ? "PSU"
             : undefined;
-    if (slot && next[slot]) {
-      delete next[slot];
-      update({ parts: next });
-      onNotice(`Đã bỏ ${categoryLabel(slot)} để bạn chọn lại linh kiện tương thích.`);
+    if (slot) {
+      setSlot(slot);
+      setSearch("");
+      setCompatibleOnly(true);
+      onNotice("Chọn thiết bị thay thế. Thiết bị hiện tại được giữ đến khi bạn chọn.");
     }
   }
   if (!build)
@@ -425,7 +425,9 @@ export default function PcBuilder({
                     <strong>{item.name}</strong>
                     {compatibleOnly && (
                       <small className="compatibility-hint">
-                        ✓ Phù hợp với cấu hình hiện tại
+                        {candidateCompatibility(slot, item, build, devices).unknown
+                          ? "! Chưa đủ thông tin để xác nhận"
+                          : "✓ Phù hợp theo thông số đã kiểm tra"}
                       </small>
                     )}
                     <small>
