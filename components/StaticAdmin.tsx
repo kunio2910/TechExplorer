@@ -26,6 +26,10 @@ import {
 import AdminRecovery from "./AdminRecovery";
 import ProductImport from "./ProductImport";
 import AdminVersions from "./AdminVersions";
+import SpecGroups from "./SpecGroups";
+import SuggestionInput from "./SuggestionInput";
+import useActionDialog from "./useActionDialog";
+import { FeedbackInbox } from "./DataFeedback";
 import AdminProductList from "./AdminProductList";
 import AdminProductDetail from "./AdminProductDetail";
 import { linkComponent } from "@/lib/linked-components";
@@ -155,12 +159,15 @@ function SpecInput({
   return (
     <label>
       {specLabel(field)}
-      <input
-        list={options.length ? listId : undefined}
+      <SuggestionInput
         value={value}
-        placeholder={options.length ? "Chọn hoặc nhập giá trị khác" : undefined}
-        onBlur={(event) => onBlur(event.target.value)}
-        onChange={(event) => onChange(event.target.value)}
+        options={options}
+        onBlur={onBlur}
+        onChange={onChange}
+        label={specLabel(field)}
+        multiple={["SSD type", "Connectors", "Outputs", "Protection"].includes(
+          field,
+        )}
       />
       {options.length > 0 && (
         <datalist id={listId}>
@@ -180,6 +187,8 @@ export default function StaticAdmin({
 }) {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [email, setEmail] = useState("");
+  const { ask, modal: actionModal } = useActionDialog();
+  const confirmedNavigation = useRef(false);
   const [password, setPassword] = useState("");
   const [tab, setTab] = useState<AdminTab>("Mainboard");
   const [adminView, setAdminView] = useState<AdminView>("editor");
@@ -255,10 +264,7 @@ export default function StaticAdmin({
   }
   async function applyBackup() {
     if (!backup) return;
-    if (
-      dirty &&
-      !window.confirm("Bạn có thay đổi chưa lưu. Tiếp tục khôi phục?")
-    )
+    if (dirty && !(await ask("Bạn có thay đổi chưa lưu. Tiếp tục khôi phục?")))
       return;
     setBusy(true);
     try {
@@ -469,7 +475,7 @@ export default function StaticAdmin({
   }
 
   async function removeProductById(id: string, name: string) {
-    if (!window.confirm("Bạn có chắc muốn xóa “" + name + "” không?")) return;
+    if (!(await ask("Chuyển “" + name + "” vào thùng rác?"))) return;
     setBusy(true);
     try {
       const item = products.find((p) => p.id === id);
@@ -489,7 +495,7 @@ export default function StaticAdmin({
   }
 
   async function removeComponentById(id: string, name: string) {
-    if (!window.confirm("Bạn có chắc muốn xóa “" + name + "” không?")) return;
+    if (!(await ask("Chuyển “" + name + "” vào thùng rác?"))) return;
     setBusy(true);
     try {
       const item = components.find((c) => c.id === id);
@@ -735,7 +741,7 @@ export default function StaticAdmin({
   async function seedFirestore() {
     if (
       dirty &&
-      !window.confirm("Bạn có thay đổi chưa lưu. Tiếp tục đồng bộ dữ liệu mẫu?")
+      !(await ask("Bạn có thay đổi chưa lưu. Tiếp tục đồng bộ dữ liệu mẫu?"))
     )
       return;
     setBusy(true);
@@ -768,14 +774,14 @@ export default function StaticAdmin({
   async function trashAction(item: Device, permanent: boolean) {
     if (
       dirty &&
-      !window.confirm(
+      !(await ask(
         "Có thay đổi chưa lưu. Bỏ thay đổi để cập nhật dữ liệu từ thùng rác?",
-      )
+      ))
     )
       return;
     if (
       permanent &&
-      !window.confirm(`Xóa vĩnh viễn “${item.name}”? Không thể hoàn tác.`)
+      !(await ask(`Xóa vĩnh viễn “${item.name}”? Không thể hoàn tác.`))
     )
       return;
     setBusy(true);
@@ -833,10 +839,11 @@ export default function StaticAdmin({
     }
   }
 
-  function openDevice(item: Device) {
+  async function openDevice(item: Device) {
     if (
       dirty &&
-      !window.confirm("Có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?")
+      !confirmedNavigation.current &&
+      !(await ask("Có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?"))
     )
       return;
     if ("media" in item) {
@@ -1023,18 +1030,29 @@ export default function StaticAdmin({
         }
         if (
           dirty &&
+          !confirmedNavigation.current &&
           target.closest(
             ".admin-card, .admin-card-duplicate, .admin-product-card, .add-record, .admin-tabs button, .admin-header-actions a, .admin-header-actions button",
-          ) &&
-          !window.confirm(
-            "Có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?",
           )
         ) {
           event.preventDefault();
           event.stopPropagation();
+          const control = target.closest<HTMLElement>(
+            "button,a,.admin-card,.admin-product-card",
+          );
+          void ask(
+            "Có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?",
+          ).then((answer) => {
+            if (answer && control?.isConnected) {
+              confirmedNavigation.current = true;
+              control.click();
+              confirmedNavigation.current = false;
+            }
+          });
         }
       }}
     >
+      {actionModal}
       <div className="admin-header">
         <div>
           <span className="eyebrow">TECH EXPLORER / FIRESTORE</span>
@@ -1064,615 +1082,737 @@ export default function StaticAdmin({
         </div>
       </div>
       <div className="admin-editor-view" hidden={adminView !== "editor"}>
-      <div className="admin-toolbar">
-        {importTarget && (
-          <ProductImport
-            device={importTarget.device}
-            type={importTarget.type}
-            onClose={() => setImportTarget(null)}
-            onApply={(next) => {
-              if ("media" in next) setProduct(next);
-              else setComponent(next);
-              setMessage(
-                "Đã áp dụng vào bản nháp. Kiểm tra rồi bấm Lưu lên Firestore.",
-              );
+        <div className="admin-toolbar">
+          {importTarget && (
+            <ProductImport
+              device={importTarget.device}
+              type={importTarget.type}
+              onClose={() => setImportTarget(null)}
+              onApply={(next) => {
+                if ("media" in next) setProduct(next);
+                else setComponent(next);
+                setMessage(
+                  "Đã áp dụng vào bản nháp. Kiểm tra rồi bấm Lưu lên Firestore.",
+                );
+              }}
+            />
+          )}
+          <nav className="admin-tabs" aria-label="Danh mục phần cứng">
+            {tabs.map((item) => (
+              <button
+                key={item}
+                className={tab === item ? "active" : ""}
+                onClick={() => chooseTab(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </nav>
+          <div className="admin-toolbar-actions">
+            <button
+              disabled={busy}
+              onClick={() =>
+                setImportTarget({
+                  device: copy(tab === "Mainboard" ? product : component),
+                  type: tab,
+                })
+              }
+            >
+              Nhập JSON/CSV
+            </button>
+            <span role="status">
+              {!connected
+                ? "Mất kết nối"
+                : syncError
+                  ? "Lỗi đồng bộ"
+                  : busy
+                    ? "Đang đồng bộ…"
+                    : !loaded
+                      ? "Đang tải dữ liệu…"
+                      : dirty
+                        ? "Có thay đổi chưa lưu"
+                        : "Đã đồng bộ"}
+            </span>
+            {syncError && (
+              <button
+                disabled={busy}
+                onClick={async () => {
+                  if (
+                    !dirty ||
+                    (await ask("Bỏ thay đổi chưa lưu để tải lại dữ liệu?"))
+                  )
+                    void reloadFromFirestore();
+                }}
+              >
+                Thử tải lại
+              </button>
+            )}
+            <button disabled={busy} onClick={() => void seedFirestore()}>
+              ↥ Đồng bộ dữ liệu mẫu
+            </button>
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() => void saveCurrent()}
+            >
+              ✓ Lưu lên Firestore
+            </button>
+          </div>
+        </div>
+        {message && (
+          <div className="admin-message" role="status">
+            {message}
+          </div>
+        )}
+        {loaded && user && (
+          <AdminRecovery
+            uid={user.uid}
+            disabled={busy}
+            item={tab === "Mainboard" ? product : component}
+            dirty={dirty}
+            onRecover={(item) => {
+              setTab("media" in item ? "Mainboard" : item.type);
+              if ("media" in item) setProduct(copy(item));
+              else setComponent(copy(item));
+              setShowTrash(false);
+              setSelectedHotspot(null);
             }}
           />
         )}
-        <nav className="admin-tabs" aria-label="Danh mục phần cứng">
-          {tabs.map((item) => (
+        {showTrash && (
+          <section className="backup-preview">
+            <div className="section-heading">
+              <h2>Thùng rác ({trash.length})</h2>
+              <button onClick={() => setShowTrash(false)}>Đóng</button>
+            </div>
+            {trash.length === 0 ? (
+              <p>Thùng rác trống.</p>
+            ) : (
+              trash.map((item) => (
+                <div key={item.id} className="trash-row">
+                  <span>
+                    <strong>{item.name}</strong>
+                    <small>
+                      {item.deletedAt
+                        ? new Date(item.deletedAt).toLocaleString("vi-VN")
+                        : ""}
+                    </small>
+                  </span>
+                  <button
+                    disabled={busy}
+                    onClick={() => void trashAction(item, false)}
+                  >
+                    Khôi phục
+                  </button>
+                  <button
+                    className="danger"
+                    disabled={busy}
+                    onClick={() => void trashAction(item, true)}
+                  >
+                    Xóa vĩnh viễn
+                  </button>
+                </div>
+              ))
+            )}
+          </section>
+        )}
+        <div className="admin-workspace" inert={busy}>
+          <aside className="admin-list-panel">
+            <div className="admin-list-heading">
+              <h2>Danh sách {tab === "Mainboard" ? "mainboard" : tab}</h2>
+              <span>{activeItems.length} mục</span>
+            </div>
+            <label className="admin-status-filter">
+              Trạng thái
+              <select
+                value={recordFilter}
+                onChange={(e) => setRecordFilter(e.target.value)}
+              >
+                <option value="all">Tất cả</option>
+                <option value="published">Đã xuất bản</option>
+                <option value="draft">Bản nháp</option>
+              </select>
+            </label>
+            <input
+              aria-label="Tìm dữ liệu"
+              placeholder="Tìm theo tên, hãng…"
+              value={queryText}
+              onChange={(event) => setQueryText(event.target.value)}
+            />
+            <div className="admin-cards">
+              {tab === "Mainboard"
+                ? filteredProducts.map((item) => (
+                    <div className="admin-card-row" key={item.id}>
+                      <button
+                        type="button"
+                        className={`admin-card ${product.id === item.id ? "selected" : ""}`}
+                        onClick={() => setProduct(copy(item))}
+                      >
+                        <img
+                          className="admin-card-image"
+                          src={assetUrl(item.media.top)}
+                          alt=""
+                        />
+                        <strong>{item.name}</strong>
+                        <span>
+                          {item.brand} · {item.spec.Socket ?? "Chưa có socket"}
+                        </span>
+                        <em>{statusLabel(item.status)}</em>
+                        <small>
+                          Cập nhật:{" "}
+                          {item.updatedAt
+                            ? new Date(item.updatedAt).toLocaleDateString(
+                                "vi-VN",
+                              )
+                            : "Chưa có"}
+                        </small>
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-card-duplicate"
+                        aria-label={"Nhân đôi " + item.name}
+                        title="Nhân đôi thiết bị"
+                        disabled={busy}
+                        onClick={() => void duplicateProduct(item)}
+                      >
+                        <CopyIcon size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-card-delete"
+                        aria-label={"Xóa " + item.name}
+                        title="Chuyển vào thùng rác"
+                        disabled={busy}
+                        onClick={() =>
+                          void removeProductById(item.id, item.name)
+                        }
+                      >
+                        <CircleX size={19} />
+                      </button>
+                    </div>
+                  ))
+                : filteredComponents.map((item) => (
+                    <div className="admin-card-row" key={item.id}>
+                      <button
+                        type="button"
+                        className={`admin-card ${component.id === item.id ? "selected" : ""}`}
+                        onClick={() => setComponent(copy(item))}
+                      >
+                        <img
+                          className="admin-card-image"
+                          src={assetUrl(item.imageUrl)}
+                          alt=""
+                        />
+                        <strong>{item.name}</strong>
+                        <span>
+                          {item.brand || "Chưa có hãng"} ·{" "}
+                          {item.model || "Chưa có mã"}
+                        </span>
+                        <em>{statusLabel(item.status)}</em>
+                        <small>
+                          Cập nhật:{" "}
+                          {item.updatedAt
+                            ? new Date(item.updatedAt).toLocaleDateString(
+                                "vi-VN",
+                              )
+                            : "Chưa có"}
+                        </small>
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-card-duplicate"
+                        aria-label={"Nhân đôi " + item.name}
+                        title="Nhân đôi thiết bị"
+                        disabled={busy}
+                        onClick={() => void duplicateComponent(item)}
+                      >
+                        <CopyIcon size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-card-delete"
+                        aria-label={"Xóa " + item.name}
+                        title="Chuyển vào thùng rác"
+                        disabled={busy}
+                        onClick={() =>
+                          void removeComponentById(item.id, item.name)
+                        }
+                      >
+                        <CircleX size={19} />
+                      </button>
+                    </div>
+                  ))}
+              {!activeItems.length && (
+                <p className="muted">
+                  Chưa có dữ liệu. Hãy đồng bộ mẫu hoặc thêm mới.
+                </p>
+              )}
+            </div>
             <button
-              key={item}
-              className={tab === item ? "active" : ""}
-              onClick={() => chooseTab(item)}
+              className="add-record"
+              onClick={() =>
+                tab === "Mainboard"
+                  ? setProduct(blankProduct())
+                  : setComponent(blankComponent(tab))
+              }
             >
-              {item}
+              ＋ Thêm {tab === "Mainboard" ? "mainboard" : tab}
             </button>
-          ))}
-        </nav>
-        <div className="admin-toolbar-actions">
-          <button
-            disabled={busy}
-            onClick={() =>
-              setImportTarget({
-                device: copy(tab === "Mainboard" ? product : component),
-                type: tab,
-              })
-            }
-          >
-            Nhập JSON/CSV
-          </button>
-          <span role="status">
-            {!connected
-              ? "Mất kết nối"
-              : syncError
-                ? "Lỗi đồng bộ"
-                : busy
-                  ? "Đang đồng bộ…"
-                  : !loaded
-                    ? "Đang tải dữ liệu…"
-                    : dirty
-                      ? "Có thay đổi chưa lưu"
-                      : "Đã đồng bộ"}
-          </span>
-          {syncError && (
             <button
-              disabled={busy}
-              onClick={() => {
-                if (
-                  !dirty ||
-                  window.confirm("Bỏ thay đổi chưa lưu để tải lại dữ liệu?")
-                )
-                  void reloadFromFirestore();
-              }}
+              className="add-record"
+              onClick={() => setShowTrash((v) => !v)}
             >
-              Thử tải lại
+              ♲ Thùng rác ({trash.length})
             </button>
-          )}
-          <button disabled={busy} onClick={() => void seedFirestore()}>
-            ↥ Đồng bộ dữ liệu mẫu
-          </button>
-          <button
-            className="primary"
-            disabled={busy}
-            onClick={() => void saveCurrent()}
-          >
-            ✓ Lưu lên Firestore
-          </button>
-        </div>
-      </div>
-      {message && (
-        <div className="admin-message" role="status">
-          {message}
-        </div>
-      )}
-      {loaded && user && (
-        <AdminRecovery
-          uid={user.uid}
-          disabled={busy}
-          item={tab === "Mainboard" ? product : component}
-          dirty={dirty}
-          onRecover={(item) => {
-            setTab("media" in item ? "Mainboard" : item.type);
-            if ("media" in item) setProduct(copy(item));
-            else setComponent(copy(item));
-            setShowTrash(false);
-            setSelectedHotspot(null);
-          }}
-        />
-      )}
-      {showTrash && (
-        <section className="backup-preview">
-          <div className="section-heading">
-            <h2>Thùng rác ({trash.length})</h2>
-            <button onClick={() => setShowTrash(false)}>Đóng</button>
-          </div>
-          {trash.length === 0 ? (
-            <p>Thùng rác trống.</p>
-          ) : (
-            trash.map((item) => (
-              <div key={item.id} className="trash-row">
-                <span>
-                  <strong>{item.name}</strong>
-                  <small>
-                    {item.deletedAt
-                      ? new Date(item.deletedAt).toLocaleString("vi-VN")
-                      : ""}
-                  </small>
-                </span>
+          </aside>
+
+          {tab === "Mainboard" ? (
+            <section className="admin-form">
+              <div className="admin-section-heading">
+                <h2>Thông tin mainboard</h2>
+                <span>ID: {product.id}</span>
+              </div>
+              <div className="admin-form-grid">
+                <label>
+                  Tên sản phẩm
+                  <input
+                    value={product.name}
+                    onChange={(event) =>
+                      updateProduct({ name: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Thương hiệu
+                  <input
+                    value={product.brand}
+                    onChange={(event) =>
+                      updateProduct({ brand: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Đường dẫn (slug)
+                  <input
+                    value={product.slug}
+                    onChange={(event) =>
+                      updateProduct({ slug: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Trạng thái
+                  <select
+                    value={product.status}
+                    onChange={(event) =>
+                      updateProduct({
+                        status: event.target.value as Product["status"],
+                      })
+                    }
+                  >
+                    <option value="published">Đã xuất bản</option>
+                    <option value="draft">Bản nháp</option>
+                  </select>
+                </label>
+                <label className="wide">
+                  Mô tả
+                  <textarea
+                    value={product.description}
+                    onChange={(event) =>
+                      updateProduct({ description: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+              <details className="admin-collapsible">
+                <summary>Thông số kỹ thuật</summary>
+                <div className="admin-collapsible-body">
+                  <SpecGroups>
+                    {Object.entries({
+                      ...specTemplates.Mainboard,
+                      ...product.spec,
+                    }).map(([key, value]) => (
+                      <SpecInput
+                        key={key}
+                        type="Mainboard"
+                        field={key}
+                        value={value}
+                        onBlur={(next) =>
+                          updateProduct({
+                            spec: {
+                              ...product.spec,
+                              [key]: normalizeSpecValue(key, next),
+                            },
+                          })
+                        }
+                        onChange={(next) =>
+                          updateProduct({
+                            spec: { ...product.spec, [key]: next },
+                          })
+                        }
+                      />
+                    ))}
+                  </SpecGroups>
+                  <button
+                    onClick={async () => {
+                      const key = await ask("Thêm thông số mới", true);
+                      if (key?.trim())
+                        updateProduct({
+                          spec: { ...product.spec, [key.trim()]: "" },
+                        });
+                    }}
+                  >
+                    ＋ Thêm thông số
+                  </button>
+                </div>
+              </details>
+              <details className="admin-collapsible">
+                <summary>Linh kiện đi kèm</summary>
+                <div className="admin-collapsible-body">
+                  <label>
+                    Thêm từ thư viện linh kiện
+                    <select
+                      aria-label="Thêm từ thư viện linh kiện"
+                      value=""
+                      onChange={(event) => {
+                        const source = components.find(
+                          (x) => x.id === event.target.value,
+                        );
+                        if (source)
+                          updateProduct({
+                            components: [
+                              ...product.components,
+                              linkComponent(source),
+                            ],
+                          });
+                      }}
+                    >
+                      <option value="">Chọn linh kiện đã lưu…</option>
+                      {components
+                        .filter(
+                          (x) =>
+                            !x.deletedAt &&
+                            !product.components.some(
+                              (entry) =>
+                                entry.catalogId === x.id || entry.id === x.id,
+                            ),
+                        )
+                        .map((source) => (
+                          <option key={source.id} value={source.id}>
+                            {source.type} · {source.name} ·{" "}
+                            {statusLabel(source.status)}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <p className="muted">
+                    Thông tin của linh kiện liên kết được lấy từ thư viện. Xuất
+                    bản linh kiện trước khi xuất bản mainboard có liên kết đó.
+                  </p>
+                  {product.components.map((item) => (
+                    <div className="associated-component" key={item.id}>
+                      <div className="associated-component-heading">
+                        <strong>{categoryLabel(item.category)}</strong>
+                        <button
+                          className="danger"
+                          onClick={() =>
+                            updateProduct({
+                              components: product.components.filter(
+                                (entry) => entry.id !== item.id,
+                              ),
+                            })
+                          }
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                      <label>
+                        Loại
+                        <select
+                          value={item.category}
+                          onChange={(event) =>
+                            updateProduct({
+                              components: product.components.map((entry) =>
+                                entry.id === item.id
+                                  ? {
+                                      ...entry,
+                                      catalogId: undefined,
+                                      category: event.target
+                                        .value as AssociatedComponent["category"],
+                                    }
+                                  : entry,
+                              ),
+                            })
+                          }
+                        >
+                          {[
+                            "CPU",
+                            "RAM",
+                            "GPU",
+                            "Storage",
+                            "PSU",
+                            "Cooling",
+                            "Case",
+                            "Other",
+                          ].map((value) => (
+                            <option key={value} value={value}>
+                              {categoryLabel(value)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Liên kết thư viện
+                        <select
+                          aria-label={`Liên kết thư viện ${item.id}`}
+                          value={item.catalogId ?? ""}
+                          onChange={(event) => {
+                            const source = components.find(
+                              (x) => x.id === event.target.value,
+                            );
+                            updateProduct({
+                              components: product.components.map((entry) =>
+                                entry.id !== item.id
+                                  ? entry
+                                  : source
+                                    ? {
+                                        ...entry,
+                                        catalogId: source.id,
+                                        category: source.category,
+                                        name: source.name,
+                                        model: source.model,
+                                      }
+                                    : { ...entry, catalogId: undefined },
+                              ),
+                            });
+                          }}
+                        >
+                          <option value="">Nhập thông tin riêng</option>
+                          {components
+                            .filter(
+                              (x) =>
+                                x.category === item.category && !x.deletedAt,
+                            )
+                            .map((source) => (
+                              <option key={source.id} value={source.id}>
+                                {source.name} · {statusLabel(source.status)}
+                              </option>
+                            ))}
+                          {item.catalogId &&
+                            !components.some(
+                              (x) => x.id === item.catalogId,
+                            ) && (
+                              <option value={item.catalogId}>
+                                Liên kết không còn khả dụng
+                              </option>
+                            )}
+                        </select>
+                      </label>
+                      <label>
+                        Tên
+                        <input
+                          value={
+                            components.find((x) => x.id === item.catalogId)
+                              ?.name ?? item.name
+                          }
+                          readOnly={!!item.catalogId}
+                          onChange={(event) =>
+                            updateProduct({
+                              components: product.components.map((entry) =>
+                                entry.id === item.id
+                                  ? { ...entry, name: event.target.value }
+                                  : entry,
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Mã sản phẩm
+                        <input
+                          value={
+                            components.find((x) => x.id === item.catalogId)
+                              ?.model ?? item.model
+                          }
+                          readOnly={!!item.catalogId}
+                          onChange={(event) =>
+                            updateProduct({
+                              components: product.components.map((entry) =>
+                                entry.id === item.id
+                                  ? { ...entry, model: event.target.value }
+                                  : entry,
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Trạng thái
+                        <select
+                          value={item.compatibility}
+                          onChange={(event) =>
+                            updateProduct({
+                              components: product.components.map((entry) =>
+                                entry.id === item.id
+                                  ? {
+                                      ...entry,
+                                      compatibility: event.target
+                                        .value as AssociatedComponent["compatibility"],
+                                    }
+                                  : entry,
+                              ),
+                            })
+                          }
+                        >
+                          {statuses.map((value) => (
+                            <option key={value} value={value}>
+                              {compatibilityLabel(value)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  ))}
+                  <button onClick={addAssociatedComponent}>
+                    ＋ Thêm linh kiện đi kèm
+                  </button>
+                </div>
+              </details>
+              <details className="admin-collapsible">
+                <summary>Ảnh mặt trước</summary>
+                <div className="admin-collapsible-body">
+                  <label>
+                    Link ảnh
+                    <ImageReferenceInput
+                      value={product.media.top ?? ""}
+                      placeholder="https://… hoặc /media/…"
+                      onChange={(event) =>
+                        updateProduct({
+                          media: {
+                            ...product.media,
+                            top: event.target.value,
+                            main: event.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                  {(product.gallery ?? []).length > 0 && (
+                    <div className="admin-gallery-fields">
+                      {(product.gallery ?? []).map((url, index) => (
+                        <div className="admin-gallery-field" key={index}>
+                          <label>
+                            <span>Thumbnail {index + 1}</span>
+                            <ImageReferenceInput
+                              type="url"
+                              value={url}
+                              placeholder="https://… hoặc /media/…"
+                              onChange={(event) =>
+                                updateProductGallery(index, event.target.value)
+                              }
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="admin-gallery-remove"
+                            aria-label={`Xóa thumbnail ${index + 1}`}
+                            onClick={() => removeProductGalleryField(index)}
+                          >
+                            <CircleX size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="admin-gallery-add"
+                    onClick={addProductGalleryField}
+                  >
+                    <Plus size={16} /> Thêm thumbnail
+                  </button>
+                </div>
+              </details>
+              <div className="admin-actions">
                 <button
+                  className="primary"
                   disabled={busy}
-                  onClick={() => void trashAction(item, false)}
+                  onClick={() => void saveCurrent()}
                 >
-                  Khôi phục
+                  Lưu thay đổi
                 </button>
                 <button
                   className="danger"
                   disabled={busy}
-                  onClick={() => void trashAction(item, true)}
+                  onClick={() => void removeCurrent()}
                 >
-                  Xóa vĩnh viễn
+                  Xóa
                 </button>
               </div>
-            ))
-          )}
-        </section>
-      )}
-      <div className="admin-workspace" inert={busy}>
-        <aside className="admin-list-panel">
-          <div className="admin-list-heading">
-            <h2>Danh sách {tab === "Mainboard" ? "mainboard" : tab}</h2>
-            <span>{activeItems.length} mục</span>
-          </div>
-          <label className="admin-status-filter">
-            Trạng thái
-            <select
-              value={recordFilter}
-              onChange={(e) => setRecordFilter(e.target.value)}
-            >
-              <option value="all">Tất cả</option>
-              <option value="published">Đã xuất bản</option>
-              <option value="draft">Bản nháp</option>
-            </select>
-          </label>
-          <input
-            aria-label="Tìm dữ liệu"
-            placeholder="Tìm theo tên, hãng…"
-            value={queryText}
-            onChange={(event) => setQueryText(event.target.value)}
-          />
-          <div className="admin-cards">
-            {tab === "Mainboard"
-              ? filteredProducts.map((item) => (
-                  <div className="admin-card-row" key={item.id}>
-                    <button
-                      type="button"
-                      className={`admin-card ${product.id === item.id ? "selected" : ""}`}
-                      onClick={() => setProduct(copy(item))}
-                    >
-                      <img
-                        className="admin-card-image"
-                        src={assetUrl(item.media.top)}
-                        alt=""
-                      />
-                      <strong>{item.name}</strong>
-                      <span>
-                        {item.brand} · {item.spec.Socket ?? "Chưa có socket"}
-                      </span>
-                      <em>{statusLabel(item.status)}</em>
-                      <small>
-                        Cập nhật:{" "}
-                        {item.updatedAt
-                          ? new Date(item.updatedAt).toLocaleDateString("vi-VN")
-                          : "Chưa có"}
-                      </small>
-                    </button>
-                    <button
-                      type="button"
-                      className="admin-card-duplicate"
-                      aria-label={"Nhân đôi " + item.name}
-                      title="Nhân đôi thiết bị"
-                      disabled={busy}
-                      onClick={() => void duplicateProduct(item)}
-                    >
-                      <CopyIcon size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="admin-card-delete"
-                      aria-label={"Xóa " + item.name}
-                      title="Chuyển vào thùng rác"
-                      disabled={busy}
-                      onClick={() => void removeProductById(item.id, item.name)}
-                    >
-                      <CircleX size={19} />
-                    </button>
-                  </div>
-                ))
-              : filteredComponents.map((item) => (
-                  <div className="admin-card-row" key={item.id}>
-                    <button
-                      type="button"
-                      className={`admin-card ${component.id === item.id ? "selected" : ""}`}
-                      onClick={() => setComponent(copy(item))}
-                    >
-                      <img
-                        className="admin-card-image"
-                        src={assetUrl(item.imageUrl)}
-                        alt=""
-                      />
-                      <strong>{item.name}</strong>
-                      <span>
-                        {item.brand || "Chưa có hãng"} ·{" "}
-                        {item.model || "Chưa có mã"}
-                      </span>
-                      <em>{statusLabel(item.status)}</em>
-                      <small>
-                        Cập nhật:{" "}
-                        {item.updatedAt
-                          ? new Date(item.updatedAt).toLocaleDateString("vi-VN")
-                          : "Chưa có"}
-                      </small>
-                    </button>
-                    <button
-                      type="button"
-                      className="admin-card-duplicate"
-                      aria-label={"Nhân đôi " + item.name}
-                      title="Nhân đôi thiết bị"
-                      disabled={busy}
-                      onClick={() => void duplicateComponent(item)}
-                    >
-                      <CopyIcon size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      className="admin-card-delete"
-                      aria-label={"Xóa " + item.name}
-                      title="Chuyển vào thùng rác"
-                      disabled={busy}
-                      onClick={() =>
-                        void removeComponentById(item.id, item.name)
-                      }
-                    >
-                      <CircleX size={19} />
-                    </button>
-                  </div>
-                ))}
-            {!activeItems.length && (
-              <p className="muted">
-                Chưa có dữ liệu. Hãy đồng bộ mẫu hoặc thêm mới.
-              </p>
-            )}
-          </div>
-          <button
-            className="add-record"
-            onClick={() =>
-              tab === "Mainboard"
-                ? setProduct(blankProduct())
-                : setComponent(blankComponent(tab))
-            }
-          >
-            ＋ Thêm {tab === "Mainboard" ? "mainboard" : tab}
-          </button>
-          <button
-            className="add-record"
-            onClick={() => setShowTrash((v) => !v)}
-          >
-            ♲ Thùng rác ({trash.length})
-          </button>
-        </aside>
-
-        {tab === "Mainboard" ? (
-          <section className="admin-form">
-            <div className="admin-section-heading">
-              <h2>Thông tin mainboard</h2>
-              <span>ID: {product.id}</span>
-            </div>
-            <div className="admin-form-grid">
-              <label>
-                Tên sản phẩm
-                <input
-                  value={product.name}
-                  onChange={(event) =>
-                    updateProduct({ name: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Thương hiệu
-                <input
-                  value={product.brand}
-                  onChange={(event) =>
-                    updateProduct({ brand: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Đường dẫn (slug)
-                <input
-                  value={product.slug}
-                  onChange={(event) =>
-                    updateProduct({ slug: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Trạng thái
-                <select
-                  value={product.status}
-                  onChange={(event) =>
-                    updateProduct({
-                      status: event.target.value as Product["status"],
-                    })
-                  }
-                >
-                  <option value="published">Đã xuất bản</option>
-                  <option value="draft">Bản nháp</option>
-                </select>
-              </label>
-              <label className="wide">
-                Mô tả
-                <textarea
-                  value={product.description}
-                  onChange={(event) =>
-                    updateProduct({ description: event.target.value })
-                  }
-                />
-              </label>
-            </div>
-            <details className="admin-collapsible">
-              <summary>Thông số kỹ thuật</summary>
-              <div className="admin-collapsible-body">
-                <div className="admin-form-grid">
-                  {Object.entries({
-                    ...specTemplates.Mainboard,
-                    ...product.spec,
-                  }).map(([key, value]) => (
-                    <SpecInput
-                      key={key}
-                      type="Mainboard"
-                      field={key}
-                      value={value}
-                      onBlur={(next) =>
-                        updateProduct({
-                          spec: {
-                            ...product.spec,
-                            [key]: normalizeSpecValue(key, next),
-                          },
-                        })
-                      }
-                      onChange={(next) =>
-                        updateProduct({
-                          spec: { ...product.spec, [key]: next },
-                        })
-                      }
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={() => {
-                    const key = window.prompt("Tên thông số mới");
-                    if (key?.trim())
-                      updateProduct({
-                        spec: { ...product.spec, [key.trim()]: "" },
-                      });
-                  }}
-                >
-                  ＋ Thêm thông số
-                </button>
+            </section>
+          ) : (
+            <section className="admin-form">
+              <div className="admin-section-heading">
+                <h2>Thông tin {tab}</h2>
+                <span>ID: {component.id}</span>
               </div>
-            </details>
-            <details className="admin-collapsible">
-              <summary>Linh kiện đi kèm</summary>
-              <div className="admin-collapsible-body">
+              <div className="admin-form-grid">
                 <label>
-                  Thêm từ thư viện linh kiện
-                  <select
-                    aria-label="Thêm từ thư viện linh kiện"
-                    value=""
-                    onChange={(event) => {
-                      const source = components.find(
-                        (x) => x.id === event.target.value,
-                      );
-                      if (source)
-                        updateProduct({
-                          components: [
-                            ...product.components,
-                            linkComponent(source),
-                          ],
-                        });
-                    }}
-                  >
-                    <option value="">Chọn linh kiện đã lưu…</option>
-                    {components
-                      .filter(
-                        (x) =>
-                          !x.deletedAt &&
-                          !product.components.some(
-                            (entry) =>
-                              entry.catalogId === x.id || entry.id === x.id,
-                          ),
-                      )
-                      .map((source) => (
-                        <option key={source.id} value={source.id}>
-                          {source.type} · {source.name} ·{" "}
-                          {statusLabel(source.status)}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <p className="muted">
-                  Thông tin của linh kiện liên kết được lấy từ thư viện. Xuất
-                  bản linh kiện trước khi xuất bản mainboard có liên kết đó.
-                </p>
-                {product.components.map((item) => (
-                  <div className="associated-component" key={item.id}>
-                    <div className="associated-component-heading">
-                      <strong>{categoryLabel(item.category)}</strong>
-                      <button
-                        className="danger"
-                        onClick={() =>
-                          updateProduct({
-                            components: product.components.filter(
-                              (entry) => entry.id !== item.id,
-                            ),
-                          })
-                        }
-                      >
-                        Xóa
-                      </button>
-                    </div>
-                    <label>
-                      Loại
-                      <select
-                        value={item.category}
-                        onChange={(event) =>
-                          updateProduct({
-                            components: product.components.map((entry) =>
-                              entry.id === item.id
-                                ? {
-                                    ...entry,
-                                    catalogId: undefined,
-                                    category: event.target
-                                      .value as AssociatedComponent["category"],
-                                  }
-                                : entry,
-                            ),
-                          })
-                        }
-                      >
-                        {[
-                          "CPU",
-                          "RAM",
-                          "GPU",
-                          "Storage",
-                          "PSU",
-                          "Cooling",
-                          "Case",
-                          "Other",
-                        ].map((value) => (
-                          <option key={value} value={value}>
-                            {categoryLabel(value)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Liên kết thư viện
-                      <select
-                        aria-label={`Liên kết thư viện ${item.id}`}
-                        value={item.catalogId ?? ""}
-                        onChange={(event) => {
-                          const source = components.find(
-                            (x) => x.id === event.target.value,
-                          );
-                          updateProduct({
-                            components: product.components.map((entry) =>
-                              entry.id !== item.id
-                                ? entry
-                                : source
-                                  ? {
-                                      ...entry,
-                                      catalogId: source.id,
-                                      category: source.category,
-                                      name: source.name,
-                                      model: source.model,
-                                    }
-                                  : { ...entry, catalogId: undefined },
-                            ),
-                          });
-                        }}
-                      >
-                        <option value="">Nhập thông tin riêng</option>
-                        {components
-                          .filter(
-                            (x) => x.category === item.category && !x.deletedAt,
-                          )
-                          .map((source) => (
-                            <option key={source.id} value={source.id}>
-                              {source.name} · {statusLabel(source.status)}
-                            </option>
-                          ))}
-                        {item.catalogId &&
-                          !components.some((x) => x.id === item.catalogId) && (
-                            <option value={item.catalogId}>
-                              Liên kết không còn khả dụng
-                            </option>
-                          )}
-                      </select>
-                    </label>
-                    <label>
-                      Tên
-                      <input
-                        value={
-                          components.find((x) => x.id === item.catalogId)
-                            ?.name ?? item.name
-                        }
-                        readOnly={!!item.catalogId}
-                        onChange={(event) =>
-                          updateProduct({
-                            components: product.components.map((entry) =>
-                              entry.id === item.id
-                                ? { ...entry, name: event.target.value }
-                                : entry,
-                            ),
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Mã sản phẩm
-                      <input
-                        value={
-                          components.find((x) => x.id === item.catalogId)
-                            ?.model ?? item.model
-                        }
-                        readOnly={!!item.catalogId}
-                        onChange={(event) =>
-                          updateProduct({
-                            components: product.components.map((entry) =>
-                              entry.id === item.id
-                                ? { ...entry, model: event.target.value }
-                                : entry,
-                            ),
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Trạng thái
-                      <select
-                        value={item.compatibility}
-                        onChange={(event) =>
-                          updateProduct({
-                            components: product.components.map((entry) =>
-                              entry.id === item.id
-                                ? {
-                                    ...entry,
-                                    compatibility: event.target
-                                      .value as AssociatedComponent["compatibility"],
-                                  }
-                                : entry,
-                            ),
-                          })
-                        }
-                      >
-                        {statuses.map((value) => (
-                          <option key={value} value={value}>
-                            {compatibilityLabel(value)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                ))}
-                <button onClick={addAssociatedComponent}>
-                  ＋ Thêm linh kiện đi kèm
-                </button>
-              </div>
-            </details>
-            <details className="admin-collapsible">
-              <summary>Ảnh mặt trước</summary>
-              <div className="admin-collapsible-body">
-                <label>
-                  Link ảnh
-                  <ImageReferenceInput
-                    value={product.media.top ?? ""}
-                    placeholder="https://… hoặc /media/…"
+                  Tên linh kiện
+                  <input
+                    value={component.name}
                     onChange={(event) =>
-                      updateProduct({
-                        media: {
-                          ...product.media,
-                          top: event.target.value,
-                          main: event.target.value,
-                        },
-                      })
+                      updateComponentDraft({ name: event.target.value })
                     }
                   />
                 </label>
-                {(product.gallery ?? []).length > 0 && (
-                  <div className="admin-gallery-fields">
-                    {(product.gallery ?? []).map((url, index) => (
+                <label>
+                  Thương hiệu
+                  <input
+                    value={component.brand}
+                    onChange={(event) =>
+                      updateComponentDraft({ brand: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Mã sản phẩm
+                  <input
+                    value={component.model}
+                    onChange={(event) =>
+                      updateComponentDraft({ model: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Trạng thái
+                  <select
+                    value={component.status}
+                    onChange={(event) =>
+                      updateComponentDraft({
+                        status: event.target
+                          .value as CatalogComponent["status"],
+                      })
+                    }
+                  >
+                    <option value="published">Đã xuất bản</option>
+                    <option value="draft">Bản nháp</option>
+                  </select>
+                </label>
+                <label className="wide">
+                  Link ảnh linh kiện
+                  <ImageReferenceInput
+                    type="url"
+                    value={component.imageUrl ?? ""}
+                    placeholder="https://… hoặc /media/…"
+                    onChange={(event) =>
+                      updateComponentDraft({ imageUrl: event.target.value })
+                    }
+                  />
+                </label>
+                {(component.gallery ?? []).length > 0 && (
+                  <div className="admin-gallery-fields wide">
+                    {(component.gallery ?? []).map((url, index) => (
                       <div className="admin-gallery-field" key={index}>
                         <label>
                           <span>Thumbnail {index + 1}</span>
@@ -1681,7 +1821,7 @@ export default function StaticAdmin({
                             value={url}
                             placeholder="https://… hoặc /media/…"
                             onChange={(event) =>
-                              updateProductGallery(index, event.target.value)
+                              updateComponentGallery(index, event.target.value)
                             }
                           />
                         </label>
@@ -1689,7 +1829,7 @@ export default function StaticAdmin({
                           type="button"
                           className="admin-gallery-remove"
                           aria-label={`Xóa thumbnail ${index + 1}`}
-                          onClick={() => removeProductGalleryField(index)}
+                          onClick={() => removeComponentGalleryField(index)}
                         >
                           <CircleX size={18} />
                         </button>
@@ -1699,425 +1839,321 @@ export default function StaticAdmin({
                 )}
                 <button
                   type="button"
-                  className="admin-gallery-add"
-                  onClick={addProductGalleryField}
+                  className="admin-gallery-add wide"
+                  onClick={addComponentGalleryField}
                 >
                   <Plus size={16} /> Thêm thumbnail
                 </button>
-              </div>
-            </details>
-            <div className="admin-actions">
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={() => void saveCurrent()}
-              >
-                Lưu thay đổi
-              </button>
-              <button
-                className="danger"
-                disabled={busy}
-                onClick={() => void removeCurrent()}
-              >
-                Xóa
-              </button>
-            </div>
-          </section>
-        ) : (
-          <section className="admin-form">
-            <div className="admin-section-heading">
-              <h2>Thông tin {tab}</h2>
-              <span>ID: {component.id}</span>
-            </div>
-            <div className="admin-form-grid">
-              <label>
-                Tên linh kiện
-                <input
-                  value={component.name}
-                  onChange={(event) =>
-                    updateComponentDraft({ name: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Thương hiệu
-                <input
-                  value={component.brand}
-                  onChange={(event) =>
-                    updateComponentDraft({ brand: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Mã sản phẩm
-                <input
-                  value={component.model}
-                  onChange={(event) =>
-                    updateComponentDraft({ model: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Trạng thái
-                <select
-                  value={component.status}
-                  onChange={(event) =>
-                    updateComponentDraft({
-                      status: event.target.value as CatalogComponent["status"],
-                    })
-                  }
-                >
-                  <option value="published">Đã xuất bản</option>
-                  <option value="draft">Bản nháp</option>
-                </select>
-              </label>
-              <label className="wide">
-                Link ảnh linh kiện
-                <ImageReferenceInput
-                  type="url"
-                  value={component.imageUrl ?? ""}
-                  placeholder="https://… hoặc /media/…"
-                  onChange={(event) =>
-                    updateComponentDraft({ imageUrl: event.target.value })
-                  }
-                />
-              </label>
-              {(component.gallery ?? []).length > 0 && (
-                <div className="admin-gallery-fields wide">
-                  {(component.gallery ?? []).map((url, index) => (
-                    <div className="admin-gallery-field" key={index}>
-                      <label>
-                        <span>Thumbnail {index + 1}</span>
-                        <ImageReferenceInput
-                          type="url"
-                          value={url}
-                          placeholder="https://… hoặc /media/…"
-                          onChange={(event) =>
-                            updateComponentGallery(index, event.target.value)
-                          }
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="admin-gallery-remove"
-                        aria-label={`Xóa thumbnail ${index + 1}`}
-                        onClick={() => removeComponentGalleryField(index)}
-                      >
-                        <CircleX size={18} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <button
-                type="button"
-                className="admin-gallery-add wide"
-                onClick={addComponentGalleryField}
-              >
-                <Plus size={16} /> Thêm thumbnail
-              </button>
-              <label className="wide">
-                Mô tả
-                <textarea
-                  value={component.description}
-                  onChange={(event) =>
-                    updateComponentDraft({ description: event.target.value })
-                  }
-                />
-              </label>
-              <label className="wide">
-                Ghi chú tương thích
-                <textarea
-                  value={component.notes}
-                  onChange={(event) =>
-                    updateComponentDraft({ notes: event.target.value })
-                  }
-                />
-              </label>
-            </div>
-            <details className="admin-collapsible">
-              <summary>Thông số {tab}</summary>
-              <div className="admin-collapsible-body">
-                <div className="admin-form-grid">
-                  {Object.entries({
-                    ...specTemplates[tab],
-                    ...component.spec,
-                  }).map(([key, value]) => (
-                    <SpecInput
-                      key={key}
-                      type={tab}
-                      field={key}
-                      value={value}
-                      onBlur={(next) =>
-                        updateComponentDraft({
-                          spec: {
-                            ...component.spec,
-                            [key]: normalizeSpecValue(key, next),
-                          },
-                        })
-                      }
-                      onChange={(next) =>
-                        updateComponentDraft({
-                          spec: { ...component.spec, [key]: next },
-                        })
-                      }
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={() => {
-                    const key = window.prompt("Tên thông số mới");
-                    if (key?.trim())
-                      updateComponentDraft({
-                        spec: { ...component.spec, [key.trim()]: "" },
-                      });
-                  }}
-                >
-                  ＋ Thêm thông số
-                </button>
-              </div>
-            </details>
-            <div className="admin-actions">
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={() => void saveCurrent()}
-              >
-                Lưu thay đổi
-              </button>
-              <button
-                className="danger"
-                disabled={busy}
-                onClick={() => void removeCurrent()}
-              >
-                Xóa
-              </button>
-            </div>
-          </section>
-        )}
-
-        {tab === "Mainboard" && (
-          <section className="admin-preview">
-            <div className="admin-section-heading">
-              <div>
-                <h2>Ảnh và hotspot</h2>
-                <span>Kéo vòng tròn số để cập nhật tọa độ.</span>
-              </div>
-              <span>{product.hotspots.length} hotspot</span>
-            </div>
-            <label>
-              Link ảnh mặt trước
-              <ImageReferenceInput
-                value={product.media.top ?? ""}
-                placeholder="https://… hoặc /media/…"
-                onChange={(event) =>
-                  updateProduct({
-                    media: {
-                      ...product.media,
-                      top: event.target.value,
-                      main: event.target.value,
-                    },
-                  })
-                }
-              />
-            </label>
-            <div
-              ref={boardRef}
-              className="editor-board"
-              onClick={addHotspot}
-              onPointerMove={updateDraggedHotspot}
-              onPointerUp={finishDragging}
-              onPointerLeave={finishDragging}
-            >
-              {product.media.top ? (
-                <img
-                  src={assetUrl(product.media.top)}
-                  alt="Ảnh mainboard xem trước"
-                />
-              ) : (
-                <p>Nhập URL ảnh để bắt đầu.</p>
-              )}
-              {product.hotspots.map((hotspot, index) => (
-                <button
-                  key={hotspot.id}
-                  data-hotspot={hotspot.id}
-                  className={`editor-node ${selectedHotspot === hotspot.id ? "selected" : ""}`}
-                  style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
-                  aria-label={`Sửa ${hotspot.title}`}
-                  onPointerDown={moveHotspot}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (draggedRef.current) {
-                      draggedRef.current = false;
-                      return;
-                    }
-                    setSelectedHotspot(hotspot.id);
-                  }}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-            <h3>Thư viện ảnh</h3>
-            <MediaEditor
-              images={productGallery(product)}
-              onChange={updateImages}
-              onBusy={setBusy}
-            />
-            <ImageGallery
-              images={productGallery(product)}
-              alt="Ảnh mainboard xem trước"
-              className="admin-gallery-preview"
-            />
-            {activeHotspot && (
-              <div className="editor-fields">
-                <label>
-                  Tên hotspot
-                  <input
-                    value={activeHotspot.title}
+                <label className="wide">
+                  Mô tả
+                  <textarea
+                    value={component.description}
                     onChange={(event) =>
-                      updateHotspot({ title: event.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  Phụ đề
-                  <input
-                    value={activeHotspot.subtitle}
-                    onChange={(event) =>
-                      updateHotspot({ subtitle: event.target.value })
+                      updateComponentDraft({ description: event.target.value })
                     }
                   />
                 </label>
                 <label className="wide">
-                  Mô tả
-                  <input
-                    value={activeHotspot.description}
+                  Ghi chú tương thích
+                  <textarea
+                    value={component.notes}
                     onChange={(event) =>
-                      updateHotspot({ description: event.target.value })
+                      updateComponentDraft({ notes: event.target.value })
                     }
                   />
                 </label>
-                <p className="muted">
-                  Vị trí: {activeHotspot.x}% / {activeHotspot.y}%
-                </p>
+              </div>
+              <details className="admin-collapsible">
+                <summary>Thông số {tab}</summary>
+                <div className="admin-collapsible-body">
+                  <SpecGroups>
+                    {Object.entries({
+                      ...specTemplates[tab],
+                      ...component.spec,
+                    }).map(([key, value]) => (
+                      <SpecInput
+                        key={key}
+                        type={tab}
+                        field={key}
+                        value={value}
+                        onBlur={(next) =>
+                          updateComponentDraft({
+                            spec: {
+                              ...component.spec,
+                              [key]: normalizeSpecValue(key, next),
+                            },
+                          })
+                        }
+                        onChange={(next) =>
+                          updateComponentDraft({
+                            spec: { ...component.spec, [key]: next },
+                          })
+                        }
+                      />
+                    ))}
+                  </SpecGroups>
+                  <button
+                    onClick={async () => {
+                      const key = await ask("Thêm thông số mới", true);
+                      if (key?.trim())
+                        updateComponentDraft({
+                          spec: { ...component.spec, [key.trim()]: "" },
+                        });
+                    }}
+                  >
+                    ＋ Thêm thông số
+                  </button>
+                </div>
+              </details>
+              <div className="admin-actions">
+                <button
+                  className="primary"
+                  disabled={busy}
+                  onClick={() => void saveCurrent()}
+                >
+                  Lưu thay đổi
+                </button>
                 <button
                   className="danger"
-                  onClick={() => {
+                  disabled={busy}
+                  onClick={() => void removeCurrent()}
+                >
+                  Xóa
+                </button>
+              </div>
+            </section>
+          )}
+
+          {tab === "Mainboard" && (
+            <section className="admin-preview">
+              <div className="admin-section-heading">
+                <div>
+                  <h2>Ảnh và hotspot</h2>
+                  <span>Kéo vòng tròn số để cập nhật tọa độ.</span>
+                </div>
+                <span>{product.hotspots.length} hotspot</span>
+              </div>
+              <label>
+                Link ảnh mặt trước
+                <ImageReferenceInput
+                  value={product.media.top ?? ""}
+                  placeholder="https://… hoặc /media/…"
+                  onChange={(event) =>
                     updateProduct({
-                      hotspots: product.hotspots.filter(
-                        (item) => item.id !== selectedHotspot,
-                      ),
-                    });
-                    setSelectedHotspot(null);
-                  }}
-                >
-                  Xóa hotspot
-                </button>
-              </div>
-            )}
-            <p className="admin-local-note">
-              Bấm “Lưu lên Firestore” để cập nhật ảnh và hotspot trên Explorer.
-            </p>
-          </section>
-        )}
-        {tab !== "Mainboard" && (
-          <section className="admin-preview admin-component-preview">
-            <div className="admin-section-heading">
-              <div>
-                <h2>Ảnh linh kiện xem trước</h2>
-                <span>Ảnh được hiển thị theo URL đã nhập ở biểu mẫu.</span>
-              </div>
-              <span>{component.type} · không có hotspot</span>
-            </div>
-            <ComponentCanvas key={component.id} component={component} />
-            <MediaEditor
-              images={componentGallery(component)}
-              onChange={updateImages}
-              onBusy={setBusy}
-            />
-            <p className="admin-local-note">
-              Lưu thay đổi để cập nhật ảnh và thông tin linh kiện lên Firestore.
-            </p>
-          </section>
-        )}
-        <aside className="admin-validation">
-          <h2>Kiểm tra xuất bản</h2>
-          {publishChecks(
-            tab === "Mainboard" ? product : component,
-            products,
-          ).map((check) => (
-            <div
-              className={check.valid ? "check-pass" : "check-missing"}
-              key={check.label}
-            >
-              {check.valid ? "✓" : "!"} {check.label}
-              {!check.valid && (
-                <button
-                  onClick={() => {
-                    const section = document.querySelector(".admin-form");
-                    section?.scrollIntoView({ behavior: "smooth" });
-                    section
-                      ?.querySelectorAll("details")
-                      .forEach((d) => (d.open = true));
-                    const target =
-                      check.field === "spec"
-                        ? section?.querySelector(".admin-collapsible input")
-                        : check.field === "image"
-                          ? document.querySelector(".media-dropzone input")
-                          : section?.querySelector("input");
-                    (target as HTMLElement | null)?.focus();
-                  }}
-                >
-                  Xem mục cần sửa →
-                </button>
-              )}
-            </div>
-          ))}
-          <h2>Lịch sử chỉnh sửa</h2>
-          {loaded && (
-            <AdminVersions
-              key={(tab === "Mainboard" ? product : component).id}
-              item={tab === "Mainboard" ? product : component}
-              onRestore={(item) => {
-                if (
-                  dirty &&
-                  !confirm("Có thay đổi chưa lưu. Thay bằng phiên bản đã chọn?")
-                )
-                  return;
-                if ("media" in item) setProduct(copy(item));
-                else setComponent(copy(item));
-                setMessage(
-                  "Đã phục hồi thành bản nháp. Hãy kiểm tra và lưu lên Firestore.",
-                );
-              }}
-            />
-          )}
-          {tab === "Mainboard" && !product.media.rear_io && (
-            <p className="muted">
-              Ảnh mặt sau chưa có (tùy chọn, không chặn xuất bản).
-            </p>
-          )}
-          {(tab === "Mainboard" ? product : component).history?.length ? (
-            <ol>
-              {[...((tab === "Mainboard" ? product : component).history ?? [])]
-                .reverse()
-                .map((entry, index) => (
-                  <li key={index}>
-                    <strong>{entry.action}</strong>
-                    <small>
-                      {new Date(entry.at).toLocaleString("vi-VN")} · {entry.by}
-                    </small>
-                  </li>
+                      media: {
+                        ...product.media,
+                        top: event.target.value,
+                        main: event.target.value,
+                      },
+                    })
+                  }
+                />
+              </label>
+              <div
+                ref={boardRef}
+                className="editor-board"
+                onClick={addHotspot}
+                onPointerMove={updateDraggedHotspot}
+                onPointerUp={finishDragging}
+                onPointerLeave={finishDragging}
+              >
+                {product.media.top ? (
+                  <img
+                    src={assetUrl(product.media.top)}
+                    alt="Ảnh mainboard xem trước"
+                  />
+                ) : (
+                  <p>Nhập URL ảnh để bắt đầu.</p>
+                )}
+                {product.hotspots.map((hotspot, index) => (
+                  <button
+                    key={hotspot.id}
+                    data-hotspot={hotspot.id}
+                    className={`editor-node ${selectedHotspot === hotspot.id ? "selected" : ""}`}
+                    style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
+                    aria-label={`Sửa ${hotspot.title}`}
+                    onPointerDown={moveHotspot}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (draggedRef.current) {
+                        draggedRef.current = false;
+                        return;
+                      }
+                      setSelectedHotspot(hotspot.id);
+                    }}
+                  >
+                    {index + 1}
+                  </button>
                 ))}
-            </ol>
-          ) : (
-            <p className="muted">
-              Chưa có lịch sử. Các lần lưu tiếp theo sẽ được ghi lại.
-            </p>
+              </div>
+              <h3>Thư viện ảnh</h3>
+              <MediaEditor
+                images={productGallery(product)}
+                onChange={updateImages}
+                onBusy={setBusy}
+              />
+              <ImageGallery
+                images={productGallery(product)}
+                alt="Ảnh mainboard xem trước"
+                className="admin-gallery-preview"
+              />
+              {activeHotspot && (
+                <div className="editor-fields">
+                  <label>
+                    Tên hotspot
+                    <input
+                      value={activeHotspot.title}
+                      onChange={(event) =>
+                        updateHotspot({ title: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Phụ đề
+                    <input
+                      value={activeHotspot.subtitle}
+                      onChange={(event) =>
+                        updateHotspot({ subtitle: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="wide">
+                    Mô tả
+                    <input
+                      value={activeHotspot.description}
+                      onChange={(event) =>
+                        updateHotspot({ description: event.target.value })
+                      }
+                    />
+                  </label>
+                  <p className="muted">
+                    Vị trí: {activeHotspot.x}% / {activeHotspot.y}%
+                  </p>
+                  <button
+                    className="danger"
+                    onClick={() => {
+                      updateProduct({
+                        hotspots: product.hotspots.filter(
+                          (item) => item.id !== selectedHotspot,
+                        ),
+                      });
+                      setSelectedHotspot(null);
+                    }}
+                  >
+                    Xóa hotspot
+                  </button>
+                </div>
+              )}
+              <p className="admin-local-note">
+                Bấm “Lưu lên Firestore” để cập nhật ảnh và hotspot trên
+                Explorer.
+              </p>
+            </section>
           )}
-        </aside>
-      </div>
+          {tab !== "Mainboard" && (
+            <section className="admin-preview admin-component-preview">
+              <div className="admin-section-heading">
+                <div>
+                  <h2>Ảnh linh kiện xem trước</h2>
+                  <span>Ảnh được hiển thị theo URL đã nhập ở biểu mẫu.</span>
+                </div>
+                <span>{component.type} · không có hotspot</span>
+              </div>
+              <ComponentCanvas key={component.id} component={component} />
+              <MediaEditor
+                images={componentGallery(component)}
+                onChange={updateImages}
+                onBusy={setBusy}
+              />
+              <p className="admin-local-note">
+                Lưu thay đổi để cập nhật ảnh và thông tin linh kiện lên
+                Firestore.
+              </p>
+            </section>
+          )}
+          <aside className="admin-validation">
+            <h2>Kiểm tra xuất bản</h2>
+            {publishChecks(
+              tab === "Mainboard" ? product : component,
+              products,
+            ).map((check) => (
+              <div
+                className={check.valid ? "check-pass" : "check-missing"}
+                key={check.label}
+              >
+                {check.valid ? "✓" : "!"} {check.label}
+                {!check.valid && (
+                  <button
+                    onClick={() => {
+                      const section = document.querySelector(".admin-form");
+                      section?.scrollIntoView({ behavior: "smooth" });
+                      section
+                        ?.querySelectorAll("details")
+                        .forEach((d) => (d.open = true));
+                      const target =
+                        check.field === "spec"
+                          ? section?.querySelector(".admin-collapsible input")
+                          : check.field === "image"
+                            ? document.querySelector(".media-dropzone input")
+                            : section?.querySelector("input");
+                      (target as HTMLElement | null)?.focus();
+                    }}
+                  >
+                    Xem mục cần sửa →
+                  </button>
+                )}
+              </div>
+            ))}
+            <h2>Lịch sử chỉnh sửa</h2>
+            {loaded && (
+              <AdminVersions
+                key={(tab === "Mainboard" ? product : component).id}
+                item={tab === "Mainboard" ? product : component}
+                onRestore={async (item) => {
+                  if (
+                    dirty &&
+                    !(await ask(
+                      "Có thay đổi chưa lưu. Thay bằng phiên bản đã chọn?",
+                    ))
+                  )
+                    return;
+                  if ("media" in item) setProduct(copy(item));
+                  else setComponent(copy(item));
+                  setMessage(
+                    "Đã phục hồi thành bản nháp. Hãy kiểm tra và lưu lên Firestore.",
+                  );
+                }}
+              />
+            )}
+            {tab === "Mainboard" && !product.media.rear_io && (
+              <p className="muted">
+                Ảnh mặt sau chưa có (tùy chọn, không chặn xuất bản).
+              </p>
+            )}
+            {(tab === "Mainboard" ? product : component).history?.length ? (
+              <ol>
+                {[
+                  ...((tab === "Mainboard" ? product : component).history ??
+                    []),
+                ]
+                  .reverse()
+                  .map((entry, index) => (
+                    <li key={index}>
+                      <strong>{entry.action}</strong>
+                      <small>
+                        {new Date(entry.at).toLocaleString("vi-VN")} ·{" "}
+                        {entry.by}
+                      </small>
+                    </li>
+                  ))}
+              </ol>
+            ) : (
+              <p className="muted">
+                Chưa có lịch sử. Các lần lưu tiếp theo sẽ được ghi lại.
+              </p>
+            )}
+          </aside>
+        </div>
       </div>
       {adminView !== "editor" && message && (
         <div className="admin-message" role="status">
@@ -2126,6 +2162,75 @@ export default function StaticAdmin({
       )}
       {adminView === "list" && (
         <AdminProductList
+          onBulk={async (items, action) => {
+            if (action === "published") {
+              const invalid = items.filter((item) =>
+                publishChecks(item, products).some((c) => !c.valid),
+              );
+              if (invalid.length)
+                throw Error(
+                  `Chưa thể xuất bản: ${invalid.map((i) => i.name).join(", ")}. Mở sản phẩm để hoàn thành kiểm tra.`,
+                );
+              for (const item of items) {
+                if (
+                  "media" in item &&
+                  item.components.some(
+                    (c) =>
+                      c.catalogId &&
+                      !components.some(
+                        (x) =>
+                          x.id === c.catalogId &&
+                          x.status === "published" &&
+                          !x.deletedAt,
+                      ),
+                  )
+                )
+                  throw Error(
+                    `${item.name}: linh kiện liên kết chưa xuất bản.`,
+                  );
+                for (const url of "media" in item
+                  ? productGallery(item)
+                  : componentGallery(item)) {
+                  await new Promise<void>((resolve, reject) => {
+                    const image = new Image();
+                    const timer = setTimeout(
+                      () => reject(Error(`${item.name}: ảnh tải quá lâu.`)),
+                      8000,
+                    );
+                    image.onload = () => {
+                      clearTimeout(timer);
+                      resolve();
+                    };
+                    image.onerror = () => {
+                      clearTimeout(timer);
+                      reject(Error(`${item.name}: không tải được ảnh.`));
+                    };
+                    image.src = assetUrl(url) ?? "";
+                  });
+                }
+              }
+            }
+            let completed = 0;
+            try {
+              for (const item of items) {
+                const next =
+                  action === "trash"
+                    ? archive(item, user.email ?? "Quản trị")
+                    : stamp(
+                        { ...item, status: action },
+                        user.email ?? "Quản trị",
+                      );
+                await saveVersionedDevice(next, item);
+                completed++;
+              }
+            } catch {
+              throw Error(
+                `Đã xử lý ${completed}/${items.length} sản phẩm. Các mục còn lại chưa thay đổi; hãy tải lại danh sách trước khi thử tiếp.`,
+              );
+            } finally {
+              await reloadFromFirestore();
+            }
+          }}
           products={products}
           components={components}
           onView={viewDevice}
@@ -2150,20 +2255,32 @@ export default function StaticAdmin({
         />
       )}
       {adminView === "settings" && (
-        <section className="admin-settings" aria-labelledby="admin-settings-title">
+        <section
+          className="admin-settings"
+          aria-labelledby="admin-settings-title"
+        >
+          <FeedbackInbox
+            devices={[...products, ...components]}
+            onOpen={openDevice}
+          />
           <div className="admin-view-heading">
             <div>
               <span className="eyebrow">TECH EXPLORER / CẤU HÌNH</span>
               <h2 id="admin-settings-title">Cài đặt quản lý</h2>
               <p>Backup và khôi phục dữ liệu catalog bằng tệp JSON.</p>
             </div>
-            <button className="admin-header-nav" onClick={() => setAdminView("editor")}>
+            <button
+              className="admin-header-nav"
+              onClick={() => setAdminView("editor")}
+            >
               <ArrowLeft size={16} /> Về trình chỉnh sửa
             </button>
           </div>
           <div className="admin-settings-grid">
             <section className="admin-settings-card">
-              <h3><Download size={18} /> Backup dữ liệu</h3>
+              <h3>
+                <Download size={18} /> Backup dữ liệu
+              </h3>
               <p>
                 Tải toàn bộ mainboard, CPU, RAM, SSD, GPU và PSU hiện có, bao
                 gồm cả các bản ghi trong thùng rác.
@@ -2173,10 +2290,12 @@ export default function StaticAdmin({
               </button>
             </section>
             <section className="admin-settings-card">
-              <h3><Upload size={18} /> Khôi phục dữ liệu</h3>
+              <h3>
+                <Upload size={18} /> Khôi phục dữ liệu
+              </h3>
               <p>
-                Chọn file JSON đã backup để kiểm tra trước. Bạn có thể chỉ
-                thêm ID mới hoặc cập nhật cả sản phẩm đã tồn tại.
+                Chọn file JSON đã backup để kiểm tra trước. Bạn có thể chỉ thêm
+                ID mới hoặc cập nhật cả sản phẩm đã tồn tại.
               </p>
               <label className="backup-upload">
                 Chọn file JSON
@@ -2197,13 +2316,17 @@ export default function StaticAdmin({
             <section className="backup-preview">
               <h2>Xem trước khôi phục</h2>
               <p>
-                {backup.products.length} mainboard · {backup.components.length} linh
-                kiện
+                {backup.products.length} mainboard · {backup.components.length}{" "}
+                linh kiện
               </p>
               <ul>
-                {[...backup.products, ...backup.components].map((item, index) => (
-                  <li key={index}>{item.name} · {statusLabel(item.status)}</li>
-                ))}
+                {[...backup.products, ...backup.components].map(
+                  (item, index) => (
+                    <li key={index}>
+                      {item.name} · {statusLabel(item.status)}
+                    </li>
+                  ),
+                )}
               </ul>
               <label>
                 Cách nhập
@@ -2213,15 +2336,23 @@ export default function StaticAdmin({
                     setRestoreMode(event.target.value as "add" | "update")
                   }
                 >
-                  <option value="add">Chỉ thêm ID mới, bỏ qua ID đã tồn tại</option>
-                  <option value="update">Thêm mới và cập nhật ID đã tồn tại</option>
+                  <option value="add">
+                    Chỉ thêm ID mới, bỏ qua ID đã tồn tại
+                  </option>
+                  <option value="update">
+                    Thêm mới và cập nhật ID đã tồn tại
+                  </option>
                 </select>
               </label>
-              <p>Cập nhật sẽ ghi đè toàn bộ thông tin của sản phẩm có cùng ID.</p>
+              <p>
+                Cập nhật sẽ ghi đè toàn bộ thông tin của sản phẩm có cùng ID.
+              </p>
               <button disabled={busy} onClick={() => void applyBackup()}>
                 Xác nhận khôi phục
               </button>
-              <button disabled={busy} onClick={() => setBackup(null)}>Hủy</button>
+              <button disabled={busy} onClick={() => setBackup(null)}>
+                Hủy
+              </button>
             </section>
           )}
         </section>

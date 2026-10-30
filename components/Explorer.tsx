@@ -38,6 +38,8 @@ import CatalogFilters from "./CatalogFilters";
 import DeviceComparison from "./DeviceComparison";
 import PcBuilder from "./PcBuilder";
 import KnowledgeCenter from "./KnowledgeCenter";
+import { FeedbackForm } from "./DataFeedback";
+import useActionDialog from "./useActionDialog";
 import usePersonalLibrary, { deviceKey } from "./usePersonalLibrary";
 import { linkedProduct } from "@/lib/linked-components";
 import { localizeDevice } from "@/lib/vietnamese";
@@ -207,6 +209,8 @@ export default function Explorer({
   const [tab, setTab] = useState("Overview");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [notice, setNotice] = useState("");
+  const { ask, modal: actionModal } = useActionDialog();
+  const [feedbackItem, setFeedbackItem] = useState<Device | null>(null);
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [pendingBuildItem, setPendingBuildItem] = useState<Device | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -476,31 +480,6 @@ export default function Explorer({
       }),
     );
   }
-  function reportDevice(item: Device) {
-    const note = window.prompt(
-      `Mô tả thông tin chưa đúng của “${item.name}”`,
-      "",
-    );
-    if (!note?.trim()) return;
-    try {
-      const reports = JSON.parse(
-        localStorage.getItem("tech-explorer-data-reports-v1") ?? "[]",
-      );
-      const next = Array.isArray(reports) ? reports : [];
-      next.push({
-        id: crypto.randomUUID(),
-        deviceId: item.id,
-        deviceType: deviceType(item),
-        deviceName: item.name,
-        note: note.trim(),
-        createdAt: new Date().toISOString(),
-      });
-      localStorage.setItem("tech-explorer-data-reports-v1", JSON.stringify(next));
-      setNotice("Đã ghi nhận phản hồi. Cảm ơn bạn đã góp ý.");
-    } catch {
-      setNotice("Không thể lưu phản hồi trên trình duyệt này.");
-    }
-  }
   function openWorkspace(screen: ExplorerScreen) {
     setWorkspaceMode(screen);
     setMobileMenu(false);
@@ -581,10 +560,19 @@ export default function Explorer({
   }
   return (
     <div className="app-shell">
+      {actionModal}
       {workspaceMode === "home" && catalogLoading && (
-        <div className="catalog-loading-overlay" role="status" aria-live="polite">
+        <div
+          className="catalog-loading-overlay"
+          role="status"
+          aria-live="polite"
+        >
           <div className="catalog-loading-card">
-            <LoaderCircle className="catalog-loading-icon" size={48} aria-hidden="true" />
+            <LoaderCircle
+              className="catalog-loading-icon"
+              size={48}
+              aria-hidden="true"
+            />
             <span>Đang tải dữ liệu thiết bị…</span>
           </div>
         </div>
@@ -598,10 +586,22 @@ export default function Explorer({
         </div>
         <div className="technology-topic-grid">
           {[
-            ["Hotspot tương tác", "Chọn vòng tròn trên ảnh để xem vị trí và vai trò của từng khu vực."],
-            ["Chuẩn hóa thông số", "Các đơn vị GB, W, GHz và chuẩn DDR được hiển thị theo cách thống nhất để dễ so sánh."],
-            ["Liên kết linh kiện", "Linh kiện đi kèm được nối với thư viện sản phẩm để mở nhanh thông số và đưa vào cấu hình."],
-            ["Kiểm tra tương thích", "Socket CPU, chuẩn RAM, loại SSD và công suất nguồn được đối chiếu trước khi lắp máy."],
+            [
+              "Hotspot tương tác",
+              "Chọn vòng tròn trên ảnh để xem vị trí và vai trò của từng khu vực.",
+            ],
+            [
+              "Chuẩn hóa thông số",
+              "Các đơn vị GB, W, GHz và chuẩn DDR được hiển thị theo cách thống nhất để dễ so sánh.",
+            ],
+            [
+              "Liên kết linh kiện",
+              "Linh kiện đi kèm được nối với thư viện sản phẩm để mở nhanh thông số và đưa vào cấu hình.",
+            ],
+            [
+              "Kiểm tra tương thích",
+              "Socket CPU, chuẩn RAM, loại SSD và công suất nguồn được đối chiếu trước khi lắp máy.",
+            ],
           ].map(([title, text]) => (
             <section key={title} className="technology-topic">
               <span className="eyebrow">TECH EXPLORER</span>
@@ -926,8 +926,8 @@ export default function Explorer({
               </button>
               {personalTab === "recent" && (
                 <button
-                  onClick={() => {
-                    if (confirm("Xóa lịch sử đã xem trên trình duyệt này?"))
+                  onClick={async () => {
+                    if (await ask("Xóa lịch sử đã xem trên trình duyệt này?"))
                       personal.clearHistory();
                   }}
                 >
@@ -1095,7 +1095,7 @@ export default function Explorer({
                 tab={tab}
                 setTab={setTab}
                 onAddToBuild={() => addToBuilder(activeComponent)}
-                onReport={() => reportDevice(activeComponent)}
+                onReport={() => setFeedbackItem(activeComponent)}
               />
             </>
           ) : (
@@ -1243,7 +1243,10 @@ export default function Explorer({
                   Linh kiện
                 </button>
                 <ChevronRight size={11} />
-                <button type="button" onClick={() => browseCategory("Mainboard")}>
+                <button
+                  type="button"
+                  onClick={() => browseCategory("Mainboard")}
+                >
                   Mainboard
                 </button>
                 <ChevronRight size={11} />
@@ -1334,7 +1337,7 @@ export default function Explorer({
               setTab={setTab}
               onClose={() => setActive(null)}
               onAddToBuild={() => addToBuilder(product)}
-              onReport={() => reportDevice(product)}
+              onReport={() => setFeedbackItem(product)}
             />
           </>
         ) : (
@@ -1344,7 +1347,19 @@ export default function Explorer({
           </main>
         )}
       </div>
+      {feedbackItem && (
+        <FeedbackForm
+          item={feedbackItem}
+          onClose={() => setFeedbackItem(null)}
+        />
+      )}
       <DeviceComparison
+        devices={allDevices}
+        onReplace={(id, item) =>
+          setComparison((current) =>
+            current.map((d) => (d.id === id ? item : d)),
+          )
+        }
         items={comparison}
         onRemove={(id) =>
           setComparison((current) => current.filter((item) => item.id !== id))

@@ -13,6 +13,8 @@ import {
 import { deviceType, specLabel, type Device } from "@/lib/catalog-tools";
 import { categoryLabel } from "@/lib/labels";
 import { assetUrl, basePath } from "@/lib/runtime";
+import BuildAccount from "./BuildAccount";
+import useActionDialog from "./useActionDialog";
 export default function PcBuilder({
   devices,
   onOpen,
@@ -33,6 +35,12 @@ export default function PcBuilder({
   const [ready, setReady] = useState(false),
     [link, setLink] = useState("");
   const [compatibleOnly, setCompatibleOnly] = useState(true);
+  const { ask, modal } = useActionDialog();
+  const [includeUnknown, setIncludeUnknown] = useState(true),
+    [undoBuild, setUndoBuild] = useState<PcBuild | null>(null);
+  const [pendingReplacement, setPendingReplacement] = useState<Device | null>(
+    null,
+  );
   useEffect(() => {
     let next = newBuild();
     try {
@@ -85,9 +93,17 @@ export default function PcBuilder({
     if (!ready || !build || !initialItem) return;
     const slotType = deviceType(initialItem) as BuildSlot;
     if (!buildSlots.includes(slotType)) return;
+    if (build.parts[slotType] && build.parts[slotType] !== initialItem.id) {
+      setPendingReplacement(initialItem);
+      onInitialItemConsumed?.();
+      return;
+    }
     setBuild((current) =>
       current
-        ? { ...current, parts: { ...current.parts, [slotType]: initialItem.id } }
+        ? {
+            ...current,
+            parts: { ...current.parts, [slotType]: initialItem.id },
+          }
         : current,
     );
     onNotice(`Đã thêm ${initialItem.name} vào cấu hình.`);
@@ -107,7 +123,9 @@ export default function PcBuilder({
     if (!build) return;
     const slot = title.includes("Socket")
       ? "CPU"
-      : title.includes("bộ nhớ") || title.includes("khe RAM") || title.includes("Dung lượng RAM")
+      : title.includes("bộ nhớ") ||
+          title.includes("khe RAM") ||
+          title.includes("Dung lượng RAM")
         ? "RAM"
         : title.includes("SSD")
           ? "SSD"
@@ -118,7 +136,9 @@ export default function PcBuilder({
       setSlot(slot);
       setSearch("");
       setCompatibleOnly(true);
-      onNotice("Chọn thiết bị thay thế. Thiết bị hiện tại được giữ đến khi bạn chọn.");
+      onNotice(
+        "Chọn thiết bị thay thế. Thiết bị hiện tại được giữ đến khi bạn chọn.",
+      );
     }
   }
   if (!build)
@@ -126,6 +146,7 @@ export default function PcBuilder({
   const parts = selectedParts(build, devices),
     checks = checkBuild(build, devices);
   const update = (patch: Partial<PcBuild>) => {
+    setUndoBuild(build);
     setLink("");
     setBuild({ ...build, ...patch });
   };
@@ -144,8 +165,72 @@ export default function PcBuilder({
   }
   return (
     <main className="feature-workspace builder-workspace">
+      {modal}
+      <BuildAccount
+        saved={saved}
+        onImport={(items) => persist([...saved, ...items])}
+      />
+      {pendingReplacement && (
+        <div className="feature-modal-backdrop">
+          <section
+            className="feature-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Thay linh kiện"
+          >
+            <h2>Thêm {pendingReplacement.name}</h2>
+            <p>
+              Nhóm này đang có{" "}
+              {parts[deviceType(pendingReplacement) as BuildSlot]?.name}. Chọn
+              cách tiếp tục.
+            </p>
+            <button
+              onClick={() => {
+                update({
+                  parts: {
+                    ...build.parts,
+                    [deviceType(pendingReplacement)]: pendingReplacement.id,
+                  },
+                });
+                setPendingReplacement(null);
+              }}
+            >
+              Thay thiết bị hiện tại
+            </button>
+            <button
+              onClick={() => {
+                if (
+                  persist([...saved.filter((b) => b.id !== build.id), build])
+                ) {
+                  update({
+                    ...newBuild(),
+                    parts: {
+                      [deviceType(pendingReplacement)]: pendingReplacement.id,
+                    },
+                  });
+                  setPendingReplacement(null);
+                }
+              }}
+            >
+              Lưu cấu hình hiện tại và tạo mới
+            </button>
+            <button onClick={() => setPendingReplacement(null)}>Hủy</button>
+          </section>
+        </div>
+      )}
       <span className="eyebrow">CẤU HÌNH PC CỦA BẠN</span>
       <h1>Xây dựng cấu hình PC</h1>
+      {undoBuild && (
+        <button
+          onClick={() => {
+            setBuild(undoBuild);
+            setUndoBuild(null);
+            setLink("");
+          }}
+        >
+          Hoàn tác thay đổi cấu hình
+        </button>
+      )}
       <p>
         Chọn thiết bị thực tế trong thư viện. Cấu hình và bản nháp được lưu trên
         trình duyệt này.
@@ -176,9 +261,9 @@ export default function PcBuilder({
         </button>
         <button onClick={share}>Chia sẻ cấu hình</button>
         <button
-          onClick={() => {
+          onClick={async () => {
             if (
-              confirm(
+              await ask(
                 "Tạo cấu hình mới? Bản đang sửa chỉ được giữ nếu đã bấm Lưu cấu hình.",
               )
             )
@@ -311,7 +396,10 @@ export default function PcBuilder({
                 </strong>
                 <p>{check.detail}</p>
                 {check.status === "incompatible" && (
-                  <button className="text-button" onClick={() => repairCheck(check.title)}>
+                  <button
+                    className="text-button"
+                    onClick={() => repairCheck(check.title)}
+                  >
                     Gợi ý sửa lỗi →
                   </button>
                 )}
@@ -330,9 +418,11 @@ export default function PcBuilder({
                   </small>
                   <div className="feature-actions">
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          confirm("Mở cấu hình này và thay bản đang chỉnh sửa?")
+                          await ask(
+                            "Mở cấu hình này và thay bản đang chỉnh sửa?",
+                          )
                         )
                           update(item);
                       }}
@@ -351,8 +441,8 @@ export default function PcBuilder({
                       Nhân đôi
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(`Xóa cấu hình “${item.name}”?`))
+                      onClick={async () => {
+                        if (await ask(`Xóa cấu hình “${item.name}”?`))
                           persist(saved.filter((x) => x.id !== item.id));
                       }}
                     >
@@ -401,6 +491,14 @@ export default function PcBuilder({
               Chỉ hiển thị thiết bị tương thích với lựa chọn hiện tại
             </label>
             <div className="build-options">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={includeUnknown}
+                  onChange={(e) => setIncludeUnknown(e.target.checked)}
+                />
+                Hiện cả thiết bị chưa đủ thông tin
+              </label>
               {devices
                 .filter(
                   (x) =>
@@ -412,7 +510,10 @@ export default function PcBuilder({
                 .filter(
                   (item) =>
                     !compatibleOnly ||
-                    candidateCompatibility(slot, item, build, devices).ok,
+                    (candidateCompatibility(slot, item, build, devices).ok &&
+                      (includeUnknown ||
+                        !candidateCompatibility(slot, item, build, devices)
+                          .unknown)),
                 )
                 .map((item) => (
                   <button
@@ -425,7 +526,8 @@ export default function PcBuilder({
                     <strong>{item.name}</strong>
                     {compatibleOnly && (
                       <small className="compatibility-hint">
-                        {candidateCompatibility(slot, item, build, devices).unknown
+                        {candidateCompatibility(slot, item, build, devices)
+                          .unknown
                           ? "! Chưa đủ thông tin để xác nhận"
                           : "✓ Phù hợp theo thông số đã kiểm tra"}
                       </small>

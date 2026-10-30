@@ -12,6 +12,11 @@ const assert = require("node:assert/strict");
     "@/lib/firebase-client": `export const auth={currentUser:{uid:'qa'}};export const firebaseApp={};`,
     "@/lib/firestore": `const q=()=>window.qa;const save=(list,item)=>{const i=list.findIndex(x=>x.id===item.id);if(i<0)list.push(structuredClone(item));else list[i]=structuredClone(item);};export const loadAllProducts=async()=>structuredClone(q().products);export const loadCatalogComponents=async()=>structuredClone(q().components);export const saveProduct=async item=>save(q().products,item);export const saveCatalogComponent=async item=>save(q().components,item);export const deleteProduct=async id=>{q().products=q().products.filter(x=>x.id!==id);};export const deleteCatalogComponent=async id=>{q().components=q().components.filter(x=>x.id!==id);};export const seedProductsToFirestore=async()=>({products:1,components:5});export const restoreCatalog=async b=>{b.products.forEach(saveProduct);b.components.forEach(saveCatalogComponent);};export const firestoreErrorMessage=(e)=>e.message;`,
   };
+  mocks["firebase/auth"] +=
+    `export const createUserWithEmailAndPassword=async()=>{};`;
+  mocks["@/lib/firebase-client"] += `export const firestore={};`;
+  mocks["firebase/firestore"] =
+    `export const collection=(...a)=>a;export const doc=(...a)=>a;export const serverTimestamp=()=>new Date().toISOString();export const addDoc=async()=>({id:'report-test'});export const updateDoc=async()=>{};export const setDoc=async()=>{};export const getDocs=async()=>({docs:[]});export const onSnapshot=(ref,cb)=>{const t=setTimeout(()=>cb({docs:[]}),0);return()=>clearTimeout(t);};`;
   mocks["@/lib/firestore"] +=
     `export const saveVersionedDevice=async(item,original)=>{window.qa.versions??=[];if(original)window.qa.versions.push({id:String(window.qa.versions.length),savedAt:original.updatedAt||new Date().toISOString(),by:'QA',snapshot:structuredClone(original)});window.qa.versions.push({id:String(window.qa.versions.length),savedAt:item.updatedAt||new Date().toISOString(),by:'QA',snapshot:structuredClone(item)});return 'media'in item?saveProduct(item):saveCatalogComponent(item);};export const loadDeviceVersions=async(group,id)=>(window.qa.versions||[]).filter(x=>x.snapshot.id===id);`;
   mocks["@/lib/firestore"] +=
@@ -36,7 +41,7 @@ const assert = require("node:assert/strict");
           b.onResolve(
             {
               filter:
-                /^(next\/link|firebase\/(auth|functions)|@\/lib\/(firebase-client|firestore))$/,
+                /^(next\/link|firebase\/(auth|functions|firestore)|@\/lib\/(firebase-client|firestore))$/,
             },
             (args) => ({ path: args.path, namespace: "mock" }),
           );
@@ -103,6 +108,15 @@ const assert = require("node:assert/strict");
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     page.on("dialog", (d) => d.accept());
+    await page.addLocatorHandler(
+      page.getByRole("dialog").filter({ hasText: "Có thay đổi chưa lưu" }),
+      async () => {
+        await page
+          .getByRole("dialog")
+          .getByRole("button", { name: "Xác nhận", exact: true })
+          .click();
+      },
+    );
     await page.goto("http://127.0.0.1:4180");
     await page.getByRole("heading", { name: "Quản lý phần cứng" }).waitFor();
     await page.getByRole("button", { name: /Nhân đôi ASUS/ }).click();
@@ -116,6 +130,10 @@ const assert = require("node:assert/strict");
       .getByRole("button", { name: /Xóa ASUS/ })
       .last()
       .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Xác nhận", exact: true })
+      .click();
     await page.getByText("Đã chuyển mainboard vào thùng rác.").waitFor();
     await page.getByRole("button", { name: /Thùng rác \(1\)/ }).click();
     await page.getByRole("button", { name: "Khôi phục", exact: true }).click();
@@ -127,7 +145,9 @@ const assert = require("node:assert/strict");
       0,
     );
     await page.getByRole("button", { name: "Danh sách", exact: true }).click();
-    await page.getByRole("heading", { name: "Danh sách sản phẩm", exact: true }).waitFor();
+    await page
+      .getByRole("heading", { name: "Danh sách sản phẩm", exact: true })
+      .waitFor();
     assert.ok((await page.locator(".admin-product-card").count()) >= 1);
     await page.locator(".admin-search-field input").fill("ASUS");
     assert.ok((await page.locator(".admin-product-card").count()) >= 1);
@@ -136,18 +156,35 @@ const assert = require("node:assert/strict");
       .first()
       .getByRole("button", { name: /Xem chi tiết/ })
       .click();
-    await page.getByRole("heading", { name: "ASUS ROG STRIX B850-F GAMING WIFI", exact: true }).waitFor();
-    assert.ok((await page.locator(".admin-detail-spec-table > div").count()) > 0);
+    await page
+      .getByRole("heading", {
+        name: "ASUS ROG STRIX B850-F GAMING WIFI",
+        exact: true,
+      })
+      .waitFor();
+    assert.ok(
+      (await page.locator(".admin-detail-spec-table > div").count()) > 0,
+    );
     await page.getByRole("button", { name: /Quay lại danh sách/ }).click();
-    await page.getByRole("heading", { name: "Danh sách sản phẩm", exact: true }).waitFor();
+    await page
+      .getByRole("heading", { name: "Danh sách sản phẩm", exact: true })
+      .waitFor();
     await page.getByRole("button", { name: /Về quản lý chính/ }).click();
-    await page.getByRole("heading", { name: "Thông tin mainboard", exact: true }).waitFor();
+    await page
+      .getByRole("heading", { name: "Thông tin mainboard", exact: true })
+      .waitFor();
     await page.getByRole("button", { name: "Danh sách", exact: true }).click();
-    await page.getByRole("heading", { name: "Danh sách sản phẩm", exact: true }).waitFor();
+    await page
+      .getByRole("heading", { name: "Danh sách sản phẩm", exact: true })
+      .waitFor();
     await page.getByRole("button", { name: "Mở cài đặt", exact: true }).click();
-    await page.getByRole("heading", { name: "Cài đặt quản lý", exact: true }).waitFor();
+    await page
+      .getByRole("heading", { name: "Cài đặt quản lý", exact: true })
+      .waitFor();
     await page.getByRole("button", { name: /Về trình chỉnh sửa/ }).click();
-    await page.getByRole("heading", { name: "Thông tin mainboard", exact: true }).waitFor();
+    await page
+      .getByRole("heading", { name: "Thông tin mainboard", exact: true })
+      .waitFor();
     await page
       .locator(".admin-tabs")
       .getByRole("button", { name: "CPU", exact: true })
@@ -199,7 +236,12 @@ const assert = require("node:assert/strict");
       .click();
     await page.getByRole("heading", { name: "Khám phá Mainboard" }).waitFor();
     await page.getByRole("button", { name: "Xem chi tiết MSI QA" }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "Đặt lại thu phóng", exact: true }).count(), 0);
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Đặt lại thu phóng", exact: true })
+        .count(),
+      0,
+    );
     await page
       .locator(".sidebar")
       .getByLabel("Hãng", { exact: true })
@@ -420,6 +462,15 @@ const assert = require("node:assert/strict");
       viewport: { width: 1440, height: 1050 },
     });
     admin.on("dialog", (d) => d.accept());
+    await admin.addLocatorHandler(
+      admin.getByRole("dialog").filter({ hasText: "Có thay đổi chưa lưu" }),
+      async () => {
+        await admin
+          .getByRole("dialog")
+          .getByRole("button", { name: "Xác nhận", exact: true })
+          .click();
+      },
+    );
     admin.on("pageerror", (e) => errors.push(e.message));
     await admin.goto("http://127.0.0.1:4180/");
     await admin.getByRole("heading", { name: "Quản lý phần cứng" }).waitFor();
@@ -464,6 +515,15 @@ const assert = require("node:assert/strict");
       .getByRole("button", { name: "RAM", exact: true })
       .click();
     await admin.getByText("Thông số RAM", { exact: true }).click();
+    await admin.getByText(/^Bộ nhớ ·/).click();
+    await admin
+      .getByRole("button", { name: "Gợi ý Dung lượng (GB)", exact: true })
+      .click();
+    await admin.getByRole("option", { name: "32 GB", exact: true }).click();
+    assert.equal(
+      await admin.getByLabel("Dung lượng (GB)", { exact: true }).inputValue(),
+      "32 GB",
+    );
     await admin.getByLabel("Dung lượng (GB)", { exact: true }).fill("32gb");
     await admin.getByLabel("Dung lượng (GB)", { exact: true }).blur();
     assert.equal(
@@ -534,7 +594,10 @@ const assert = require("node:assert/strict");
           "type,name,model,spec.Capacity\nRAM,RAM nhập QA,Import model,64gb",
         ),
       });
-    assert.equal(await admin.getByLabel("Chỉ điền ô trống", { exact: false }).isChecked(), false);
+    assert.equal(
+      await admin.getByLabel("Chỉ điền ô trống", { exact: false }).isChecked(),
+      false,
+    );
     await admin
       .getByRole("button", { name: "Áp dụng vào bản nháp", exact: true })
       .click();

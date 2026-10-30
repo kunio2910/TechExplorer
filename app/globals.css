@@ -671,6 +671,12 @@
   }
 }
 
+.compare-scroll thead th { position: sticky; top: 0; z-index: 2; background: var(--panel); }
+.admin-table-view { display: flex; flex-direction: column; }
+.admin-table-view .admin-product-card { display: grid; grid-template-columns: 100px minmax(0, 1fr); }
+.admin-table-view .admin-product-card-image { min-height: 100px; height: 100%; }
+.admin-table-view .admin-product-card-image img { max-height: 100px; }
+.admin-table-view .admin-product-specs { display: flex; flex-wrap: wrap; gap: 12px; }
 .detail-action-row {
   display: flex;
   flex-wrap: wrap;

@@ -28,6 +28,25 @@ service cloud.firestore {
       }
     }
 
+    match /dataReports/{reportId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['deviceId','deviceType','deviceName','field','note','status','createdAt'])
+        && request.resource.data.deviceId is string && request.resource.data.deviceId.size() <= 200
+        && request.resource.data.deviceType in ['Mainboard','CPU','RAM','SSD','GPU','PSU']
+        && request.resource.data.deviceName is string && request.resource.data.deviceName.size() <= 200
+        && request.resource.data.field is string && request.resource.data.field.size() <= 200
+        && request.resource.data.note is string && request.resource.data.note.size() >= 5 && request.resource.data.note.size() <= 2000
+        && request.resource.data.status == 'new' && request.resource.data.createdAt == request.time;
+    }
+    match /users/{uid}/builds/{buildId} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['id','name','parts','ramKits','drives'])
+        && request.resource.data.id == buildId && request.resource.data.name is string && request.resource.data.name.size() <= 120
+        && request.resource.data.parts is map && request.resource.data.parts.size() <= 6
+        && request.resource.data.ramKits is int && request.resource.data.ramKits >= 1 && request.resource.data.ramKits <= 8
+        && request.resource.data.drives is int && request.resource.data.drives >= 1 && request.resource.data.drives <= 16;
+    }
     // Admin documents are created manually by the project owner.
     match /admins/{userId} {
       allow read, write: if false;
